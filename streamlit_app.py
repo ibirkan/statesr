@@ -305,22 +305,37 @@ def main():
                     # Option de création d'indicateur
                     st.write("### Créer un indicateur")
                     if st.button("📊 Créer un indicateur à partir de cette analyse", key=f"create_indicator_{unique_key}"):
-                        # Stockage des informations dans session_state
-                        st.session_state.indicator_info = {
-                            "type": "univarié",
-                            "titre": title,
-                            "variable": var,
-                            "graph_type": graph_type,
-                            "data": plot_data.to_dict('records'),
-                            "graph_config": {
-                                "fig_dict": fig.to_dict(),
-                                "layout": fig.layout.to_dict()
-                            },
-                            "tables_source": table_selections,  # Les tables sélectionnées
-                            "timestamp": datetime.now().isoformat()
-                        }
-                        # Redirection vers la page de création d'indicateur
-                        st.switch_page("pages/create_indicator.py")
+                        st.write("Bouton cliqué!")  # Debug
+                        try:
+                            # Stockage des informations dans session_state
+                            st.write("Préparation des données...")  # Debug
+                            indicator_info = {
+                                "type": "univarié",
+                                "titre": title,
+                                "variable": var,
+                                "graph_type": graph_type,
+                                "data": plot_data.to_dict('records'),
+                                "graph_config": {
+                                    "fig_dict": fig.to_dict(),
+                                    "layout": fig.layout.to_dict()
+                                },
+                                "tables_source": table_selections,
+                                "timestamp": datetime.now().isoformat()
+                            }
+                            st.write("Données préparées!")  # Debug
+                            
+                            st.write("Stockage dans session_state...")  # Debug
+                            st.session_state.indicator_info = indicator_info
+                            st.write("Stockage réussi!")  # Debug
+                            
+                            st.write("Tentative de redirection...")  # Debug
+                            try:
+                                st.switch_page("pages/create_indicator.py")
+                            except Exception as e:
+                                st.error(f"Erreur lors de la redirection : {str(e)}")
+                                
+                        except Exception as e:
+                            st.error(f"Erreur lors de la préparation des données : {str(e)}")
                                         
                 # Statistiques descriptives
                 st.write("### Statistiques descriptives")
