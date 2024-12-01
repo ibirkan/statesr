@@ -75,6 +75,57 @@ def delete_dashboard(dashboard_id):
         st.error(f"Erreur lors de la suppression : {str(e)}")
         return False
 
+def recreate_figure(element):
+    """Recrée un graphique à partir des paramètres sauvegardés"""
+    try:
+        config = element['config']
+        data = pd.DataFrame(config['data'])
+        
+        if config['type'] in ["Histogramme", "Barres"]:
+            fig = px.bar(
+                data,
+                x=config['x_axis'],
+                y=config['y_axis'] if config.get('y_axis') else None,
+                title=config['title']
+            )
+        elif config['type'] == "Camembert":
+            fig = px.pie(
+                data,
+                values=config['y_axis'],
+                names=config['x_axis'],
+                title=config['title']
+            )
+        elif config['type'] == "Ligne":
+            fig = px.line(
+                data,
+                x=config['x_axis'],
+                y=config['y_axis'],
+                title=config['title']
+            )
+        elif config['type'] == "Nuage de points":
+            fig = px.scatter(
+                data,
+                x=config['x_axis'],
+                y=config['y_axis'],
+                title=config['title']
+            )
+        else:
+            fig = px.bar(data, x=config['x_axis'], title=config['title'])
+        
+        # Applique les paramètres de mise en page
+        layout = config.get('layout', {})
+        fig.update_layout(
+            height=layout.get('height', 600),
+            showlegend=layout.get('showlegend', True),
+            plot_bgcolor='white',
+            paper_bgcolor='white'
+        )
+        
+        return fig
+    except Exception as e:
+        st.error(f"Erreur lors de la recréation du graphique : {str(e)}")
+        return None
+
 def main():
     st.title("Liste des Tableaux de Bord")
     
@@ -115,25 +166,26 @@ def main():
                         st.success("Tableau de bord supprimé!")
                         st.experimental_rerun()
             
-            # Affichage des visualisations
-            elements = dashboard.get('elements', [])
-            layout = dashboard.get('layout', {'cols_per_row': 2})
-            cols_per_row = layout.get('cols_per_row', 2)
-            
-            for i in range(0, len(elements), cols_per_row):
-                cols = st.columns(cols_per_row)
-                for j, col in enumerate(cols):
-                    if i + j < len(elements):
-                        element = elements[i + j]
-                        with col:
-                            st.write(f"#### {element['titre']}")
-                            try:
-                                fig = px.Figure(element['config']['fig_dict'])
-                                st.plotly_chart(fig, use_container_width=True)
-                            except Exception as e:
-                                st.error(f"Erreur d'affichage : {str(e)}")
-            
-            st.markdown("---")
+                # Affichage des visualisations
+                elements = dashboard.get('elements', [])
+                layout = dashboard.get('layout', {'cols_per_row': 2})
+                cols_per_row = layout.get('cols_per_row', 2)
+                
+                for i in range(0, len(elements), cols_per_row):
+                    cols = st.columns(cols_per_row)
+                    for j, col in enumerate(cols):
+                        if i + j < len(elements):
+                            element = elements[i + j]
+                            with col:
+                                st.write(f"#### {element['titre']}")
+                                try:
+                                    fig = recreate_figure(element)
+                                    if fig:
+                                        st.plotly_chart(fig, use_container_width=True)
+                                except Exception as e:
+                                    st.error(f"Erreur d'affichage : {str(e)}")
+                
+                st.markdown("---")            
 
 if __name__ == "__main__":
     main()
