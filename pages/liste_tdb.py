@@ -87,7 +87,8 @@ def main():
     
     # Chargement des tableaux de bord
     dashboards = load_dashboards()
-    
+    st.write("Dashboards chargés:", dashboards)  # Débogage
+
     if not dashboards:
         st.warning("Aucun tableau de bord n'a été créé.")
         col1, col2 = st.columns(2)
@@ -101,6 +102,7 @@ def main():
     
     # Affichage des tableaux de bord
     for dashboard in dashboards:
+        st.write("Éléments du tableau de bord:", dashboard['elements'])  # Débogage
         with st.expander(f"📊 {dashboard['title']}", expanded=True):
             # En-tête du tableau de bord
             col1, col2, col3 = st.columns([2, 1, 1])
