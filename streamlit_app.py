@@ -31,23 +31,14 @@ BASE_URL = "https://grist.numerique.gouv.fr/api/docs"
 # fonctions api de base
 def grist_api_request(endpoint, method="GET", data=None):
     """Fonction utilitaire pour les requêtes API Grist"""
-    if endpoint == "tables":
-        # Pour la création de table
-        url = f"{BASE_URL}/{DOC_ID}/tables"
-    else:
-        # Pour les opérations sur les enregistrements
-        url = f"{BASE_URL}/{DOC_ID}/tables/{DASHBOARDS_TABLE}/records"
-        if endpoint != "records":
-            url = f"{url}/{endpoint}"
+    url = f"{BASE_URL}/{DOC_ID}/tables"
+    if endpoint != "tables":
+        url = f"{url}/{endpoint}/records"
     
     headers = {
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json"
     }
-    
-    st.write(f"Requête {method} vers : {url}")
-    if data:
-        st.write("Données envoyées:", data)
     
     try:
         if method == "GET":
@@ -59,16 +50,10 @@ def grist_api_request(endpoint, method="GET", data=None):
         elif method == "DELETE":
             response = requests.delete(url, headers=headers)
         
-        st.write(f"Code de statut : {response.status_code}")
-        if response.content:
-            st.write("Réponse reçue:", response.json())
-        
         response.raise_for_status()
         return response.json() if response.content else None
     except Exception as e:
         st.error(f"Erreur API Grist : {str(e)}")
-        if hasattr(e, 'response') and e.response:
-            st.error(f"Contenu de l'erreur : {e.response.text}")
         return None
 
 # fonctions de gestion des tables
@@ -86,29 +71,16 @@ def get_grist_tables():
 def get_grist_data(table_id):
     """Récupère les données d'une table Grist."""
     try:
-        url = f"{BASE_URL}/{DOC_ID}/tables/{table_id}/records"
-        headers = {
-            "Authorization": f"Bearer {API_KEY}",
-            "Content-Type": "application/json"
-        }
-        
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
-        result = response.json()
-        
+        result = grist_api_request(table_id)
         if result and 'records' in result and result['records']:
             records = []
             for record in result['records']:
                 if 'fields' in record:
-                    # Nettoyage des clés (suppression du préfixe $)
                     fields = {k.lstrip('$'): v for k, v in record['fields'].items()}
                     records.append(fields)
             
             if records:
-                df = pd.DataFrame(records)
-                return df
-        
-        st.error(f"Aucune donnée trouvée dans la table {table_id}")
+                return pd.DataFrame(records)
         return None
     except Exception as e:
         st.error(f"Erreur lors de la récupération des données : {str(e)}")
