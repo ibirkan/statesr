@@ -71,12 +71,6 @@ def save_dashboard(dashboard_name, elements, layout=None):
         st.error(f"Erreur lors de la sauvegarde : {str(e)}")
         return False
 
-def load_dashboard_elements():
-    """Charge les éléments du tableau de bord depuis la session"""
-    if "dashboard_elements" not in st.session_state:
-        st.session_state.dashboard_elements = []
-    return st.session_state.dashboard_elements
-
 def main():
     st.title("Création de Tableau de Bord")
     
@@ -86,15 +80,6 @@ def main():
         st.switch_page("streamlit_app.py")
     if st.sidebar.button("📊 Liste des tableaux de bord"):
         st.switch_page("pages/liste_tdb.py")
-    
-    # Chargement des éléments
-    elements = load_dashboard_elements()
-    
-    if not elements:
-        st.warning("Aucun élément n'a été ajouté au tableau de bord. Retournez à l'analyse pour ajouter des visualisations.")
-        if st.button("Retour à l'analyse"):
-            st.switch_page("streamlit_app.py")
-        return
     
     # Interface de création de tableau de bord
     st.write("### Créer un nouveau tableau de bord")
@@ -106,43 +91,18 @@ def main():
         index=1
     )
 
-    # Affichage des visualisations disponibles
-    if elements:
-        st.write("### Visualisations disponibles")
-        for i in range(0, len(elements), cols_per_row):
-            cols = st.columns(cols_per_row)
-            for j, col in enumerate(cols):
-                if i + j < len(elements):
-                    element = elements[i + j]
-                    with col:
-                        st.write(f"#### {element['titre']}")
-                        try:
-                            fig = px.Figure(element['config']['fig_dict'])
-                            st.plotly_chart(fig, use_container_width=True)
-                        except Exception as e:
-                            st.error(f"Erreur d'affichage : {str(e)}")
-
-    # Boutons d'action
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("💾 Créer le tableau de bord", key="save_dashboard"):
-            if dashboard_title:
-                if save_dashboard(
-                    dashboard_name=dashboard_title,
-                    elements=elements,
-                    layout={"cols_per_row": cols_per_row}
-                ):
-                    st.success(f"✅ Tableau de bord '{dashboard_title}' créé avec succès!")
-                    st.session_state.dashboard_elements = []  # Réinitialiser les éléments
-                    time.sleep(0.5)
-                    st.switch_page("pages/liste_tdb.py")
-            else:
-                st.error("Veuillez entrer un titre pour le tableau de bord")
-
-    with col2:
-        if st.button("❌ Annuler", key="cancel"):
-            st.session_state.dashboard_elements = []
-            st.switch_page("streamlit_app.py")
+    if st.button("Créer le tableau de bord"):
+        if dashboard_title:
+            if save_dashboard(
+                dashboard_name=dashboard_title,
+                elements=[],
+                layout={"cols_per_row": cols_per_row}
+            ):
+                st.success(f"✅ Tableau de bord '{dashboard_title}' créé avec succès!")
+                time.sleep(0.5)
+                st.switch_page("pages/liste_tdb.py")
+        else:
+            st.error("Veuillez entrer un titre pour le tableau de bord")
 
 if __name__ == "__main__":
     main()
