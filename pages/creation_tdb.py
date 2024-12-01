@@ -73,7 +73,7 @@ def main():
     # Navigation
     st.sidebar.title("Navigation")
     if st.sidebar.button("🔄 Retour à l'analyse"):
-        st.switch_page("analyse.py")
+        st.switch_page("streamlit_app.py")
     if st.sidebar.button("📊 Liste des tableaux de bord"):
         st.switch_page("pages/liste_tdb.py")
     
@@ -83,7 +83,7 @@ def main():
     if not elements:
         st.warning("Aucun élément n'a été ajouté au tableau de bord. Retournez à l'analyse pour ajouter des visualisations.")
         if st.button("Retour à l'analyse"):
-            st.switch_page("analyse.py")
+            st.switch_page("streamlit_app.py")
         return
 
     # Configuration du tableau de bord
@@ -140,4 +140,7 @@ def main():
     with col2:
         if st.button("❌ Annuler", key="cancel"):
             st.session_state.dashboard_elements = []  # Réinitialiser les éléments
-            st.switch_page("analyse.py")
+            st.switch_page("streamlit_app.py")
+
+if __name__ == "__main__":
+    main()
