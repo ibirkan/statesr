@@ -478,23 +478,22 @@ def main():
                     
                     # Affichage du graphique avec clé unique
                     st.plotly_chart(fig, use_container_width=True, key=unique_key)
-                    
-                    # Options pour le tableau de bord
-                    viz_col1, viz_col2 = st.columns(2)
-                    with viz_col1:
-                        if st.button("➕ Ajouter au tableau de bord", key=f"add_to_dashboard_{unique_key}"):
-                            add_visualization_to_session(
+                    # Ajout au tableau de bord
+                    st.write("### Ajouter au tableau de bord")
+                    selected_dashboard = select_or_create_dashboard()
+                    if selected_dashboard and selected_dashboard != "Créer un nouveau tableau de bord":
+                        if st.button("➕ Ajouter la visualisation", key=f"add_viz_{unique_key}"):
+                            if add_visualization_to_dashboard(
+                                dashboard_name=selected_dashboard,
                                 fig=fig,
                                 title=title,
-                                var_x=var,
+                                var_x=var_x if 'var_x' in locals() else var,
+                                var_y=var_y if 'var_y' in locals() else None,
                                 graph_type=graph_type,
                                 data=plot_data
-                            )
-                    with viz_col2:
-                        if len(st.session_state.get('dashboard_elements', [])) > 0:
-                            if st.button("🎯 Créer le tableau de bord", key=f"create_dashboard_{unique_key}"):
-                                st.switch_page("pages/creation_tdb.py")
-                    
+                            ):
+                                st.success(f"Visualisation ajoutée au tableau de bord '{selected_dashboard}'!")
+                                        
                 # Statistiques descriptives
                 st.write("### Statistiques descriptives")
                 if pd.api.types.is_numeric_dtype(plot_data):
@@ -722,22 +721,21 @@ def main():
                 # Affichage du graphique avec clé unique
                 st.plotly_chart(fig, use_container_width=True, key=unique_key)
                 
-                # Options pour le tableau de bord
-                viz_col1, viz_col2 = st.columns(2)
-                with viz_col1:
-                    if st.button("➕ Ajouter au tableau de bord", key=f"add_to_dashboard_{unique_key}"):
-                        add_visualization_to_session(
+                # Ajout au tableau de bord
+                st.write("### Ajouter au tableau de bord")
+                selected_dashboard = select_or_create_dashboard()
+                if selected_dashboard and selected_dashboard != "Créer un nouveau tableau de bord":
+                    if st.button("➕ Ajouter la visualisation", key=f"add_viz_{unique_key}"):
+                        if add_visualization_to_dashboard(
+                            dashboard_name=selected_dashboard,
                             fig=fig,
                             title=title,
-                            var_x=var_x,
-                            var_y=var_y,
+                            var_x=var_x if 'var_x' in locals() else var,
+                            var_y=var_y if 'var_y' in locals() else None,
                             graph_type=graph_type,
                             data=plot_data
-                        )
-                with viz_col2:
-                    if len(st.session_state.get('dashboard_elements', [])) > 0:
-                        if st.button("🎯 Créer le tableau de bord", key=f"create_dashboard_{unique_key}"):
-                            st.switch_page("pages/creation_tdb.py")
+                        ):
+                            st.success(f"Visualisation ajoutée au tableau de bord '{selected_dashboard}'!")
                 
                 # Statistiques descriptives
                 st.write("### Statistiques descriptives")
