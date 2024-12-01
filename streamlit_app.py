@@ -527,7 +527,7 @@ def page_analyse():
                                     plot_data[var_x].std(), plot_data[var_x].min(), 
                                     plot_data[var_x].max()],
                         f'{var_y}': [plot_data[var_y].mean(), plot_data[var_y].median(), 
-                                    plot_data[var_y}.std(), plot_data[var_y].min(), 
+                                    plot_data[var_y].std(), plot_data[var_y].min(), 
                                     plot_data[var_y].max()]
                     }).round(2)
                     st.dataframe(stats)
