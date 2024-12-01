@@ -77,6 +77,29 @@ def main():
     if st.sidebar.button("📊 Liste des tableaux de bord"):
         st.switch_page("pages/liste_tdb.py")
     
+    # Interface de création de tableau de bord
+    st.write("### Créer un nouveau tableau de bord")
+    
+    dashboard_title = st.text_input("Titre du tableau de bord")
+    cols_per_row = st.selectbox(
+        "Nombre de colonnes par ligne",
+        options=[1, 2, 3],
+        index=1
+    )
+
+    if st.button("Créer le tableau de bord"):
+        if dashboard_title:
+            if save_dashboard(
+                dashboard_name=dashboard_title,
+                elements=[],
+                layout={"cols_per_row": cols_per_row}
+            ):
+                st.success(f"✅ Tableau de bord '{dashboard_title}' créé avec succès!")
+                time.sleep(1)
+                st.switch_page("pages/liste_tdb.py")
+        else:
+            st.error("Veuillez entrer un titre pour le tableau de bord")
+    
     # Chargement des éléments
     elements = load_dashboard_elements()
     
