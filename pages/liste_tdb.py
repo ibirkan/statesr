@@ -3,6 +3,7 @@ import plotly.express as px
 from datetime import datetime
 import json
 import requests
+import time
 
 # Configuration de la page
 st.set_page_config(
@@ -19,10 +20,13 @@ DASHBOARDS_TABLE = "Dashboards"
 
 def grist_api_request(endpoint, method="GET", data=None):
     """Fonction utilitaire pour les requêtes API Grist"""
-    url = f"{BASE_URL}/{DOC_ID}/tables/{DASHBOARDS_TABLE}/records"
-    if endpoint != "records":
-        url = f"{url}/{endpoint}"
-        
+    if endpoint == "tables":
+        url = f"{BASE_URL}/{DOC_ID}/tables"
+    else:
+        url = f"{BASE_URL}/{DOC_ID}/tables/{DASHBOARDS_TABLE}/records"
+        if endpoint != "records":
+            url = f"{url}/{endpoint}"
+    
     headers = {
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json"
@@ -49,18 +53,14 @@ def load_dashboards():
     try:
         result = grist_api_request("records", "GET")
         if result and 'records' in result:
-            dashboards = []
-            for record in result['records']:
-                dashboard = {
-                    'id': record['id'],
-                    'title': record['fields']['name'],
-                    'layout': json.loads(record['fields']['layout']),
-                    'elements': json.loads(record['fields']['elements']),
-                    'created_at': record['fields'].get('created_at', ''),
-                    'created_by': record['fields'].get('created_by', 'Utilisateur inconnu')
-                }
-                dashboards.append(dashboard)
-            return dashboards
+            return [{
+                'id': record['id'],
+                'title': record['fields']['name'],
+                'elements': json.loads(record['fields']['elements']),
+                'layout': json.loads(record['fields'].get('layout', '{}')),
+                'created_at': record['fields'].get('created_at', ''),
+                'created_by': record['fields'].get('created_by', 'Utilisateur inconnu')
+            } for record in result['records']]
         return []
     except Exception as e:
         st.error(f"Erreur lors du chargement : {str(e)}")
@@ -114,8 +114,9 @@ def main():
                         st.experimental_rerun()
             
             # Affichage des visualisations
-            cols_per_row = dashboard['layout']['cols_per_row']
-            elements = dashboard['elements']
+            elements = dashboard.get('elements', [])
+            layout = dashboard.get('layout', {'cols_per_row': 2})
+            cols_per_row = layout.get('cols_per_row', 2)
             
             for i in range(0, len(elements), cols_per_row):
                 cols = st.columns(cols_per_row)
