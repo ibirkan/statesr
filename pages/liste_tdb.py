@@ -81,7 +81,7 @@ def main():
     # Menu de navigation
     st.sidebar.title("Navigation")
     if st.sidebar.button("🔄 Nouvelle analyse", key="new_analysis"):
-        st.switch_page("analyse.py")
+        st.switch_page("streamlit_app.py")
     if st.sidebar.button("➕ Créer un tableau de bord", key="create_dashboard"):
         st.switch_page("pages/creation_tdb.py")
     
@@ -96,7 +96,7 @@ def main():
                 st.switch_page("pages/creation_tdb.py")
         with col2:
             if st.button("📊 Faire une analyse", key="new_analysis_empty"):
-                st.switch_page("analyse.py")
+                st.switch_page("streamlit_app.py")
         return
     
     # Affichage des tableaux de bord
@@ -131,3 +131,6 @@ def main():
                                 st.error(f"Erreur d'affichage : {str(e)}")
             
             st.markdown("---")
+
+if __name__ == "__main__":
+    main()
