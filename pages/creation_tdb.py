@@ -3,6 +3,7 @@ import plotly.express as px
 from datetime import datetime
 import json
 import requests
+import time
 
 # Configuration de la page
 st.set_page_config(
@@ -73,12 +74,12 @@ def save_dashboard(dashboard_name, elements, layout=None):
 def main():
     st.title("Création de Tableau de Bord")
     
-    # Navigation
+# Navigation
     st.sidebar.title("Navigation")
     if st.sidebar.button("🔄 Retour à l'analyse"):
-        st.switch_page("streamlit_app.py")
+        st.switch_page("streamlit_app.py")  # Assurez-vous que c'est le bon chemin
     if st.sidebar.button("📊 Liste des tableaux de bord"):
-        st.switch_page("pages/liste_tdb.py")
+        st.switch_page("pages/liste_tdb.py")  # Assurez-vous que c'est le bon chemin
     
     # Interface de création de tableau de bord
     st.write("### Créer un nouveau tableau de bord")
@@ -98,8 +99,9 @@ def main():
                 layout={"cols_per_row": cols_per_row}
             ):
                 st.success(f"✅ Tableau de bord '{dashboard_title}' créé avec succès!")
-                time.sleep(1)
-                st.switch_page("pages/liste_tdb.py")
+                # Utilisez un délai plus court
+                time.sleep(0.5)
+                st.switch_page("pages/liste_tdb.py")  # Assurez-vous que c'est le bon chemin
         else:
             st.error("Veuillez entrer un titre pour le tableau de bord")
     
