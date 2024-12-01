@@ -495,21 +495,6 @@ def main():
                             if st.button("🎯 Créer le tableau de bord", key=f"create_dashboard_{unique_key}"):
                                 st.switch_page("pages/creation_tdb.py")
                     
-                    # Sélection ou création de tableau de bord
-                    selected_dashboard = select_or_create_dashboard()
-                    if selected_dashboard and selected_dashboard != "Créer un nouveau tableau de bord":
-                        add_visualization_to_dashboard(
-                            dashboard_name=selected_dashboard,
-                            fig=fig,
-                            title=title,
-                            var_x=var,
-                            graph_type=graph_type,
-                            data=plot_data
-                        )
-
-            except Exception as e:
-                st.error(f"Erreur lors de la visualisation : {str(e)}")
-
                 # Statistiques descriptives
                 st.write("### Statistiques descriptives")
                 if pd.api.types.is_numeric_dtype(plot_data):
@@ -754,19 +739,6 @@ def main():
                         if st.button("🎯 Créer le tableau de bord", key=f"create_dashboard_{unique_key}"):
                             st.switch_page("pages/creation_tdb.py")
                 
-                # Sélection ou création de tableau de bord
-                selected_dashboard = select_or_create_dashboard()
-                if selected_dashboard and selected_dashboard != "Créer un nouveau tableau de bord":
-                    add_visualization_to_dashboard(
-                        dashboard_name=selected_dashboard,
-                        fig=fig,
-                        title=title,
-                        var_x=var_x,
-                        var_y=var_y,
-                        graph_type=graph_type,
-                        data=plot_data
-                    )
-
                 # Statistiques descriptives
                 st.write("### Statistiques descriptives")
 
