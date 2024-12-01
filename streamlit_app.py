@@ -46,7 +46,7 @@ def grist_api_request(endpoint, method="GET", data=None):
         elif method == "POST":
             response = requests.post(url, headers=headers, json=data)
         elif method == "PATCH":
-            response = requests.patch(url, headers=headers, json=data)
+            response is requests.patch(url, headers=headers, json=data)
         elif method == "DELETE":
             response = requests.delete(url, headers=headers)
         
@@ -87,10 +87,6 @@ def get_grist_data(table_id):
         return None
 
 # Fonctions pour les différentes pages
-def page_accueil():
-    st.title("Accueil")
-    st.write("Bienvenue sur l'application d'analyse des données ESR.")
-
 def page_analyse():
     st.title("Analyse des données ESR")
 
@@ -173,7 +169,7 @@ def page_analyse():
 
         # Vérification du type de la variable et génération de la visualisation appropriée
         fig = None  # Initialisation de la variable fig
-        
+
         # Analyse univariée pour une variable qualitative
         if plot_data.dtype == 'object':
             st.write(f"### Analyse univariée pour {var}")
@@ -308,45 +304,6 @@ def page_analyse():
                         freq_table.columns = ['Valeur', 'Fréquence']
                         freq_table['Pourcentage'] = (freq_table['Fréquence'] / freq_table['Fréquence'].sum() * 100).round(2)
                         st.dataframe(freq_table)
-                    
-                    # Option de création d'indicateur
-                    st.write("### Créer un indicateur")
-                    
-                    if st.button("📊 Créer un indicateur à partir de cette analyse", key=f"create_indicator_{unique_key}"):
-                        # Stockage des données
-                        if isinstance(plot_data, pd.Series):
-                            data_dict = plot_data.to_frame().to_dict('records')
-                        else:
-                            data_dict = plot_data.to_dict('records')
-                    
-                        st.session_state.indicator_info = {
-                            "type": "univarié",  # ou "bivarié" selon le type d'analyse
-                            "titre": title,
-                            "variable": var,  # ou "variable_x" et "variable_y" pour l'analyse bivariée
-                            "graph_type": graph_type,
-                            "data": data_dict,
-                            "graph_config": fig.to_dict(),
-                            "tables_source": table_selections,
-                            "timestamp": datetime.now().isoformat()
-                        }
-                    
-                        # Redirection vers la page de création d'indicateur
-                        st.experimental_set_query_params(page="create_indicator")
-                        st.success("Redirection vers la page de création d'indicateur...")
-                
-                # Statistiques descriptives
-                st.write("### Statistiques descriptives")
-                if pd.api.types.is_numeric_dtype(plot_data):
-                    stats = plot_data.describe()
-                    stats_df = pd.DataFrame({
-                        'Statistique': stats.index,
-                        'Valeur': stats.values
-                    })
-                    st.dataframe(stats_df)
-                else:
-                    freq_table = value_counts.copy()
-                    freq_table['Pourcentage'] = (freq_table['Compte'] / freq_table['Compte'].sum() * 100).round(2)
-                    st.dataframe(freq_table)
 
             except Exception as e:
                 st.error(f"Erreur lors de la visualisation : {str(e)}")
@@ -443,7 +400,6 @@ def page_analyse():
         if st.button("Générer la visualisation", key="generate_bivariate"):
             try:
                 plot_data = st.session_state.merged_data[[var_x, var_y]].copy()
-
 
                 # Création du graphique selon le type et application du tri
                 if sort_order != "Pas de tri":
@@ -542,7 +498,6 @@ def page_analyse():
                         title=title,
                         color_continuous_scale=COLOR_PALETTES[color_scheme]
                     )
-
                 # Mise à jour du layout pour tous les graphiques
                 fig.update_layout(
                     height=600,
@@ -572,7 +527,7 @@ def page_analyse():
                                     plot_data[var_x].std(), plot_data[var_x].min(), 
                                     plot_data[var_x].max()],
                         f'{var_y}': [plot_data[var_y].mean(), plot_data[var_y].median(), 
-                                    plot_data[var_y].std(), plot_data[var_y].min(), 
+                                    plot_data[var_y}.std(), plot_data[var_y].min(), 
                                     plot_data[var_y].max()]
                     }).round(2)
                     st.dataframe(stats)
