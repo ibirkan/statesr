@@ -305,43 +305,49 @@ def select_or_create_dashboard():
 
 # fonction de gestion des visualisations
 def add_visualization_to_dashboard(dashboard_name, fig, title, var_x=None, var_y=None, graph_type=None, data=None):
-    st.write(f"Tentative d'ajout au dashboard : {dashboard_name}")  # Debug
+    """Ajoute une visualisation à un tableau de bord existant"""
     try:
+        # Récupère les données actuelles du tableau de bord
         dashboards = load_dashboards()
-        st.write("Dashboards chargés:", dashboards)  # Debug
-        
         dashboard = next((d for d in dashboards if d["name"] == dashboard_name), None)
-        st.write("Dashboard trouvé:", dashboard)  # Debug
         
         if dashboard:
-            new_viz = {
+            # Prépare les paramètres de la visualisation
+            if isinstance(data, pd.DataFrame):
+                data_dict = data.to_dict('records')  # Convertit les données en liste de dictionnaires
+            else:
+                data_dict = []
+            
+            # Récupère les paramètres du graphique
+            graph_params = {
+                "title": fig.layout.title.text if hasattr(fig.layout, 'title') else title,
+                "type": graph_type,
+                "x_axis": var_x,
+                "y_axis": var_y,
+                "data": data_dict,
+                "layout": {
+                    "height": fig.layout.height if hasattr(fig.layout, 'height') else 600,
+                    "showlegend": fig.layout.showlegend if hasattr(fig.layout, 'showlegend') else True,
+                    "color_scheme": COLOR_PALETTES.get("Bleu")  # Palette par défaut
+                }
+            }
+            
+            # Récupère les éléments existants ou initialise une liste vide
+            elements = dashboard.get("elements", [])
+            elements.append({
                 "type": "graphique",
                 "titre": title,
                 "timestamp": datetime.now().isoformat(),
-                "config": {
-                    "fig_dict": fig.to_dict(),
-                    "var_x": var_x,
-                    "var_y": var_y,
-                    "graph_type": graph_type,
-                    "data": data.to_dict() if isinstance(data, pd.DataFrame) else None
-                }
-            }
-            st.write("Nouvelle visualisation préparée:", new_viz)  # Debug
+                "config": graph_params
+            })
             
-            elements = json.loads(dashboard["elements"]) if dashboard["elements"] else []
-            st.write("Éléments actuels:", elements)  # Debug
-            elements.append(new_viz)
-            st.write("Nouvelle liste des éléments:", elements)  # Debug
-            
-            update_success = update_dashboard(dashboard_name, elements)
-            st.write("Résultat de la mise à jour:", update_success)  # Debug
-            return update_success
+            # Met à jour le tableau de bord
+            if update_dashboard(dashboard_name, elements):
+                return True
                 
-        st.error("Dashboard non trouvé")
         return False
     except Exception as e:
         st.error(f"Erreur lors de l'ajout de la visualisation : {str(e)}")
-        st.write("Détails de l'erreur:", e)  # Debug
         return False
 
 def main():
