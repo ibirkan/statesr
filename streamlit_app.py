@@ -29,6 +29,7 @@ DOC_ID = st.secrets["grist_doc_id"]
 BASE_URL = "https://grist.numerique.gouv.fr/api/docs"
 DASHBOARDS_TABLE = "Dashboards"  # Nom de la table pour les tableaux de bord
 
+# fonctions api de base
 def grist_api_request(endpoint, method="GET", data=None):
     """Fonction utilitaire principale pour les requêtes API Grist"""
     # Construction de l'URL selon le type de requête
@@ -76,6 +77,31 @@ def grist_api_request(endpoint, method="GET", data=None):
         st.error(f"URL tentée : {url}")
         return None
 
+def dashboard_api_request(endpoint, method="GET", data=None):
+    """Fonction utilitaire spécifique pour les opérations sur les tableaux de bord"""
+    url = f"{BASE_URL}/{DOC_ID}/tables/{DASHBOARDS_TABLE}/records"
+    headers = {
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json"
+    }
+    
+    try:
+        if method == "GET":
+            response = requests.get(url, headers=headers)
+        elif method == "POST":
+            response = requests.post(url, headers=headers, json=data)
+        elif method == "PATCH":
+            response = requests.patch(url, headers=headers, json=data)
+        elif method == "DELETE":
+            response = requests.delete(url, headers=headers)
+        
+        response.raise_for_status()
+        return response.json() if response.content else None
+    except Exception as e:
+        st.error(f"Erreur API Dashboards : {str(e)}")
+        return None
+
+# fonctions de gestion des tables
 def get_grist_tables():
     """Récupère la liste des tables disponibles dans Grist."""
     try:
@@ -118,30 +144,6 @@ def get_grist_data(table_id):
         st.error(f"Erreur lors de la récupération des données : {str(e)}")
         return None
 
-def dashboard_api_request(endpoint, method="GET", data=None):
-    """Fonction utilitaire spécifique pour les opérations sur les tableaux de bord"""
-    url = f"{BASE_URL}/{DOC_ID}/tables/{DASHBOARDS_TABLE}/records"
-    headers = {
-        "Authorization": f"Bearer {API_KEY}",
-        "Content-Type": "application/json"
-    }
-    
-    try:
-        if method == "GET":
-            response = requests.get(url, headers=headers)
-        elif method == "POST":
-            response = requests.post(url, headers=headers, json=data)
-        elif method == "PATCH":
-            response = requests.patch(url, headers=headers, json=data)
-        elif method == "DELETE":
-            response = requests.delete(url, headers=headers)
-        
-        response.raise_for_status()
-        return response.json() if response.content else None
-    except Exception as e:
-        st.error(f"Erreur API Dashboards : {str(e)}")
-        return None
-
 def ensure_dashboard_table_exists():
     """Vérifie si la table dashboards existe, la crée si nécessaire"""
     try:
@@ -173,6 +175,7 @@ def ensure_dashboard_table_exists():
         st.error(f"Erreur lors de la vérification/création de la table : {str(e)}")
         return False
 
+# fonctions de gestion des tableaux de bord
 def load_dashboards():
     """Charge tous les tableaux de bord depuis Grist"""
     try:
@@ -252,29 +255,65 @@ def delete_dashboard(dashboard_id):
         st.error(f"Erreur lors de la suppression : {str(e)}")
         return False
 
-def add_visualization_to_session(fig, title, var_x=None, var_y=None, graph_type=None, data=None):
-    """Ajoute une visualisation à la session pour création ultérieure de tableau de bord"""
-    if "dashboard_elements" not in st.session_state:
-        st.session_state.dashboard_elements = []
+def select_or_create_dashboard():
+    """Interface pour la sélection/création de tableau de bord"""
+    dashboards = load_dashboards()
+    dashboard_names = [d["name"] for d in dashboards] if dashboards else []
+    dashboard_names.append("Créer un nouveau tableau de bord")
+
+    selected_dashboard = st.selectbox(
+        "Choisir ou créer un tableau de bord",
+        dashboard_names,
+        key="dashboard_select"
+    )
     
-    st.session_state.dashboard_elements.append({
-        "type": "graphique",
-        "titre": title,
-        "timestamp": datetime.now().isoformat(),
-        "config": {
-            "fig_dict": fig.to_dict(),
-            "var_x": var_x,
-            "var_y": var_y,
-            "graph_type": graph_type,
-            "data": data.to_dict() if isinstance(data, pd.DataFrame) else None
-        }
-    })
-    
-    st.success("✅ Visualisation ajoutée aux éléments du tableau de bord!")
-    
-    # Option pour aller à la page de création de tableau de bord
-    if st.button("🎯 Créer le tableau de bord"):
-        st.switch_page("pages/creation_tdb.py")
+    if selected_dashboard == "Créer un nouveau tableau de bord":
+        new_dashboard_name = st.text_input("Nom du nouveau tableau de bord")
+        if st.button("Créer", key="create_new_dashboard"):
+            if new_dashboard_name:
+                if save_dashboard(new_dashboard_name, []):
+                    st.success(f"Tableau de bord '{new_dashboard_name}' créé!")
+                    time.sleep(1)  # Petit délai pour voir le message
+                    st.experimental_rerun()  # Recharge la page pour voir le nouveau tableau
+                    return new_dashboard_name
+            else:
+                st.error("Veuillez entrer un nom pour le tableau de bord")
+    return selected_dashboard
+
+# fonction de gestion des visualisations
+def add_visualization_to_dashboard(dashboard_name, fig, title, var_x=None, var_y=None, graph_type=None, data=None):
+    """Ajoute une visualisation à un tableau de bord existant"""
+    try:
+        # Récupère les données actuelles du tableau de bord
+        dashboards = load_dashboards()
+        dashboard = next((d for d in dashboards if d["name"] == dashboard_name), None)
+        
+        if dashboard:
+            # Récupère les éléments existants ou initialise une liste vide
+            elements = dashboard.get("elements", [])
+            
+            # Ajoute la nouvelle visualisation
+            elements.append({
+                "type": "graphique",
+                "titre": title,
+                "timestamp": datetime.now().isoformat(),
+                "config": {
+                    "fig_dict": fig.to_dict(),
+                    "var_x": var_x,
+                    "var_y": var_y,
+                    "graph_type": graph_type,
+                    "data": data.to_dict() if isinstance(data, pd.DataFrame) else None
+                }
+            })
+            
+            # Met à jour le tableau de bord
+            if update_dashboard(dashboard_name, elements):
+                return True
+                
+        return False
+    except Exception as e:
+        st.error(f"Erreur lors de l'ajout de la visualisation : {str(e)}")
+        return False
 
 def main():
     st.title("Analyse des données ESR")
