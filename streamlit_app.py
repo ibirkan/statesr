@@ -31,14 +31,30 @@ DASHBOARDS_TABLE = "Dashboards"  # Nom de la table pour les tableaux de bord
 
 def grist_api_request(endpoint, method="GET", data=None):
     """Fonction utilitaire principale pour les requêtes API Grist"""
-    url = f"{BASE_URL}/{DOC_ID}/tables/{DASHBOARDS_TABLE}/records"
-    if endpoint != "records":
-        url = f"{url}/{endpoint}"
-        
+    # Construction de l'URL selon le type de requête
+    if endpoint == "tables":
+        # URL pour création de table
+        url = f"{BASE_URL}/{DOC_ID}/tables"
+    elif "records" in endpoint:
+        # URL pour opérations sur les enregistrements
+        url = f"{BASE_URL}/{DOC_ID}/tables/{DASHBOARDS_TABLE}/records"
+        if endpoint != "records":  # Si on a un ID spécifique
+            record_id = endpoint.split('/')[-1]
+            url = f"{url}/{record_id}"
+    else:
+        # URL par défaut
+        url = f"{BASE_URL}/{DOC_ID}/{endpoint}"
+    
     headers = {
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json"
     }
+    
+    # Debug
+    st.write(f"URL appelée : {url}")
+    st.write(f"Méthode : {method}")
+    if data:
+        st.write(f"Données envoyées : {data}")
     
     try:
         if method == "GET":
@@ -50,10 +66,14 @@ def grist_api_request(endpoint, method="GET", data=None):
         elif method == "DELETE":
             response = requests.delete(url, headers=headers)
         
+        # Debug
+        st.write(f"Code de statut : {response.status_code}")
+        
         response.raise_for_status()
         return response.json() if response.content else None
     except Exception as e:
         st.error(f"Erreur API Grist : {str(e)}")
+        st.error(f"URL tentée : {url}")
         return None
 
 def get_grist_tables():
