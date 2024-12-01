@@ -261,12 +261,12 @@ def delete_dashboard(dashboard_id):
 
 def select_or_create_dashboard():
     """Interface pour la sélection/création de tableau de bord"""
-    st.write("Début de select_or_create_dashboard")  # Debug
+    if 'create_dashboard_clicked' not in st.session_state:
+        st.session_state.create_dashboard_clicked = False
+    
     dashboards = load_dashboards()
     dashboard_names = [d["name"] for d in dashboards] if dashboards else []
     dashboard_names.append("Créer un nouveau tableau de bord")
-
-    st.write(f"Dashboards disponibles : {dashboard_names}")  # Debug
 
     selected_dashboard = st.selectbox(
         "Choisir ou créer un tableau de bord",
@@ -277,34 +277,30 @@ def select_or_create_dashboard():
     if selected_dashboard == "Créer un nouveau tableau de bord":
         new_dashboard_name = st.text_input("Nom du nouveau tableau de bord")
         if st.button("Créer", key="create_new_dashboard"):
-            st.write(f"Tentative de création du dashboard : {new_dashboard_name}")  # Debug
+            st.session_state.create_dashboard_clicked = True
             if new_dashboard_name:
-                # Création d'un tableau de bord vide
                 initial_data = {
                     "records": [{
                         "fields": {
                             "name": new_dashboard_name,
-                            "elements": "[]",  # Liste vide en JSON
-                            "timestamp": datetime.now().isoformat()
+                            "elements": "[]",
+                            "created_at": datetime.now().isoformat(),
+                            "created_by": "data-groov"
                         }
                     }]
                 }
-                st.write("Données initiales pour création:", initial_data)  # Debug
                 
                 result = grist_api_request("records", "POST", initial_data)
-                st.write("Résultat de la création:", result)  # Debug
-                
                 if result:
                     st.success(f"Tableau de bord '{new_dashboard_name}' créé!")
-                    time.sleep(1)
-                    st.experimental_rerun()
                     return new_dashboard_name
                 else:
                     st.error("Échec de la création du tableau de bord")
             else:
                 st.error("Veuillez entrer un nom pour le tableau de bord")
     
-    st.write(f"Dashboard sélectionné : {selected_dashboard}")  # Debug
+    if st.session_state.create_dashboard_clicked:
+        return None
     return selected_dashboard
 
 # fonction de gestion des visualisations
