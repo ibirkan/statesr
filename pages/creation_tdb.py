@@ -19,7 +19,13 @@ DASHBOARDS_TABLE = "Dashboards"
 
 def grist_api_request(endpoint, method="GET", data=None):
     """Fonction utilitaire pour les requêtes API Grist"""
-    url = f"{BASE_URL}/{DOC_ID}/tables/{DASHBOARDS_TABLE}/records"
+    if endpoint == "tables":
+        url = f"{BASE_URL}/{DOC_ID}/tables"
+    else:
+        url = f"{BASE_URL}/{DOC_ID}/tables/{DASHBOARDS_TABLE}/records"
+        if endpoint != "records":
+            url = f"{url}/{endpoint}"
+    
     headers = {
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json"
@@ -41,21 +47,18 @@ def grist_api_request(endpoint, method="GET", data=None):
         st.error(f"Erreur API Grist : {str(e)}")
         return None
 
-def load_dashboard_elements():
-    """Charge les éléments du tableau de bord depuis la session"""
-    if "dashboard_elements" not in st.session_state:
-        st.session_state.dashboard_elements = []
-    return st.session_state.dashboard_elements
-
-def save_dashboard_config(title, layout, elements):
-    """Sauvegarde la configuration du tableau de bord dans Grist"""
+def save_dashboard(dashboard_name, elements, layout=None):
+    """Sauvegarde un tableau de bord dans Grist"""
     try:
+        if layout is None:
+            layout = {"cols_per_row": 2}
+            
         data = {
             "records": [{
                 "fields": {
-                    "name": title,
-                    "layout": json.dumps(layout),
+                    "name": dashboard_name,
                     "elements": json.dumps(elements),
+                    "layout": json.dumps(layout),
                     "created_at": datetime.now().isoformat(),
                     "created_by": "data-groov"
                 }
