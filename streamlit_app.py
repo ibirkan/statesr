@@ -171,38 +171,23 @@ def ensure_dashboard_table_exists():
         return False
 
 # fonctions de gestion des tableaux de bord
-def load_and_display_dashboard(dashboard_name):
-    dashboards = load_dashboards()
-    dashboard = next((d for d in dashboards if d["name"] == dashboard_name), None)
-    
-    if not dashboard:
-        st.error("Dashboard non trouvé")
-        return
-    
-    for element in json.loads(dashboard["elements"]):
-        if element["type"] == "graphique":
-            config = element["config"]
-            data = pd.DataFrame(config["data"])
-            graph_type = config["graph_type"]
-            color_scheme = config["color_scheme"]
-            
-            if graph_type == "Histogramme":
-                fig = px.histogram(data, x=config["var_x"], color_discrete_sequence=COLOR_PALETTES[color_scheme])
-            elif graph_type == "Boîte à moustaches":
-                fig = px.box(data, y=config["var_x"], color_discrete_sequence=COLOR_PALETTES[color_scheme])
-            elif graph_type == "Barres":
-                fig = px.bar(data, x=config["var_x"], y=config["var_y"], color_discrete_sequence=COLOR_PALETTES[color_scheme])
-            elif graph_type == "Camembert":
-                fig = px.pie(data, values=config["var_y"], names=config["var_x"], color_discrete_sequence=COLOR_PALETTES[color_scheme])
-            # Ajoutez d'autres types de graphiques ici si nécessaire
-            
-            st.plotly_chart(fig)
-
-# Appel de la fonction dans l'application principale
-if __name__ == "__main__":
-    selected_dashboard = select_or_create_dashboard()
-    if selected_dashboard:
-        load_and_display_dashboard(selected_dashboard)
+def load_dashboards():
+    """Charge tous les tableaux de bord depuis Grist"""
+    try:
+        result = grist_api_request("records", "GET")
+        if result and 'records' in result:
+            return [{
+                'id': record['id'],
+                'name': record['fields']['name'],
+                'elements': json.loads(record['fields']['elements']),
+                'layout': json.loads(record['fields'].get('layout', '{}')),
+                'created_at': record['fields'].get('created_at', ''),
+                'created_by': record['fields'].get('created_by', 'Utilisateur inconnu')
+            } for record in result['records']]
+        return []
+    except Exception as e:
+        st.error(f"Erreur lors du chargement : {str(e)}")
+        return []
 
 def get_dashboard_id(dashboard_name):
     """Récupère l'ID d'un tableau de bord par son nom"""
@@ -275,9 +260,10 @@ def delete_dashboard(dashboard_id):
         return False
 
 def select_or_create_dashboard():
+    """Interface pour la sélection/création de tableau de bord"""
     if 'create_dashboard_clicked' not in st.session_state:
         st.session_state.create_dashboard_clicked = False
-
+    
     dashboards = load_dashboards()
     dashboard_names = [d["name"] for d in dashboards] if dashboards else []
     dashboard_names.append("Créer un nouveau tableau de bord")
@@ -287,7 +273,7 @@ def select_or_create_dashboard():
         dashboard_names,
         key="dashboard_select"
     )
-
+    
     if selected_dashboard == "Créer un nouveau tableau de bord":
         new_dashboard_name = st.text_input("Nom du nouveau tableau de bord")
         if st.button("Créer", key="create_new_dashboard"):
@@ -303,7 +289,7 @@ def select_or_create_dashboard():
                         }
                     }]
                 }
-
+                
                 result = grist_api_request("records", "POST", initial_data)
                 if result:
                     st.success(f"Tableau de bord '{new_dashboard_name}' créé!")
@@ -312,18 +298,13 @@ def select_or_create_dashboard():
                     st.error("Échec de la création du tableau de bord")
             else:
                 st.error("Veuillez entrer un nom pour le tableau de bord")
-
+    
     if st.session_state.create_dashboard_clicked:
         return None
     return selected_dashboard
 
-if __name__ == "__main__":
-    selected_dashboard = select_or_create_dashboard()
-    if selected_dashboard:
-        load_and_display_dashboard(selected_dashboard)
-
 # fonction de gestion des visualisations
-def add_visualization_to_dashboard(dashboard_name, title, var_x=None, var_y=None, graph_type=None, data=None, color_scheme=None):
+def add_visualization_to_dashboard(dashboard_name, fig, title, var_x=None, var_y=None, graph_type=None, data=None):
     st.write(f"Tentative d'ajout au dashboard : {dashboard_name}")  # Debug
     try:
         dashboards = load_dashboards()
@@ -338,11 +319,11 @@ def add_visualization_to_dashboard(dashboard_name, title, var_x=None, var_y=None
                 "titre": title,
                 "timestamp": datetime.now().isoformat(),
                 "config": {
+                    "fig_dict": fig.to_dict(),
                     "var_x": var_x,
                     "var_y": var_y,
                     "graph_type": graph_type,
-                    "data": data.to_dict() if isinstance(data, pd.DataFrame) else None,
-                    "color_scheme": color_scheme
+                    "data": data.to_dict() if isinstance(data, pd.DataFrame) else None
                 }
             }
             st.write("Nouvelle visualisation préparée:", new_viz)  # Debug
