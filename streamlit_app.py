@@ -307,20 +307,12 @@ def main():
                     # Option de création d'indicateur
                     st.write("### Créer un indicateur")
                     
-                    # Ajout d'une clé d'état pour le bouton
-                    if 'create_indicator_clicked' not in st.session_state:
-                        st.session_state.create_indicator_clicked = False
-                    
-                    def click_create_indicator():
-                        st.session_state.create_indicator_clicked = True
-                        # Conversion des données avec gestion Series/DataFrame
+                    if st.button("📊 Créer un indicateur à partir de cette analyse", key=f"create_indicator_{unique_key}"):
+                        # Stockage des données
                         if isinstance(plot_data, pd.Series):
                             data_dict = plot_data.to_frame().to_dict('records')
                         else:
                             data_dict = plot_data.to_dict('records')
-                        
-                        # Sauvegarde sûre de la configuration du graphique
-                        graph_dict = fig.to_dict()  # Cela inclut déjà le layout
                         
                         st.session_state.indicator_info = {
                             "type": "univarié",
@@ -328,19 +320,13 @@ def main():
                             "variable": var,
                             "graph_type": graph_type,
                             "data": data_dict,
-                            "graph_config": graph_dict,  # figure complète
+                            "graph_config": fig.to_dict(),
                             "tables_source": table_selections,
                             "timestamp": datetime.now().isoformat()
                         }
-
-                    # Bouton avec callback
-                    st.button("📊 Créer un indicateur à partir de cette analyse", 
-                             key=f"create_indicator_{unique_key}",
-                             on_click=click_create_indicator)
-
-                    if st.session_state.get('create_indicator_clicked', False):
-                        st.switch_page("pages/create_indicator.py")
-
+                        # Utilisation d'un lien
+                        st.markdown('[Aller à la création d\'indicateur](/create_indicator)', unsafe_allow_html=True)
+                        st.markdown("👆 Cliquez sur le lien ci-dessus pour continuer")
                 
                 # Statistiques descriptives
                 st.write("### Statistiques descriptives")
