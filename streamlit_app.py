@@ -329,6 +329,7 @@ def add_visualization_to_dashboard(dashboard_name, fig, title, var_x=None, var_y
             st.write("Nouvelle visualisation préparée:", new_viz)  # Debug
             
             elements = json.loads(dashboard["elements"]) if dashboard["elements"] else []
+            st.write("Éléments actuels:", elements)  # Debug
             elements.append(new_viz)
             st.write("Nouvelle liste des éléments:", elements)  # Debug
             
