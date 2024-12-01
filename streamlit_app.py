@@ -6,14 +6,14 @@ import numpy as np
 from datetime import datetime
 import json
 
-# Configuration de la page (reste inchangé)
+# Configuration de la page
 st.set_page_config(
     page_title="Indicateurs ESR",
     page_icon="📊",
     layout="wide"
 )
 
-# Palettes de couleurs prédéfinies (reste inchangé)
+# Palettes de couleurs prédéfinies
 COLOR_PALETTES = {
     "Bleu": ['#C6DBEF', '#9ECAE1', '#6BAED6', '#4292C6', '#2171B5', '#084594'],
     "Vert": ['#C7E9C0', '#A1D99B', '#74C476', '#41AB5D', '#238B45', '#005A32'],
@@ -22,19 +22,6 @@ COLOR_PALETTES = {
     "Violet": ['#EFEDF5', '#DADAEB', '#BCBDDC', '#9E9AC8', '#807DBA', '#6A51A3'],
     "Gris": ['#F7F7F7', '#D9D9D9', '#BDBDBD', '#969696', '#737373', '#525252']
 }
-
-# Ajouter des éléments à la barre latérale
-st.sidebar.title("Navigation")
-page = st.sidebar.radio("Aller à", ["Accueil", "Analyse des données", "Créer un indicateur"])
-
-# Gérer la navigation en fonction de la sélection
-if page == "Accueil":
-    st.title("Accueil")
-    st.write("Bienvenue sur la page d'accueil de l'application Indicateurs ESR.")
-elif page == "Analyse des données":
-    # Contenu principal
-    st.title("Analyse des données ESR")
-    st.write("Ceci est le contenu principal pour l'analyse des données.")
 
 # Configuration Grist
 API_KEY = st.secrets["grist_key"]
@@ -99,7 +86,12 @@ def get_grist_data(table_id):
         st.error(f"Erreur lors de la récupération des données : {str(e)}")
         return None
 
-def main():
+# Fonctions pour les différentes pages
+def page_accueil():
+    st.title("Accueil")
+    st.write("Bienvenue sur l'application d'analyse des données ESR.")
+
+def page_analyse():
     st.title("Analyse des données ESR")
 
     # Initialisation de l'état de session pour les données fusionnées
@@ -451,6 +443,7 @@ def main():
         if st.button("Générer la visualisation", key="generate_bivariate"):
             try:
                 plot_data = st.session_state.merged_data[[var_x, var_y]].copy()
+
 
                 # Création du graphique selon le type et application du tri
                 if sort_order != "Pas de tri":
