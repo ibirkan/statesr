@@ -328,8 +328,9 @@ def add_visualization_to_dashboard(dashboard_name, fig, title, var_x=None, var_y
             }
             st.write("Nouvelle visualisation préparée:", new_viz)  # Debug
             
-            elements = dashboard.get("elements", [])
+            elements = json.loads(dashboard["elements"]) if dashboard["elements"] else []
             elements.append(new_viz)
+            st.write("Nouvelle liste des éléments:", elements)  # Debug
             
             update_success = update_dashboard(dashboard_name, elements)
             st.write("Résultat de la mise à jour:", update_success)  # Debug
