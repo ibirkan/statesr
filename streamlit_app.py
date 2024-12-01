@@ -465,27 +465,6 @@ def main():
                     key="sort_order"
                 )
                 sort_by = st.selectbox(
-                    "Trier selon
-
-        # Options avancées
-        with st.expander("Options avancées"):
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                title = st.text_input(
-                    "Titre du graphique", 
-                    f"Relation entre {var_x} et {var_y}",
-                    key="title_bivariate"
-                )
-                show_values = st.checkbox("Afficher les valeurs", True, key="show_values_bivariate")
-            
-            with col2:
-                sort_order = st.radio(
-                    "Tri des données",
-                    ["Pas de tri", "Croissant", "Décroissant"],
-                    key="sort_order"
-                )
-                sort_by = st.selectbox(
                     "Trier selon",
                     ["Valeurs", "Fréquences/Moyennes"] if graph_type != "Nuage de points" else ["Valeurs"],
                     key="sort_by"
