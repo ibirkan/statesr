@@ -304,7 +304,7 @@ def select_or_create_dashboard():
     return selected_dashboard
 
 # fonction de gestion des visualisations
-def add_visualization_to_dashboard(dashboard_name, fig, title, var_x=None, var_y=None, graph_type=None, data=None):
+def add_visualization_to_dashboard(dashboard_name, title, var_x=None, var_y=None, graph_type=None, data=None, color_scheme=None):
     st.write(f"Tentative d'ajout au dashboard : {dashboard_name}")  # Debug
     try:
         dashboards = load_dashboards()
@@ -319,11 +319,11 @@ def add_visualization_to_dashboard(dashboard_name, fig, title, var_x=None, var_y
                 "titre": title,
                 "timestamp": datetime.now().isoformat(),
                 "config": {
-                    "fig_dict": fig.to_dict(),
                     "var_x": var_x,
                     "var_y": var_y,
                     "graph_type": graph_type,
-                    "data": data.to_dict() if isinstance(data, pd.DataFrame) else None
+                    "data": data.to_dict() if isinstance(data, pd.DataFrame) else None,
+                    "color_scheme": color_scheme
                 }
             }
             st.write("Nouvelle visualisation préparée:", new_viz)  # Debug
@@ -343,7 +343,6 @@ def add_visualization_to_dashboard(dashboard_name, fig, title, var_x=None, var_y
         st.error(f"Erreur lors de l'ajout de la visualisation : {str(e)}")
         st.write("Détails de l'erreur:", e)  # Debug
         return False
-
 def main():
     st.title("Analyse des données ESR")
 
