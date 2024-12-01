@@ -31,11 +31,21 @@ DASHBOARDS_TABLE = "dashboards"  # Nom de la table pour les tableaux de bord
 
 def grist_api_request(endpoint, method="GET", data=None):
     """Fonction utilitaire pour les requêtes API Grist"""
-    url = f"{BASE_URL}/docs/{DOC_ID}/{endpoint}"
+    # Utilisation d'une URL différente pour les records
+    if "records" in endpoint:
+        url = f"{BASE_URL}/docs/{DOC_ID}/tables/{DASHBOARDS_TABLE}/records"
+    else:
+        url = f"{BASE_URL}/docs/{DOC_ID}/{endpoint}"
+    
     headers = {
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json"
     }
+    
+    # Debug
+    st.write(f"Requête API vers : {url}")
+    st.write(f"Méthode : {method}")
+    
     try:
         if method == "GET":
             response = requests.get(url, headers=headers)
@@ -45,6 +55,13 @@ def grist_api_request(endpoint, method="GET", data=None):
             response = requests.patch(url, headers=headers, json=data)
         elif method == "DELETE":
             response = requests.delete(url, headers=headers)
+        
+        # Debug
+        st.write(f"Code de statut : {response.status_code}")
+        
+        if response.status_code == 404:
+            st.error(f"URL non trouvée : {url}")
+            return None
             
         response.raise_for_status()
         return response.json() if response.content else None
