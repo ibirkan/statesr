@@ -319,16 +319,16 @@ def main():
                         else:
                             data_dict = plot_data.to_dict('records')
                         
+                        # Sauvegarde sûre de la configuration du graphique
+                        graph_dict = fig.to_dict()  # Cela inclut déjà le layout
+                        
                         st.session_state.indicator_info = {
                             "type": "univarié",
                             "titre": title,
                             "variable": var,
                             "graph_type": graph_type,
                             "data": data_dict,
-                            "graph_config": {
-                                "fig_dict": fig.to_dict(),
-                                "layout": fig.layout.to_dict()
-                            },
+                            "graph_config": graph_dict,  # figure complète
                             "tables_source": table_selections,
                             "timestamp": datetime.now().isoformat()
                         }
