@@ -581,6 +581,14 @@ def page_analyse():
             except Exception as e:
                 st.error(f"Erreur lors de la visualisation : {str(e)}")
 
+def main():
+    # App layout and navigation
+    st.sidebar.title("Navigation")
+    page = st.sidebar.radio("Aller à", ["Analyse des données ESR"])
+
+    if page == "Analyse des données ESR":
+        page_analyse()
+
 # Exécution de l'application
 if __name__ == "__main__":
     main()
