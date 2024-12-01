@@ -305,10 +305,8 @@ def select_or_create_dashboard():
 
 # fonction de gestion des visualisations
 def add_visualization_to_dashboard(dashboard_name, fig, title, var_x=None, var_y=None, graph_type=None, data=None):
-    """Ajoute une visualisation à un tableau de bord existant"""
     st.write(f"Tentative d'ajout au dashboard : {dashboard_name}")  # Debug
     try:
-        # Récupère les données actuelles du tableau de bord
         dashboards = load_dashboards()
         st.write("Dashboards chargés:", dashboards)  # Debug
         
@@ -316,7 +314,6 @@ def add_visualization_to_dashboard(dashboard_name, fig, title, var_x=None, var_y
         st.write("Dashboard trouvé:", dashboard)  # Debug
         
         if dashboard:
-            # Prépare la nouvelle visualisation
             new_viz = {
                 "type": "graphique",
                 "titre": title,
@@ -331,11 +328,9 @@ def add_visualization_to_dashboard(dashboard_name, fig, title, var_x=None, var_y
             }
             st.write("Nouvelle visualisation préparée:", new_viz)  # Debug
             
-            # Récupère les éléments existants ou initialise une liste vide
             elements = dashboard.get("elements", [])
             elements.append(new_viz)
             
-            # Met à jour le tableau de bord
             update_success = update_dashboard(dashboard_name, elements)
             st.write("Résultat de la mise à jour:", update_success)  # Debug
             return update_success
