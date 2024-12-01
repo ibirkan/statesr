@@ -52,6 +52,37 @@ def grist_api_request(endpoint, method="GET", data=None):
         st.error(f"Erreur API Grist : {str(e)}")
         return None
 
+def get_grist_tables():
+    """Récupère la liste des tables disponibles dans Grist."""
+    try:
+        result = grist_api_request("tables")
+        if result and 'tables' in result:
+            return [table['id'] for table in result['tables']]
+        return []
+    except Exception as e:
+        st.error(f"Erreur lors de la récupération des tables : {str(e)}")
+        return []
+
+def get_grist_data(table_id):
+    """Récupère les données d'une table Grist."""
+    try:
+        result = grist_api_request(f"tables/{table_id}/records")
+        if result and 'records' in result and result['records']:
+            # Extraction des champs et création du DataFrame
+            records = []
+            column_order = list(result['records'][0]['fields'].keys())
+            for record in result['records']:
+                fields = {k.lstrip('$'): v for k, v in record['fields'].items()}
+                records.append(fields)
+
+            df = pd.DataFrame(records)
+            ordered_columns = [col.lstrip('$') for col in column_order]
+            return df[ordered_columns]
+        return None
+    except Exception as e:
+        st.error(f"Erreur lors de la récupération des données : {str(e)}")
+        return None
+
 def save_dashboard(dashboard_name, elements):
     """Sauvegarde un tableau de bord dans Grist"""
     try:
