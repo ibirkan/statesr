@@ -83,6 +83,40 @@ def get_grist_data(table_id):
         st.error(f"Erreur lors de la récupération des données : {str(e)}")
         return None
 
+def ensure_dashboard_table_exists():
+    """Vérifie si la table dashboards existe, la crée si nécessaire."""
+    try:
+        # Vérifie si la table existe
+        tables = get_grist_tables()
+        if DASHBOARDS_TABLE not in tables:
+            # Création de la table avec les colonnes nécessaires
+            data = {
+                "tables": [{
+                    "tableId": DASHBOARDS_TABLE,
+                    "columns": [
+                        {"id": "name", "type": "Text"},
+                        {"id": "elements", "type": "Text"},
+                        {"id": "timestamp", "type": "DateTime"}
+                    ]
+                }]
+            }
+            result = grist_api_request("tables", method="POST", data=data)
+            if result:
+                st.success("Table des tableaux de bord créée avec succès!")
+                return True
+            else:
+                st.error("Erreur lors de la création de la table des tableaux de bord")
+                return False
+        return True
+    except Exception as e:
+        st.error(f"Erreur lors de la vérification/création de la table : {str(e)}")
+        return False
+    
+    # Vérifier et créer la table des tableaux de bord si nécessaire
+    if not ensure_dashboard_table_exists():
+        st.error("Impossible de continuer sans la table des tableaux de bord")
+        return
+        
 def save_dashboard(dashboard_name, elements):
     """Sauvegarde un tableau de bord dans Grist"""
     try:
