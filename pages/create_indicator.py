@@ -133,7 +133,7 @@ def main():
         if submit:
             # Préparation des données
             indicator_data = {
-                "name": nom,
+                "nom": nom,
                 "description": description,
                 "source": source,
                 "periodicite": periodicite,
@@ -144,8 +144,9 @@ def main():
                 "graph_config": json.dumps(info["graph_config"]),
                 "data": json.dumps(info["data"]),
                 "type_analyse": info["type"],
-                "created_at": datetime.now().isoformat(),
-                "created_by": "data-groov"
+                "date_creation": datetime.now().isoformat(),
+                "date_modification": datetime.now().isoformat(),
+                "createur": "data-groov"
             }
             
             # Sauvegarde
