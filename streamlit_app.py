@@ -711,23 +711,22 @@ def main():
 
                 # Affichage du graphique
                 st.plotly_chart(fig, use_container_width=True)
-                    st.plotly_chart(fig, use_container_width=True)
                     
-                    # Options pour le tableau de bord
-                    viz_col1, viz_col2 = st.columns(2)
-                    with viz_col1:
-                        if st.button("➕ Ajouter au tableau de bord", key=f"add_to_dashboard_{var}"):
-                            add_visualization_to_session(
-                                fig=fig,
-                                title=title,
-                                var_x=var,
-                                graph_type=graph_type,
-                                data=plot_data
-                            )
-                    with viz_col2:
-                        if len(st.session_state.get('dashboard_elements', [])) > 0:
-                            if st.button("🎯 Créer le tableau de bord", key=f"create_dashboard_{var}"):
-                                st.switch_page("pages/creation_tdb.py")
+                # Options pour le tableau de bord
+                viz_col1, viz_col2 = st.columns(2)
+                with viz_col1:
+                    if st.button("➕ Ajouter au tableau de bord", key=f"add_to_dashboard_{var}"):
+                        add_visualization_to_session(
+                            fig=fig,
+                            title=title,
+                            var_x=var,
+                            graph_type=graph_type,
+                            data=plot_data
+                        )
+                with viz_col2:
+                    if len(st.session_state.get('dashboard_elements', [])) > 0:
+                        if st.button("🎯 Créer le tableau de bord", key=f"create_dashboard_{var}"):
+                            st.switch_page("pages/creation_tdb.py")
                 
                 # Sélection ou création de tableau de bord
                 selected_dashboard = select_or_create_dashboard()
