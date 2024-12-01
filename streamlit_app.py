@@ -313,20 +313,21 @@ def main():
                             data_dict = plot_data.to_frame().to_dict('records')
                         else:
                             data_dict = plot_data.to_dict('records')
-                        
+                    
                         st.session_state.indicator_info = {
-                            "type": "univarié",
+                            "type": "univarié",  # ou "bivarié" selon le type d'analyse
                             "titre": title,
-                            "variable": var,
+                            "variable": var,  # ou "variable_x" et "variable_y" pour l'analyse bivariée
                             "graph_type": graph_type,
                             "data": data_dict,
                             "graph_config": fig.to_dict(),
                             "tables_source": table_selections,
                             "timestamp": datetime.now().isoformat()
                         }
-                        # Utilisation d'un lien
-                        st.markdown('[Aller à la création d\'indicateur](/create_indicator)', unsafe_allow_html=True)
-                        st.markdown("👆 Cliquez sur le lien ci-dessus pour continuer")
+                    
+                        # Redirection vers la page de création d'indicateur
+                        st.experimental_set_query_params(page="create_indicator")
+                        st.success("Redirection vers la page de création d'indicateur...")
                 
                 # Statistiques descriptives
                 st.write("### Statistiques descriptives")
