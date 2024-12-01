@@ -232,7 +232,10 @@ def save_dashboard(dashboard_name, elements, layout=None):
 def update_dashboard(dashboard_name, new_elements):
     """Met à jour un tableau de bord existant dans Grist"""
     try:
+        st.write("Début de la mise à jour du dashboard:", dashboard_name)
         dashboard_id = get_dashboard_id(dashboard_name)
+        st.write("ID du dashboard trouvé:", dashboard_id)
+        
         if dashboard_id:
             data = {
                 "records": [{
@@ -243,11 +246,16 @@ def update_dashboard(dashboard_name, new_elements):
                     }
                 }]
             }
-            result = grist_api_request("records", "PATCH", data)
+            st.write("Données préparées pour la mise à jour:", data)
+            
+            result = grist_api_request(str(dashboard_id), "PATCH", data)
+            st.write("Résultat de la mise à jour:", result)
             return result is not None
+        st.error("ID du dashboard non trouvé")
         return False
     except Exception as e:
         st.error(f"Erreur lors de la mise à jour : {str(e)}")
+        st.write("Détails de l'erreur:", str(e))
         return False
 
 def delete_dashboard(dashboard_id):
@@ -307,47 +315,60 @@ def select_or_create_dashboard():
 def add_visualization_to_dashboard(dashboard_name, fig, title, var_x=None, var_y=None, graph_type=None, data=None):
     """Ajoute une visualisation à un tableau de bord existant"""
     try:
+        # Debug logs
+        st.write("Tentative d'ajout au dashboard:", dashboard_name)
+        st.write("Variables:", {"var_x": var_x, "var_y": var_y, "graph_type": graph_type})
+        
         # Récupère les données actuelles du tableau de bord
         dashboards = load_dashboards()
-        dashboard = next((d for d in dashboards if d["name"] == dashboard_name), None)
+        st.write("Dashboards trouvés:", [d["name"] for d in dashboards])
         
+        dashboard = next((d for d in dashboards if d["name"] == dashboard_name), None)
         if dashboard:
-            # Prépare les paramètres de la visualisation
-            if isinstance(data, pd.DataFrame):
-                data_dict = data.to_dict('records')  # Convertit les données en liste de dictionnaires
-            else:
-                data_dict = []
+            st.write("Dashboard trouvé:", dashboard["name"])
             
-            # Récupère les paramètres du graphique
-            graph_params = {
-                "title": fig.layout.title.text if hasattr(fig.layout, 'title') else title,
+            # Prépare les données pour la sauvegarde
+            data_dict = None
+            if isinstance(data, pd.DataFrame):
+                data_dict = data.to_dict('records')
+            
+            # Crée la configuration de visualisation
+            viz_config = {
+                "data": data_dict,
                 "type": graph_type,
                 "x_axis": var_x,
                 "y_axis": var_y,
-                "data": data_dict,
+                "title": title,
                 "layout": {
-                    "height": fig.layout.height if hasattr(fig.layout, 'height') else 600,
-                    "showlegend": fig.layout.showlegend if hasattr(fig.layout, 'showlegend') else True,
-                    "color_scheme": COLOR_PALETTES.get("Bleu")  # Palette par défaut
+                    "height": 600,
+                    "showlegend": True
                 }
             }
             
-            # Récupère les éléments existants ou initialise une liste vide
+            # Récupère ou initialise les éléments
             elements = dashboard.get("elements", [])
+            st.write("Nombre d'éléments actuels:", len(elements))
+            
+            # Ajoute le nouvel élément
             elements.append({
                 "type": "graphique",
                 "titre": title,
                 "timestamp": datetime.now().isoformat(),
-                "config": graph_params
+                "config": viz_config
             })
             
-            # Met à jour le tableau de bord
-            if update_dashboard(dashboard_name, elements):
-                return True
+            # Met à jour le dashboard
+            st.write("Tentative de mise à jour avec le nouvel élément")
+            success = update_dashboard(dashboard_name, elements)
+            st.write("Résultat de la mise à jour:", success)
+            return success
                 
+        else:
+            st.error(f"Dashboard '{dashboard_name}' non trouvé")
         return False
     except Exception as e:
         st.error(f"Erreur lors de l'ajout de la visualisation : {str(e)}")
+        st.write("Détails de l'erreur:", str(e))
         return False
 
 def main():
