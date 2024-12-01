@@ -31,20 +31,15 @@ DASHBOARDS_TABLE = "Dashboards"  # Nom de la table pour les tableaux de bord
 
 def grist_api_request(endpoint, method="GET", data=None):
     """Fonction utilitaire pour les requêtes API Grist"""
-    # Construction correcte de l'URL
     if "records" in endpoint:
-        url = f"https://grist.numerique.gouv.fr/api/docs/{DOC_ID}/tables/{DASHBOARDS_TABLE}/records"
+        url = f"{BASE_URL}/{DOC_ID}/tables/{DASHBOARDS_TABLE}/records"
     else:
-        url = f"https://grist.numerique.gouv.fr/api/docs/{DOC_ID}/{endpoint}"
+        url = f"{BASE_URL}/{DOC_ID}/{endpoint}"
     
     headers = {
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json"
     }
-    
-    # Debug
-    st.write(f"Requête API vers : {url}")
-    st.write(f"Méthode : {method}")
     
     try:
         if method == "GET":
@@ -56,15 +51,10 @@ def grist_api_request(endpoint, method="GET", data=None):
         elif method == "DELETE":
             response = requests.delete(url, headers=headers)
         
-        # Debug
-        st.write(f"Code de statut : {response.status_code}")
-        
-        if response.status_code == 404:
-            st.error(f"URL non trouvée : {url}")
-            return None
-            
         response.raise_for_status()
-        return response.json() if response.content else None
+        if response.content:
+            return response.json()
+        return None
     except Exception as e:
         st.error(f"Erreur API Grist : {str(e)}")
         return None
@@ -84,17 +74,23 @@ def get_grist_data(table_id):
     """Récupère les données d'une table Grist."""
     try:
         result = grist_api_request(f"tables/{table_id}/records")
-        if result and 'records' in result and result['records']:
-            # Extraction des champs et création du DataFrame
+        # Debug pour voir la réponse
+        st.write("Réponse API:", result)
+        
+        if result and 'records' in result:
             records = []
-            column_order = list(result['records'][0]['fields'].keys())
             for record in result['records']:
-                fields = {k.lstrip('$'): v for k, v in record['fields'].items()}
-                records.append(fields)
-
-            df = pd.DataFrame(records)
-            ordered_columns = [col.lstrip('$') for col in column_order]
-            return df[ordered_columns]
+                if 'fields' in record:
+                    # Nettoyage des clés (suppression du préfixe $)
+                    fields = {k.lstrip('$'): v for k, v in record['fields'].items()}
+                    records.append(fields)
+            
+            if records:
+                df = pd.DataFrame(records)
+                st.write("DataFrame créé:", df)  # Debug
+                return df
+                
+        st.error("Aucune donnée trouvée dans la réponse")
         return None
     except Exception as e:
         st.error(f"Erreur lors de la récupération des données : {str(e)}")
