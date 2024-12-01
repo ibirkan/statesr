@@ -116,7 +116,7 @@ def main():
         search_term = search_term.lower()
         filtered_indicators = [
             ind for ind in filtered_indicators
-            if search_term in ind.get('name', '').lower() or
+            if search_term in ind.get('nom', '').lower() or
                search_term in ind.get('description', '').lower()
         ]
     
@@ -131,18 +131,21 @@ def main():
             st.write(f"## {tag}")
             tag_indicators = [ind for ind in filtered_indicators if tag in ind.get('tags', [])]
             for indicator in tag_indicators:
-                with st.expander(f"📊 {indicator['name']}", expanded=False):
-                    # Métadonnées
-                    col1, col2 = st.columns([2, 1])
-                    with col1:
-                        st.write("**Description:**", indicator.get('description', ''))
-                        st.write("**Source:**", indicator.get('source', ''))
-                        st.write("**Variables:**", indicator.get('variables', ''))
-                        st.write("**Méthode de calcul:**", indicator.get('methode_calcul', ''))
-                    with col2:
-                        st.write("**Périodicité:**", indicator.get('periodicite', ''))
-                        st.write("**Créé le:**", indicator.get('created_at', '').split('T')[0])
-                        st.write("**Tags:**", ", ".join(indicator.get('tags', [])))
+        # Dans la boucle d'affichage des indicateurs
+            with st.expander(f"📊 {indicator['nom']}", expanded=False):
+                # Métadonnées
+                col1, col2 = st.columns([2, 1])
+                with col1:
+                    st.write("**Description:**", indicator.get('description', ''))
+                    st.write("**Source:**", indicator.get('source', ''))
+                    st.write("**Variables:**", indicator.get('variables', ''))
+                    st.write("**Méthode de calcul:**", indicator.get('methode_calcul', ''))
+                with col2:
+                    st.write("**Périodicité:**", indicator.get('periodicite', ''))
+                    st.write("**Créé le:**", indicator.get('date_creation', '').split('T')[0])
+                    st.write("**Modifié le:**", indicator.get('date_modification', '').split('T')[0])
+                    st.write("**Créateur:**", indicator.get('createur', ''))
+                    st.write("**Tags:**", ", ".join(indicator.get('tags', [])))
                     
                     # Graphique
                     if indicator.get('graph_config'):
