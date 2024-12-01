@@ -171,23 +171,38 @@ def ensure_dashboard_table_exists():
         return False
 
 # fonctions de gestion des tableaux de bord
-def load_dashboards():
-    """Charge tous les tableaux de bord depuis Grist"""
-    try:
-        result = grist_api_request("records", "GET")
-        if result and 'records' in result:
-            return [{
-                'id': record['id'],
-                'name': record['fields']['name'],
-                'elements': json.loads(record['fields']['elements']),
-                'layout': json.loads(record['fields'].get('layout', '{}')),
-                'created_at': record['fields'].get('created_at', ''),
-                'created_by': record['fields'].get('created_by', 'Utilisateur inconnu')
-            } for record in result['records']]
-        return []
-    except Exception as e:
-        st.error(f"Erreur lors du chargement : {str(e)}")
-        return []
+def load_and_display_dashboard(dashboard_name):
+    dashboards = load_dashboards()
+    dashboard = next((d for d in dashboards if d["name"] == dashboard_name), None)
+    
+    if not dashboard:
+        st.error("Dashboard non trouvé")
+        return
+    
+    for element in json.loads(dashboard["elements"]):
+        if element["type"] == "graphique":
+            config = element["config"]
+            data = pd.DataFrame(config["data"])
+            graph_type = config["graph_type"]
+            color_scheme = config["color_scheme"]
+            
+            if graph_type == "Histogramme":
+                fig = px.histogram(data, x=config["var_x"], color_discrete_sequence=COLOR_PALETTES[color_scheme])
+            elif graph_type == "Boîte à moustaches":
+                fig = px.box(data, y=config["var_x"], color_discrete_sequence=COLOR_PALETTES[color_scheme])
+            elif graph_type == "Barres":
+                fig = px.bar(data, x=config["var_x"], y=config["var_y"], color_discrete_sequence=COLOR_PALETTES[color_scheme])
+            elif graph_type == "Camembert":
+                fig = px.pie(data, values=config["var_y"], names=config["var_x"], color_discrete_sequence=COLOR_PALETTES[color_scheme])
+            # Ajoutez d'autres types de graphiques ici si nécessaire
+            
+            st.plotly_chart(fig)
+
+# Appel de la fonction dans l'application principale
+if __name__ == "__main__":
+    selected_dashboard = select_or_create_dashboard()
+    if selected_dashboard:
+        load_and_display_dashboard(selected_dashboard)
 
 def get_dashboard_id(dashboard_name):
     """Récupère l'ID d'un tableau de bord par son nom"""
