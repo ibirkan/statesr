@@ -2,5 +2,5 @@ streamlit
 requests
 pandas
 numpy
-plotly.express as px
+plotly.express
 
