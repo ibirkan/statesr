@@ -300,16 +300,10 @@ def main():
                         freq_table = plot_data.value_counts().reset_index()
                         freq_table.columns = ['Valeur', 'Fréquence']
                         freq_table['Pourcentage'] = (freq_table['Fréquence'] / freq_table['Fréquence'].sum() * 100).round(2)
-                        st.dataframe(freq_table)
-                    
-                    # Option de création d'indicateur
-                    st.write("### Créer un indicateur")
-                    
-                    # Ajout d'une clé d'état pour le bouton
+                        st.dataframe(freq_table)                    # Option de création d'indicateur
+                    st.write("### Créer un indicateur")                    # Ajout d'une clé d'état pour le bouton
                     if 'create_indicator_clicked' not in st.session_state:
-                        st.session_state.create_indicator_clicked = False
-                    
-                    def click_create_indicator():
+                        st.session_state.create_indicator_clicked = False                    def click_create_indicator():
                         st.session_state.create_indicator_clicked = True
                         st.session_state.indicator_info = {
                             "type": "univarié",
@@ -321,17 +315,6 @@ def main():
                                 "fig_dict": fig.to_dict(),
                                 "layout": fig.layout.to_dict()
                             },
-                            "tables_source": table_selections,
-                            "timestamp": datetime.now().isoformat()
-                        }
-                    
-                    st.button("📊 Créer un indicateur à partir de cette analyse", 
-                             key=f"create_indicator_{unique_key}",
-                             on_click=click_create_indicator)
-                    
-                    # Vérification de l'état après le clic
-                    if st.session_state.create_indicator_clicked:
-                        st.switch_page("pages/create_indicator.py")
                                         
                 # Statistiques descriptives
                 st.write("### Statistiques descriptives")
