@@ -31,31 +31,17 @@ DASHBOARDS_TABLE = "Dashboards"  # Nom de la table pour les tableaux de bord
 
 # fonctions api de base
 def grist_api_request(endpoint, method="GET", data=None):
-    """Fonction utilitaire principale pour les requêtes API Grist"""
-    # Construction de l'URL selon le type de requête
-    if endpoint == "tables":
-        # URL pour création de table
-        url = f"{BASE_URL}/{DOC_ID}/tables"
-    elif "records" in endpoint:
-        # URL pour opérations sur les enregistrements
-        url = f"{BASE_URL}/{DOC_ID}/tables/{DASHBOARDS_TABLE}/records"
-        if endpoint != "records":  # Si on a un ID spécifique
-            record_id = endpoint.split('/')[-1]
-            url = f"{url}/{record_id}"
-    else:
-        # URL par défaut
-        url = f"{BASE_URL}/{DOC_ID}/{endpoint}"
-    
+    """Fonction utilitaire pour les requêtes API Grist"""
+    url = f"{BASE_URL}/{DOC_ID}/{endpoint}"
+        
     headers = {
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json"
     }
     
-    # Debug
-    st.write(f"URL appelée : {url}")
-    st.write(f"Méthode : {method}")
+    st.write(f"Requête {method} vers : {url}")
     if data:
-        st.write(f"Données envoyées : {data}")
+        st.write("Données envoyées:", data)
     
     try:
         if method == "GET":
@@ -67,15 +53,16 @@ def grist_api_request(endpoint, method="GET", data=None):
         elif method == "DELETE":
             response = requests.delete(url, headers=headers)
         
-        # Debug
         st.write(f"Code de statut : {response.status_code}")
+        if response.content:
+            st.write("Réponse reçue:", response.json())
         
         response.raise_for_status()
         return response.json() if response.content else None
     except Exception as e:
         st.error(f"Erreur API Grist : {str(e)}")
-        st.error(f"URL tentée : {url}")
-        return None
+        if hasattr(e, 'response') and e.response:
+            st.error(f"Contenu de l'erreur : {e.response.text}")
 
 def dashboard_api_request(endpoint, method="GET", data=None):
     """Fonction utilitaire spécifique pour les opérations sur les tableaux de bord"""
@@ -203,26 +190,35 @@ def get_dashboard_id(dashboard_name):
     return None
 
 def save_dashboard(dashboard_name, elements, layout=None):
-    """Sauvegarde un nouveau tableau de bord dans Grist"""
+    """Sauvegarde un tableau de bord dans Grist"""
     try:
-        if layout is None:
-            layout = {"cols_per_row": 2}  # Layout par défaut
-            
+        st.write("Tentative de sauvegarde du tableau de bord avec :")
+        st.write(f"Nom: {dashboard_name}")
+        st.write(f"Elements: {elements}")
+        
         data = {
             "records": [{
                 "fields": {
                     "name": dashboard_name,
                     "elements": json.dumps(elements),
-                    "layout": json.dumps(layout),
-                    "created_at": datetime.now().isoformat(),
-                    "created_by": "data-groov"
+                    "timestamp": datetime.now().isoformat()
                 }
             }]
         }
+        st.write("Données préparées pour l'API:", data)
+        
         result = grist_api_request("records", "POST", data)
-        return result is not None
+        st.write("Réponse de l'API:", result)
+        
+        if result is not None:
+            st.write("✅ Sauvegarde réussie!")
+            return True
+        else:
+            st.write("❌ Échec de la sauvegarde")
+            return False
     except Exception as e:
         st.error(f"Erreur lors de la sauvegarde : {str(e)}")
+        st.write("Détails de l'erreur:", e)
         return False
 
 def update_dashboard(dashboard_name, new_elements):
