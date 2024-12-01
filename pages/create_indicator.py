@@ -5,6 +5,21 @@ import json
 import requests
 import pandas as pd
 
+# Récupérer les paramètres de l'URL
+query_params = st.experimental_get_query_params()
+page = query_params.get("page", [""])[0]
+
+if page == "create_indicator":
+    # Affichez les informations stockées dans session_state
+    if "indicator_info" in st.session_state:
+        indicator_info = st.session_state.indicator_info
+        st.write("### Création d'un indicateur")
+        st.write(indicator_info)
+    else:
+        st.error("Aucune information d'indicateur trouvée.")
+else:
+    st.write("Bienvenue sur la page de création d'indicateur.")
+
 # Configuration de la page
 st.set_page_config(
     page_title="Création d'Indicateur",
