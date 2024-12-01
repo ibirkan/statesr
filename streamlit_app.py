@@ -362,6 +362,7 @@ def add_visualization_to_dashboard(dashboard_name, title, var_x=None, var_y=None
         st.error(f"Erreur lors de l'ajout de la visualisation : {str(e)}")
         st.write("Détails de l'erreur:", e)  # Debug
         return False
+
 def main():
     st.title("Analyse des données ESR")
 
