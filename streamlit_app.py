@@ -473,14 +473,16 @@ def main():
                         paper_bgcolor='white'
                     )
                     
-                    # Affichage du graphique
-                    st.plotly_chart(fig, use_container_width=True)
-                    st.plotly_chart(fig, use_container_width=True)
+                    # Création d'une clé unique pour le graphique
+                    unique_key = f"plot_uni_{var}_{graph_type}"
+                    
+                    # Affichage du graphique avec clé unique
+                    st.plotly_chart(fig, use_container_width=True, key=unique_key)
                     
                     # Options pour le tableau de bord
                     viz_col1, viz_col2 = st.columns(2)
                     with viz_col1:
-                        if st.button("➕ Ajouter au tableau de bord", key=f"add_to_dashboard_{var}"):
+                        if st.button("➕ Ajouter au tableau de bord", key=f"add_to_dashboard_{unique_key}"):
                             add_visualization_to_session(
                                 fig=fig,
                                 title=title,
@@ -490,9 +492,9 @@ def main():
                             )
                     with viz_col2:
                         if len(st.session_state.get('dashboard_elements', [])) > 0:
-                            if st.button("🎯 Créer le tableau de bord", key=f"create_dashboard_{var}"):
+                            if st.button("🎯 Créer le tableau de bord", key=f"create_dashboard_{unique_key}"):
                                 st.switch_page("pages/creation_tdb.py")
-
+                    
                     # Sélection ou création de tableau de bord
                     selected_dashboard = select_or_create_dashboard()
                     if selected_dashboard and selected_dashboard != "Créer un nouveau tableau de bord":
@@ -729,23 +731,27 @@ def main():
                 if show_values and graph_type in ["Barres", "Barres groupées"]:
                     fig.update_traces(textposition='outside', texttemplate='%{y:.2f}')
 
-                # Affichage du graphique
-                st.plotly_chart(fig, use_container_width=True)
-                    
+                # Création d'une clé unique pour le graphique
+                unique_key = f"plot_bi_{var_x}_{var_y}_{graph_type}"
+                
+                # Affichage du graphique avec clé unique
+                st.plotly_chart(fig, use_container_width=True, key=unique_key)
+                
                 # Options pour le tableau de bord
                 viz_col1, viz_col2 = st.columns(2)
                 with viz_col1:
-                    if st.button("➕ Ajouter au tableau de bord", key=f"add_to_dashboard_{var}"):
+                    if st.button("➕ Ajouter au tableau de bord", key=f"add_to_dashboard_{unique_key}"):
                         add_visualization_to_session(
                             fig=fig,
                             title=title,
-                            var_x=var,
+                            var_x=var_x,
+                            var_y=var_y,
                             graph_type=graph_type,
                             data=plot_data
                         )
                 with viz_col2:
                     if len(st.session_state.get('dashboard_elements', [])) > 0:
-                        if st.button("🎯 Créer le tableau de bord", key=f"create_dashboard_{var}"):
+                        if st.button("🎯 Créer le tableau de bord", key=f"create_dashboard_{unique_key}"):
                             st.switch_page("pages/creation_tdb.py")
                 
                 # Sélection ou création de tableau de bord
