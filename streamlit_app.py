@@ -275,10 +275,9 @@ def delete_dashboard(dashboard_id):
         return False
 
 def select_or_create_dashboard():
-    """Interface pour la sélection/création de tableau de bord"""
     if 'create_dashboard_clicked' not in st.session_state:
         st.session_state.create_dashboard_clicked = False
-    
+
     dashboards = load_dashboards()
     dashboard_names = [d["name"] for d in dashboards] if dashboards else []
     dashboard_names.append("Créer un nouveau tableau de bord")
@@ -288,7 +287,7 @@ def select_or_create_dashboard():
         dashboard_names,
         key="dashboard_select"
     )
-    
+
     if selected_dashboard == "Créer un nouveau tableau de bord":
         new_dashboard_name = st.text_input("Nom du nouveau tableau de bord")
         if st.button("Créer", key="create_new_dashboard"):
@@ -304,7 +303,7 @@ def select_or_create_dashboard():
                         }
                     }]
                 }
-                
+
                 result = grist_api_request("records", "POST", initial_data)
                 if result:
                     st.success(f"Tableau de bord '{new_dashboard_name}' créé!")
@@ -313,10 +312,15 @@ def select_or_create_dashboard():
                     st.error("Échec de la création du tableau de bord")
             else:
                 st.error("Veuillez entrer un nom pour le tableau de bord")
-    
+
     if st.session_state.create_dashboard_clicked:
         return None
     return selected_dashboard
+
+if __name__ == "__main__":
+    selected_dashboard = select_or_create_dashboard()
+    if selected_dashboard:
+        load_and_display_dashboard(selected_dashboard)
 
 # fonction de gestion des visualisations
 def add_visualization_to_dashboard(dashboard_name, title, var_x=None, var_y=None, graph_type=None, data=None, color_scheme=None):
