@@ -575,19 +575,37 @@ def main():
                     st.plotly_chart(fig, use_container_width=True, key=unique_key)
                     # Ajout au tableau de bord
                     st.write("### Ajouter au tableau de bord")
+                    st.write("### Ajouter au tableau de bord")
+                    
+                    # Stockage temporaire des données nécessaires dans session_state
+                    if "current_fig" not in st.session_state:
+                        st.session_state.current_fig = None
+                    if "current_data" not in st.session_state:
+                        st.session_state.current_data = None
+                    
+                    # On stocke les données actuelles
+                    st.session_state.current_fig = fig
+                    st.session_state.current_data = plot_data
+                    
                     selected_dashboard = select_or_create_dashboard()
                     if selected_dashboard and selected_dashboard != "Créer un nouveau tableau de bord":
-                        if st.button("➕ Ajouter la visualisation", key=f"add_viz_{unique_key}"):
-                            if add_visualization_to_dashboard(
-                                dashboard_name=selected_dashboard,
-                                fig=fig,
-                                title=title,
-                                var_x=var_x if 'var_x' in locals() else var,
-                                var_y=var_y if 'var_y' in locals() else None,
-                                graph_type=graph_type,
-                                data=plot_data
-                            ):
-                                st.success(f"Visualisation ajoutée au tableau de bord '{selected_dashboard}'!")
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            if st.button("➕ Ajouter la visualisation", key=f"add_viz_{unique_key}"):
+                                if st.session_state.current_fig is not None:
+                                    success = add_visualization_to_dashboard(
+                                        dashboard_name=selected_dashboard,
+                                        fig=st.session_state.current_fig,
+                                        title=title,
+                                        var_x=var,
+                                        graph_type=graph_type,
+                                        data=st.session_state.current_data
+                                    )
+                                    if success:
+                                        st.success(f"Visualisation ajoutée au tableau de bord '{selected_dashboard}'!")
+                                        # Nettoyage des données temporaires
+                                        st.session_state.current_fig = None
+                                        st.session_state.current_data = None
                                         
                 # Statistiques descriptives
                 st.write("### Statistiques descriptives")
