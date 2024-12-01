@@ -32,8 +32,15 @@ DASHBOARDS_TABLE = "Dashboards"  # Nom de la table pour les tableaux de bord
 # fonctions api de base
 def grist_api_request(endpoint, method="GET", data=None):
     """Fonction utilitaire pour les requêtes API Grist"""
-    url = f"{BASE_URL}/{DOC_ID}/{endpoint}"
-        
+    if endpoint == "tables":
+        # Pour la création de table
+        url = f"{BASE_URL}/{DOC_ID}/tables"
+    else:
+        # Pour les opérations sur les enregistrements
+        url = f"{BASE_URL}/{DOC_ID}/tables/{DASHBOARDS_TABLE}/records"
+        if endpoint != "records":
+            url = f"{url}/{endpoint}"
+    
     headers = {
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json"
@@ -63,6 +70,7 @@ def grist_api_request(endpoint, method="GET", data=None):
         st.error(f"Erreur API Grist : {str(e)}")
         if hasattr(e, 'response') and e.response:
             st.error(f"Contenu de l'erreur : {e.response.text}")
+        return None
 
 def dashboard_api_request(endpoint, method="GET", data=None):
     """Fonction utilitaire spécifique pour les opérations sur les tableaux de bord"""
