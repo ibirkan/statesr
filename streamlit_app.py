@@ -23,6 +23,22 @@ COLOR_PALETTES = {
     "Gris": ['#F7F7F7', '#D9D9D9', '#BDBDBD', '#969696', '#737373', '#525252']
 }
 
+# Ajouter des éléments à la barre latérale
+st.sidebar.title("Barre latérale")
+st.sidebar.write("Ceci est la barre latérale.")
+
+# Exemple d'éléments interactifs dans la barre latérale
+option = st.sidebar.selectbox(
+    'Choisissez une option',
+    ['Option 1', 'Option 2', 'Option 3']
+)
+
+st.sidebar.write('Vous avez choisi:', option)
+
+# Contenu principal
+st.title("Contenu principal")
+st.write("Ceci est le contenu principal.")
+
 # Configuration Grist
 API_KEY = st.secrets["grist_key"]
 DOC_ID = st.secrets["grist_doc_id"]
