@@ -24,20 +24,17 @@ COLOR_PALETTES = {
 }
 
 # Ajouter des éléments à la barre latérale
-st.sidebar.title("Barre latérale")
-st.sidebar.write("Ceci est la barre latérale.")
+st.sidebar.title("Navigation")
+page = st.sidebar.radio("Aller à", ["Accueil", "Analyse des données", "Créer un indicateur"])
 
-# Exemple d'éléments interactifs dans la barre latérale
-option = st.sidebar.selectbox(
-    'Choisissez une option',
-    ['Option 1', 'Option 2', 'Option 3']
-)
-
-st.sidebar.write('Vous avez choisi:', option)
-
-# Contenu principal
-st.title("Contenu principal")
-st.write("Ceci est le contenu principal.")
+# Gérer la navigation en fonction de la sélection
+if page == "Accueil":
+    st.title("Accueil")
+    st.write("Bienvenue sur la page d'accueil de l'application Indicateurs ESR.")
+elif page == "Analyse des données":
+    # Contenu principal
+    st.title("Analyse des données ESR")
+    st.write("Ceci est le contenu principal pour l'analyse des données.")
 
 # Configuration Grist
 API_KEY = st.secrets["grist_key"]
