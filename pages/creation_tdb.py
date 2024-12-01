@@ -1,8 +1,8 @@
 import streamlit as st
 import plotly.express as px
-import json
-import pandas as pd
 from datetime import datetime
+import json
+import requests
 
 # Configuration de la page
 st.set_page_config(
@@ -11,52 +11,71 @@ st.set_page_config(
     layout="wide"
 )
 
-# Charger les éléments du tableau de bord depuis la session ou le fichier JSON
-def load_dashboard_elements():
-    try:
-        if "dashboard_elements" in st.session_state:
-            return st.session_state.dashboard_elements
-        
-        with open('dashboard_elements.json', 'r') as f:
-            elements = json.load(f).get("dashboards", [])
-            st.session_state.dashboard_elements = elements
-            return elements
-    except FileNotFoundError:
-        return []
-    except Exception as e:
-        st.error(f"Erreur lors du chargement du tableau de bord : {str(e)}")
-        return []
+# Configuration Grist
+API_KEY = st.secrets["grist_key"]
+DOC_ID = st.secrets["grist_doc_id"]
+BASE_URL = "https://grist.numerique.gouv.fr/api/docs"
+DASHBOARDS_TABLE = "Dashboards"
 
-# Sauvegarder la configuration du tableau de bord
-def save_dashboard_config(title, layout, elements):
+def grist_api_request(endpoint, method="GET", data=None):
+    """Fonction utilitaire pour les requêtes API Grist"""
+    url = f"{BASE_URL}/{DOC_ID}/tables/{DASHBOARDS_TABLE}/records"
+    headers = {
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json"
+    }
+    
     try:
-        dashboards = load_dashboard_elements()
-        new_dashboard = {
-            "id": len(dashboards) + 1,
-            "title": title,
-            "layout": layout,
-            "elements": elements,
-            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "created_by": "data-groov"
+        if method == "GET":
+            response = requests.get(url, headers=headers)
+        elif method == "POST":
+            response = requests.post(url, headers=headers, json=data)
+        elif method == "PATCH":
+            response = requests.patch(url, headers=headers, json=data)
+        elif method == "DELETE":
+            response = requests.delete(url, headers=headers)
+        
+        response.raise_for_status()
+        return response.json() if response.content else None
+    except Exception as e:
+        st.error(f"Erreur API Grist : {str(e)}")
+        return None
+
+def load_dashboard_elements():
+    """Charge les éléments du tableau de bord depuis la session"""
+    if "dashboard_elements" not in st.session_state:
+        st.session_state.dashboard_elements = []
+    return st.session_state.dashboard_elements
+
+def save_dashboard_config(title, layout, elements):
+    """Sauvegarde la configuration du tableau de bord dans Grist"""
+    try:
+        data = {
+            "records": [{
+                "fields": {
+                    "name": title,
+                    "layout": json.dumps(layout),
+                    "elements": json.dumps(elements),
+                    "created_at": datetime.now().isoformat(),
+                    "created_by": "data-groov"
+                }
+            }]
         }
-        dashboards.append(new_dashboard)
-        with open('dashboards.json', 'w') as f:
-            json.dump({"dashboards": dashboards}, f)
-        return True
+        result = grist_api_request("records", "POST", data)
+        return result is not None
     except Exception as e:
         st.error(f"Erreur lors de la sauvegarde : {str(e)}")
         return False
 
-# Fonction principale
 def main():
     st.title("Création de Tableau de Bord")
     
     # Navigation
     st.sidebar.title("Navigation")
     if st.sidebar.button("🔄 Retour à l'analyse"):
-        st.switch_page("analyse")
+        st.switch_page("analyse.py")
     if st.sidebar.button("📊 Liste des tableaux de bord"):
-        st.switch_page("liste_tdb")
+        st.switch_page("pages/liste_tdb.py")
     
     # Chargement des éléments
     elements = load_dashboard_elements()
@@ -64,7 +83,7 @@ def main():
     if not elements:
         st.warning("Aucun élément n'a été ajouté au tableau de bord. Retournez à l'analyse pour ajouter des visualisations.")
         if st.button("Retour à l'analyse"):
-            st.switch_page("analyse")
+            st.switch_page("analyse.py")
         return
 
     # Configuration du tableau de bord
@@ -116,12 +135,9 @@ def main():
             ):
                 st.success("✅ Tableau de bord sauvegardé avec succès!")
                 st.session_state.dashboard_elements = []  # Réinitialiser les éléments
-                st.switch_page("liste_tdb")
+                st.switch_page("pages/liste_tdb.py")
     
     with col2:
         if st.button("❌ Annuler", key="cancel"):
             st.session_state.dashboard_elements = []  # Réinitialiser les éléments
-            st.switch_page("analyse")
-
-if __name__ == "__main__":
-    main()
+            st.switch_page("analyse.py")
