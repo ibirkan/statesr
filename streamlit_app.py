@@ -573,39 +573,39 @@ def main():
                     
                     # Affichage du graphique avec clé unique
                     st.plotly_chart(fig, use_container_width=True, key=unique_key)
-                    # Ajout au tableau de bord
-                    st.write("### Ajouter au tableau de bord")
-                    st.write("### Ajouter au tableau de bord")
+                    st.write("### Statistiques détaillées")
+                    if pd.api.types.is_numeric_dtype(plot_data):
+                        stats = plot_data.describe()
+                        stats_df = pd.DataFrame({
+                            'Statistique': stats.index,
+                            'Valeur': stats.values.round(2)
+                        })
+                        st.dataframe(stats_df)
+                    else:
+                        freq_table = plot_data.value_counts().reset_index()
+                        freq_table.columns = ['Valeur', 'Fréquence']
+                        freq_table['Pourcentage'] = (freq_table['Fréquence'] / freq_table['Fréquence'].sum() * 100).round(2)
+                        st.dataframe(freq_table)
                     
-                    # Stockage temporaire des données nécessaires dans session_state
-                    if "current_fig" not in st.session_state:
-                        st.session_state.current_fig = None
-                    if "current_data" not in st.session_state:
-                        st.session_state.current_data = None
-                    
-                    # On stocke les données actuelles
-                    st.session_state.current_fig = fig
-                    st.session_state.current_data = plot_data
-                    
-                    selected_dashboard = select_or_create_dashboard()
-                    if selected_dashboard and selected_dashboard != "Créer un nouveau tableau de bord":
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            if st.button("➕ Ajouter la visualisation", key=f"add_viz_{unique_key}"):
-                                if st.session_state.current_fig is not None:
-                                    success = add_visualization_to_dashboard(
-                                        dashboard_name=selected_dashboard,
-                                        fig=st.session_state.current_fig,
-                                        title=title,
-                                        var_x=var,
-                                        graph_type=graph_type,
-                                        data=st.session_state.current_data
-                                    )
-                                    if success:
-                                        st.success(f"Visualisation ajoutée au tableau de bord '{selected_dashboard}'!")
-                                        # Nettoyage des données temporaires
-                                        st.session_state.current_fig = None
-                                        st.session_state.current_data = None
+                    # Option de création d'indicateur
+                    st.write("### Créer un indicateur")
+                    if st.button("📊 Créer un indicateur à partir de cette analyse", key=f"create_indicator_{unique_key}"):
+                        # Stockage des informations dans session_state
+                        st.session_state.indicator_info = {
+                            "type": "univarié",
+                            "titre": title,
+                            "variable": var,
+                            "graph_type": graph_type,
+                            "data": plot_data.to_dict('records'),
+                            "graph_config": {
+                                "fig_dict": fig.to_dict(),
+                                "layout": fig.layout.to_dict()
+                            },
+                            "tables_source": table_selections,  # Les tables sélectionnées
+                            "timestamp": datetime.now().isoformat()
+                        }
+                        # Redirection vers la page de création d'indicateur
+                        st.switch_page("pages/create_indicator.py")
                                         
                 # Statistiques descriptives
                 st.write("### Statistiques descriptives")
@@ -833,23 +833,47 @@ def main():
                 
                 # Affichage du graphique avec clé unique
                 st.plotly_chart(fig, use_container_width=True, key=unique_key)
-                
-                # Ajout au tableau de bord
-                st.write("### Ajouter au tableau de bord")
-                selected_dashboard = select_or_create_dashboard()
-                if selected_dashboard and selected_dashboard != "Créer un nouveau tableau de bord":
-                    if st.button("➕ Ajouter la visualisation", key=f"add_viz_{unique_key}"):
-                        if add_visualization_to_dashboard(
-                            dashboard_name=selected_dashboard,
-                            fig=fig,
-                            title=title,
-                            var_x=var_x if 'var_x' in locals() else var,
-                            var_y=var_y if 'var_y' in locals() else None,
-                            graph_type=graph_type,
-                            data=plot_data
-                        ):
-                            st.success(f"Visualisation ajoutée au tableau de bord '{selected_dashboard}'!")
-                
+                st.write("### Statistiques détaillées")
+                if is_var_x_numeric and is_var_y_numeric:
+                    correlation = plot_data[var_x].corr(plot_data[var_y])
+                    st.write(f"Coefficient de corrélation : {correlation:.4f}")
+                        
+                    stats = pd.DataFrame({
+                        'Statistique': ['Moyenne', 'Médiane', 'Écart-type', 'Min', 'Max'],
+                        f'{var_x}': [plot_data[var_x].mean(), plot_data[var_x].median(), 
+                                    plot_data[var_x].std(), plot_data[var_x].min(), 
+                                    plot_data[var_x].max()],
+                        f'{var_y}': [plot_data[var_y].mean(), plot_data[var_y].median(), 
+                                    plot_data[var_y].std(), plot_data[var_y].min(), 
+                                    plot_data[var_y].max()]
+                    }).round(2)
+                    st.dataframe(stats)
+                else:
+                    cross_tab = pd.crosstab(plot_data[var_x], plot_data[var_y], normalize='index') * 100
+                    st.write("Distribution croisée (%):")
+                    st.dataframe(cross_tab.round(2))
+                    
+                    # Option de création d'indicateur
+                    st.write("### Créer un indicateur")
+                    if st.button("📊 Créer un indicateur à partir de cette analyse", key=f"create_indicator_{unique_key}"):
+                        # Stockage des informations dans session_state
+                        st.session_state.indicator_info = {
+                            "type": "bivarié",
+                            "titre": title,
+                            "variable_x": var_x,
+                            "variable_y": var_y,
+                            "graph_type": graph_type,
+                            "data": plot_data.to_dict('records'),
+                            "graph_config": {
+                                "fig_dict": fig.to_dict(),
+                                "layout": fig.layout.to_dict()
+                            },
+                            "tables_source": table_selections,
+                            "timestamp": datetime.now().isoformat()
+                        }
+                        # Redirection vers la page de création d'indicateur
+                        st.switch_page("pages/create_indicator.py")                
+
                 # Statistiques descriptives
                 st.write("### Statistiques descriptives")
 
