@@ -26,16 +26,16 @@ COLOR_PALETTES = {
 # Configuration Grist
 API_KEY = st.secrets["grist_key"]
 DOC_ID = st.secrets["grist_doc_id"]
-BASE_URL = "https://grist.numerique.gouv.fr/api"
-DASHBOARDS_TABLE = "dashboards"  # Nom de la table pour les tableaux de bord
+BASE_URL = "https://grist.numerique.gouv.fr/api/docs"
+DASHBOARDS_TABLE = "Dashboards"  # Nom de la table pour les tableaux de bord
 
 def grist_api_request(endpoint, method="GET", data=None):
     """Fonction utilitaire pour les requêtes API Grist"""
-    # Utilisation d'une URL différente pour les records
+    # Construction correcte de l'URL
     if "records" in endpoint:
-        url = f"{BASE_URL}/docs/{DOC_ID}/tables/{DASHBOARDS_TABLE}/records"
+        url = f"https://grist.numerique.gouv.fr/api/docs/{DOC_ID}/tables/{DASHBOARDS_TABLE}/records"
     else:
-        url = f"{BASE_URL}/docs/{DOC_ID}/{endpoint}"
+        url = f"https://grist.numerique.gouv.fr/api/docs/{DOC_ID}/{endpoint}"
     
     headers = {
         "Authorization": f"Bearer {API_KEY}",
