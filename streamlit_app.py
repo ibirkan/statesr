@@ -142,8 +142,19 @@ def save_dashboard(dashboard_name, elements):
                 }
             }]
         }
-        result = grist_api_request(f"tables/{DASHBOARDS_TABLE}/records", "POST", data)
-        return result is not None
+        
+        # Debug
+        st.write("Données à sauvegarder:", data)
+        
+        result = grist_api_request("tables/Dashboards/records", "POST", data)
+        
+        # Debug
+        st.write("Résultat de la sauvegarde:", result)
+        
+        if result is not None:
+            st.success("Tableau de bord sauvegardé avec succès!")
+            return True
+        return False
     except Exception as e:
         st.error(f"Erreur lors de la sauvegarde : {str(e)}")
         return False
@@ -207,7 +218,7 @@ def update_dashboard(dashboard_name, new_elements):
 def select_or_create_dashboard():
     """Interface pour la sélection/création de tableau de bord"""
     dashboards = load_dashboards()
-    dashboard_names = [d["name"] for d in dashboards]
+    dashboard_names = [d["name"] for d in dashboards] if dashboards else []
     dashboard_names.append("Créer un nouveau tableau de bord")
 
     selected_dashboard = st.selectbox("Choisissez un tableau de bord", dashboard_names)
@@ -215,17 +226,12 @@ def select_or_create_dashboard():
     if selected_dashboard == "Créer un nouveau tableau de bord":
         new_dashboard_name = st.text_input("Nom du nouveau tableau de bord")
         if st.button("Créer"):
+            # Initialiser avec une liste vide pour les éléments
             if save_dashboard(new_dashboard_name, []):
                 st.success(f"Tableau de bord '{new_dashboard_name}' créé!")
+                st.experimental_rerun()  # Recharger la page pour voir le nouveau tableau de bord
                 return new_dashboard_name
-    elif selected_dashboard in dashboard_names:
-        if st.button("Supprimer ce tableau de bord"):
-            if delete_dashboard(selected_dashboard):
-                st.success(f"Tableau de bord '{selected_dashboard}' supprimé!")
-                st.experimental_rerun()
-    
     return selected_dashboard
-
 def add_visualization_to_dashboard(dashboard_name, fig, title, var_x=None, var_y=None, graph_type=None, data=None):
     """Ajoute une visualisation au tableau de bord"""
     dashboards = load_dashboards()
