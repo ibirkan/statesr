@@ -261,9 +261,12 @@ def delete_dashboard(dashboard_id):
 
 def select_or_create_dashboard():
     """Interface pour la sélection/création de tableau de bord"""
+    st.write("Début de select_or_create_dashboard")  # Debug
     dashboards = load_dashboards()
     dashboard_names = [d["name"] for d in dashboards] if dashboards else []
     dashboard_names.append("Créer un nouveau tableau de bord")
+
+    st.write(f"Dashboards disponibles : {dashboard_names}")  # Debug
 
     selected_dashboard = st.selectbox(
         "Choisir ou créer un tableau de bord",
@@ -274,30 +277,51 @@ def select_or_create_dashboard():
     if selected_dashboard == "Créer un nouveau tableau de bord":
         new_dashboard_name = st.text_input("Nom du nouveau tableau de bord")
         if st.button("Créer", key="create_new_dashboard"):
+            st.write(f"Tentative de création du dashboard : {new_dashboard_name}")  # Debug
             if new_dashboard_name:
-                if save_dashboard(new_dashboard_name, []):
+                # Création d'un tableau de bord vide
+                initial_data = {
+                    "records": [{
+                        "fields": {
+                            "name": new_dashboard_name,
+                            "elements": "[]",  # Liste vide en JSON
+                            "timestamp": datetime.now().isoformat()
+                        }
+                    }]
+                }
+                st.write("Données initiales pour création:", initial_data)  # Debug
+                
+                result = grist_api_request("records", "POST", initial_data)
+                st.write("Résultat de la création:", result)  # Debug
+                
+                if result:
                     st.success(f"Tableau de bord '{new_dashboard_name}' créé!")
-                    time.sleep(1)  # Petit délai pour voir le message
-                    st.experimental_rerun()  # Recharge la page pour voir le nouveau tableau
+                    time.sleep(1)
+                    st.experimental_rerun()
                     return new_dashboard_name
+                else:
+                    st.error("Échec de la création du tableau de bord")
             else:
                 st.error("Veuillez entrer un nom pour le tableau de bord")
+    
+    st.write(f"Dashboard sélectionné : {selected_dashboard}")  # Debug
     return selected_dashboard
 
 # fonction de gestion des visualisations
 def add_visualization_to_dashboard(dashboard_name, fig, title, var_x=None, var_y=None, graph_type=None, data=None):
     """Ajoute une visualisation à un tableau de bord existant"""
+    st.write(f"Tentative d'ajout au dashboard : {dashboard_name}")  # Debug
     try:
         # Récupère les données actuelles du tableau de bord
         dashboards = load_dashboards()
+        st.write("Dashboards chargés:", dashboards)  # Debug
+        
         dashboard = next((d for d in dashboards if d["name"] == dashboard_name), None)
+        st.write("Dashboard trouvé:", dashboard)  # Debug
         
         if dashboard:
-            # Récupère les éléments existants ou initialise une liste vide
-            elements = dashboard.get("elements", [])
-            
-            # Ajoute la nouvelle visualisation
-            elements.append({
+            # Prépare la nouvelle visualisation
+            new_viz = {
                 "type": "graphique",
                 "titre": title,
                 "timestamp": datetime.now().isoformat(),
@@ -308,15 +332,23 @@ def add_visualization_to_dashboard(dashboard_name, fig, title, var_x=None, var_y
                     "graph_type": graph_type,
                     "data": data.to_dict() if isinstance(data, pd.DataFrame) else None
                 }
-            })
+            }
+            st.write("Nouvelle visualisation préparée:", new_viz)  # Debug
+            
+            # Récupère les éléments existants ou initialise une liste vide
+            elements = dashboard.get("elements", [])
+            elements.append(new_viz)
             
             # Met à jour le tableau de bord
-            if update_dashboard(dashboard_name, elements):
-                return True
+            update_success = update_dashboard(dashboard_name, elements)
+            st.write("Résultat de la mise à jour:", update_success)  # Debug
+            return update_success
                 
+        st.error("Dashboard non trouvé")
         return False
     except Exception as e:
         st.error(f"Erreur lors de l'ajout de la visualisation : {str(e)}")
+        st.write("Détails de l'erreur:", e)  # Debug
         return False
 
 def main():
