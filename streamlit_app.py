@@ -288,6 +288,8 @@ def main():
                     
                     # Affichage du graphique avec clé unique
                     st.plotly_chart(fig, use_container_width=True, key=unique_key)
+                    
+                    # Statistiques détaillées
                     st.write("### Statistiques détaillées")
                     if pd.api.types.is_numeric_dtype(plot_data):
                         stats = plot_data.describe()
@@ -300,22 +302,46 @@ def main():
                         freq_table = plot_data.value_counts().reset_index()
                         freq_table.columns = ['Valeur', 'Fréquence']
                         freq_table['Pourcentage'] = (freq_table['Fréquence'] / freq_table['Fréquence'].sum() * 100).round(2)
-                        st.dataframe(freq_table)                    # Option de création d'indicateur
-                    st.write("### Créer un indicateur")                    # Ajout d'une clé d'état pour le bouton
+                        st.dataframe(freq_table)
+                    
+                    # Option de création d'indicateur
+                    st.write("### Créer un indicateur")
+                    
+                    # Ajout d'une clé d'état pour le bouton
                     if 'create_indicator_clicked' not in st.session_state:
-                        st.session_state.create_indicator_clicked = False                    def click_create_indicator():
+                        st.session_state.create_indicator_clicked = False
+                    
+                    def click_create_indicator():
                         st.session_state.create_indicator_clicked = True
+                        # Conversion des données avec gestion Series/DataFrame
+                        if isinstance(plot_data, pd.Series):
+                            data_dict = plot_data.to_frame().to_dict('records')
+                        else:
+                            data_dict = plot_data.to_dict('records')
+                        
                         st.session_state.indicator_info = {
                             "type": "univarié",
                             "titre": title,
                             "variable": var,
                             "graph_type": graph_type,
-                            "data": plot_data.to_dict('records'),
+                            "data": data_dict,
                             "graph_config": {
                                 "fig_dict": fig.to_dict(),
                                 "layout": fig.layout.to_dict()
                             },
-                                        
+                            "tables_source": table_selections,
+                            "timestamp": datetime.now().isoformat()
+                        }
+
+                    # Bouton avec callback
+                    st.button("📊 Créer un indicateur à partir de cette analyse", 
+                             key=f"create_indicator_{unique_key}",
+                             on_click=click_create_indicator)
+
+                    if st.session_state.get('create_indicator_clicked', False):
+                        st.switch_page("pages/create_indicator.py")
+
+                
                 # Statistiques descriptives
                 st.write("### Statistiques descriptives")
                 if pd.api.types.is_numeric_dtype(plot_data):
