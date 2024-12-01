@@ -289,6 +289,27 @@ def page_analyse():
                     
                     # Affichage du graphique avec clé unique
                     st.plotly_chart(fig, use_container_width=True, key=unique_key)
+
+                    # Option de création d'indicateur
+                    st.write("### Créer un indicateur")
+                    if st.button("📊 Créer un indicateur à partir de cette analyse", key=f"create_indicator_{unique_key}"):
+                        # Stockage des informations dans session_state
+                        st.session_state.indicator_info = {
+                            "type": analysis_type,
+                            "titre": title,
+                            "variable_x": var_x if analysis_type == "Analyse bivariée" else None,
+                            "variable_y": var_y if analysis_type == "Analyse bivariée" else None,
+                            "graph_type": graph_type,
+                            "data": plot_data.to_dict('records'),
+                            "graph_config": {
+                                "fig_dict": fig.to_dict(),
+                                "layout": fig.layout.to_dict()
+                            },
+                            "tables_source": table_selections,
+                            "timestamp": datetime.now().isoformat()
+                        }
+                        # Redirection vers la page de création d'indicateur
+                        st.success("Indicateur créé avec succès !")
                     
                     # Statistiques détaillées
                     st.write("### Statistiques détaillées")
