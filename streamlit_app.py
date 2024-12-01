@@ -73,11 +73,17 @@ def get_grist_tables():
 def get_grist_data(table_id):
     """Récupère les données d'une table Grist."""
     try:
-        result = grist_api_request(f"tables/{table_id}/records")
-        # Debug pour voir la réponse
-        st.write("Réponse API:", result)
+        url = f"{BASE_URL}/{DOC_ID}/tables/{table_id}/records"
+        headers = {
+            "Authorization": f"Bearer {API_KEY}",
+            "Content-Type": "application/json"
+        }
         
-        if result and 'records' in result:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        result = response.json()
+        
+        if result and 'records' in result and result['records']:
             records = []
             for record in result['records']:
                 if 'fields' in record:
@@ -87,13 +93,36 @@ def get_grist_data(table_id):
             
             if records:
                 df = pd.DataFrame(records)
-                st.write("DataFrame créé:", df)  # Debug
                 return df
-                
-        st.error("Aucune donnée trouvée dans la réponse")
+        
+        st.error(f"Aucune donnée trouvée dans la table {table_id}")
         return None
     except Exception as e:
         st.error(f"Erreur lors de la récupération des données : {str(e)}")
+        return None
+
+def dashboard_api_request(endpoint, method="GET", data=None):
+    """Fonction utilitaire spécifique pour les opérations sur les tableaux de bord"""
+    url = f"{BASE_URL}/{DOC_ID}/tables/{DASHBOARDS_TABLE}/records"
+    headers = {
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json"
+    }
+    
+    try:
+        if method == "GET":
+            response = requests.get(url, headers=headers)
+        elif method == "POST":
+            response = requests.post(url, headers=headers, json=data)
+        elif method == "PATCH":
+            response = requests.patch(url, headers=headers, json=data)
+        elif method == "DELETE":
+            response = requests.delete(url, headers=headers)
+        
+        response.raise_for_status()
+        return response.json() if response.content else None
+    except Exception as e:
+        st.error(f"Erreur API Dashboards : {str(e)}")
         return None
 
 def ensure_dashboard_table_exists():
@@ -142,19 +171,8 @@ def save_dashboard(dashboard_name, elements):
                 }
             }]
         }
-        
-        # Debug
-        st.write("Données à sauvegarder:", data)
-        
-        result = grist_api_request("tables/Dashboards/records", "POST", data)
-        
-        # Debug
-        st.write("Résultat de la sauvegarde:", result)
-        
-        if result is not None:
-            st.success("Tableau de bord sauvegardé avec succès!")
-            return True
-        return False
+        result = dashboard_api_request("records", "POST", data)
+        return result is not None
     except Exception as e:
         st.error(f"Erreur lors de la sauvegarde : {str(e)}")
         return False
@@ -162,7 +180,7 @@ def save_dashboard(dashboard_name, elements):
 def load_dashboards():
     """Charge tous les tableaux de bord depuis Grist"""
     try:
-        result = grist_api_request(f"tables/{DASHBOARDS_TABLE}/records")
+        result = dashboard_api_request("records", "GET")
         if result and 'records' in result:
             return [{
                 'name': record['fields']['name'],
@@ -232,6 +250,7 @@ def select_or_create_dashboard():
                 st.experimental_rerun()  # Recharger la page pour voir le nouveau tableau de bord
                 return new_dashboard_name
     return selected_dashboard
+    
 def add_visualization_to_dashboard(dashboard_name, fig, title, var_x=None, var_y=None, graph_type=None, data=None):
     """Ajoute une visualisation au tableau de bord"""
     dashboards = load_dashboards()
