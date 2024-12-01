@@ -101,32 +101,8 @@ def merge_multiple_tables(dataframes, merge_configs):
             )
     return result
 
-def initialize_dashboards():
-    file_path = 'dashboard_elements.json'
-    if not os.path.exists(file_path):
-        with open(file_path, 'w') as f:
-            json.dump({"dashboards": []}, f)
-
-def load_dashboards():
-    try:
-        with open('dashboards.json', 'r') as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return []
-    except Exception as e:
-        st.error(f"Erreur lors du chargement des tableaux de bord : {str(e)}")
-        return []
-
-def save_dashboards(dashboards):
-    try:
-        with open('dashboards.json', 'w') as f:
-            json.dump(dashboards, f)
-    except Exception as e:
-        st.error(f"Erreur lors de la sauvegarde des tableaux de bord : {str(e)}")
-
 def add_visualization_to_dashboard(dashboard_name, fig, title, var_x=None, var_y=None, graph_type=None, data=None):
-    dashboards = load_dashboards()
-    for dashboard in dashboards:
+    for dashboard in st.session_state.dashboard_elements:
         if dashboard["title"] == dashboard_name:
             dashboard["elements"].append({
                 "type": "graphique",
@@ -140,23 +116,20 @@ def add_visualization_to_dashboard(dashboard_name, fig, title, var_x=None, var_y
                     "data": data.to_dict() if isinstance(data, pd.DataFrame) else None
                 }
             })
-            save_dashboards(dashboards)
             st.success(f"✅ Visualisation ajoutée au tableau de bord '{dashboard_name}'!")
             return True
     st.error(f"Tableau de bord '{dashboard_name}' introuvable.")
     return False
 
 def select_or_create_dashboard():
-    dashboards = load_dashboards()
-    dashboard_names = [d["title"] for d in dashboards]
+    dashboard_names = [d["title"] for d in st.session_state.dashboard_elements]
     dashboard_names.append("Créer un nouveau tableau de bord")
 
     selected_dashboard = st.selectbox("Choisissez un tableau de bord", dashboard_names)
     if selected_dashboard == "Créer un nouveau tableau de bord":
         new_dashboard_name = st.text_input("Nom du nouveau tableau de bord")
         if st.button("Créer"):
-            dashboards.append({"title": new_dashboard_name, "elements": []})
-            save_dashboards(dashboards)
+            st.session_state.dashboard_elements.append({"title": new_dashboard_name, "elements": []})
             st.success(f"Tableau de bord '{new_dashboard_name}' créé!")
             return new_dashboard_name
     return selected_dashboard
@@ -176,27 +149,7 @@ def load_dashboard_elements():
         st.error(f"Erreur lors du chargement du tableau de bord : {str(e)}")
         return []
 
-def save_dashboard_config(title, layout, elements):
-    try:
-        dashboards = load_dashboard_elements()
-        new_dashboard = {
-            "id": len(dashboards) + 1,
-            "title": title,
-            "layout": layout,
-            "elements": elements,
-            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "created_by": "data-groov"
-        }
-        dashboards.append(new_dashboard)
-        with open('dashboards.json', 'w') as f:
-            json.dump({"dashboards": dashboards}, f)
-        return True
-    except Exception as e:
-        st.error(f"Erreur lors de la sauvegarde : {str(e)}")
-        return False
-
 def main():
-    initialize_dashboards()    
     st.title("Analyse des données ESR")
 
     # Initialisation de l'état de session pour les données fusionnées
@@ -512,6 +465,27 @@ def main():
                     key="sort_order"
                 )
                 sort_by = st.selectbox(
+                    "Trier selon
+
+        # Options avancées
+        with st.expander("Options avancées"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                title = st.text_input(
+                    "Titre du graphique", 
+                    f"Relation entre {var_x} et {var_y}",
+                    key="title_bivariate"
+                )
+                show_values = st.checkbox("Afficher les valeurs", True, key="show_values_bivariate")
+            
+            with col2:
+                sort_order = st.radio(
+                    "Tri des données",
+                    ["Pas de tri", "Croissant", "Décroissant"],
+                    key="sort_order"
+                )
+                sort_by = st.selectbox(
                     "Trier selon",
                     ["Valeurs", "Fréquences/Moyennes"] if graph_type != "Nuage de points" else ["Valeurs"],
                     key="sort_by"
@@ -603,6 +577,7 @@ def main():
                         plot_data,
                         values=var_y,
                         index=var_x,
+                        columns=var_y,
                         aggfunc='count'
                     ).fillna(0)
                     
@@ -610,7 +585,7 @@ def main():
                         if sort_by == "Valeurs":
                             pivot_table = pivot_table.sort_index(ascending=ascending)
                         else:
-                            pivot_table = pivot_table.sort_values(var_y, ascending=ascending)
+                            pivot_table = pivot_table.sort_values(var_y, axis=1, ascending=ascending)
                     
                     fig = px.imshow(
                         pivot_table,
