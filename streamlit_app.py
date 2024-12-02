@@ -188,7 +188,8 @@ def main():
         var = st.selectbox("Sélectionnez la variable:", options=st.session_state.merged_data.columns)
         plot_data = st.session_state.merged_data[var]
 
-        # Option de création d'indicateur simple
+        # Création d'indicateur avec lien direct
+        st.write("### Création d'indicateur")
         if st.button("📊 Créer un indicateur", key="create_uni_indicator"):
             data_dict = plot_data.to_frame().to_dict('records')
             st.session_state.indicator_params = {
@@ -197,8 +198,8 @@ def main():
                 "data": data_dict,
                 "tables_source": table_selections
             }
-            st.session_state.nav_to_create = True  # Variable de navigation
-            st.experimental_rerun()
+            # Utilisation d'un lien HTML direct
+            st.markdown('<a href="/pages/create_indicator" target="_self">Cliquez pour continuer vers la création d\'indicateur</a>', unsafe_allow_html=True)
 
     # Si la navigation est demandée
     if st.session_state.get('nav_to_create', False):
@@ -353,7 +354,7 @@ def main():
             var_y = st.selectbox("Variable Y (axe vertical)", 
                                 [col for col in st.session_state.merged_data.columns if col != var_x])
     
-            # Option de création d'indicateur simple
+            # Création d'indicateur avec lien direct
             st.write("### Création d'indicateur")
             if st.button("📊 Créer un indicateur", key="create_bi_indicator"):
                 data_df = st.session_state.merged_data[[var_x, var_y]]
@@ -365,8 +366,8 @@ def main():
                     "data": data_dict,
                     "tables_source": table_selections
                 }
-                st.session_state.nav_to_create = True
-                st.experimental_rerun()
+                # Utilisation d'un lien HTML direct
+                st.markdown('<a href="/pages/create_indicator" target="_self">Cliquez pour continuer vers la création d\'indicateur</a>', unsafe_allow_html=True)
         
             # Configuration de la visualisation
             st.write("### Configuration de la visualisation")
