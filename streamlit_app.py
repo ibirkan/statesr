@@ -198,14 +198,30 @@ def main():
             # Summarizing the quantitative variable
             sum_value = plot_data.sum()
             st.metric(label=f"Effectif total de la variable {var}", value=sum_value)
-        
-            # Categorizing the values into four categories based on equal distribution
-            bins = pd.qcut(plot_data, q=4, labels=["Quartile 1", "Quartile 2", "Quartile 3", "Quartile 4"])
+            
+            # Select categorization method
+            cat_method = st.selectbox(
+                "Méthode de catégorisation",
+                ["Quartile", "Médiane", "Quintile", "Décile"],
+                index=0,  # Quartile as default
+                key="categorization_method"
+            )
+            
+            # Categorize the values based on selected method
+            if cat_method == "Quartile":
+                bins = pd.qcut(plot_data, q=4, labels=["Quartile 1", "Quartile 2", "Quartile 3", "Quartile 4"])
+            elif cat_method == "Médiane":
+                bins = pd.qcut(plot_data, q=2, labels=["Inférieur à la médiane", "Supérieur à la médiane"])
+            elif cat_method == "Quintile":
+                bins = pd.qcut(plot_data, q=5, labels=["Quintile 1", "Quintile 2", "Quintile 3", "Quintile 4", "Quintile 5"])
+            elif cat_method == "Décile":
+                bins = pd.qcut(plot_data, q=10, labels=[f"Décile {i+1}" for i in range(10)])
+            
             cat_summary = plot_data.groupby(bins).agg(['count', 'mean']).reset_index()
             cat_summary.columns = ['Catégorie', 'Effectif', 'Moyenne']
             st.write(f"### Répartition en catégories pour {var}")
             st.dataframe(cat_summary)
-    
+            
         # Configuration de la visualisation
         st.write("### Configuration de la visualisation")
         viz_col1, viz_col2 = st.columns([1, 2])
