@@ -190,6 +190,9 @@ def main():
             freq_table.columns = ['Valeur', 'Effectif']
             freq_table['Taux'] = (freq_table['Effectif'] / freq_table['Effectif'].sum() * 100).round(2)
             st.dataframe(freq_table)
+            # Redimensionner automatiquement les colonnes en fonction de la taille des éléments
+            styled_table = freq_table.style.set_properties(**{'min-width': '100px', 'max-width': '200px'})
+            st.dataframe(styled_table)
         else:
             st.write(f"La variable sélectionnée ({var}) n'est pas qualitative.")
 
