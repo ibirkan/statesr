@@ -202,20 +202,44 @@ def main():
             # Select categorization method
             cat_method = st.selectbox(
                 "Méthode de catégorisation",
-                ["Quartile", "Médiane", "Quintile", "Décile"],
-                index=0,  # Quartile as default
+                ["Quantile", "Manuel"],
+                index=0,  # Quantile as default
                 key="categorization_method"
             )
             
-            # Categorize the values based on selected method
-            if cat_method == "Quartile":
-                bins = pd.qcut(plot_data, q=4, labels=["Quartile 1", "Quartile 2", "Quartile 3", "Quartile 4"])
-            elif cat_method == "Médiane":
-                bins = pd.qcut(plot_data, q=2, labels=["Inférieur à la médiane", "Supérieur à la médiane"])
-            elif cat_method == "Quintile":
-                bins = pd.qcut(plot_data, q=5, labels=["Quintile 1", "Quintile 2", "Quintile 3", "Quintile 4", "Quintile 5"])
-            elif cat_method == "Décile":
-                bins = pd.qcut(plot_data, q=10, labels=[f"Décile {i+1}" for i in range(10)])
+            if cat_method == "Quantile":
+                quantile_method = st.selectbox(
+                    "Type de quantile",
+                    ["Quartile", "Médiane", "Quintile", "Décile"],
+                    index=0,  # Quartile as default
+                    key="quantile_method"
+                )
+                
+                # Categorize the values based on selected method
+                if quantile_method == "Quartile":
+                    bins = pd.qcut(plot_data, q=4, labels=["Quartile 1", "Quartile 2", "Quartile 3", "Quartile 4"])
+                elif quantile_method == "Médiane":
+                    bins = pd.qcut(plot_data, q=2, labels=["Inférieur à la médiane", "Supérieur à la médiane"])
+                elif quantile_method == "Quintile":
+                    bins = pd.qcut(plot_data, q=5, labels=["Quintile 1", "Quintile 2", "Quintile 3", "Quintile 4", "Quintile 5"])
+                elif quantile_method == "Décile":
+                    bins = pd.qcut(plot_data, q=10, labels=[f"Décile {i+1}" for i in range(10)])
+            
+            elif cat_method == "Manuel":
+                num_categories = st.number_input("Nombre de catégories", min_value=1, value=3, step=1)
+                categories = []
+                for i in range(num_categories):
+                    min_val = st.number_input(f"Valeur minimale pour Catégorie {i+1}")
+                    max_val = st.number_input(f"Valeur maximale pour Catégorie {i+1}")
+                    categories.append((min_val, max_val))
+                
+                def manual_categorization(value, categories):
+                    for i, (min_val, max_val) in enumerate(categories):
+                        if min_val <= value <= max_val:
+                            return f"Catégorie {i+1}"
+                    return "Hors catégorie"
+                
+                bins = plot_data.apply(lambda x: manual_categorization(x, categories))
             
             cat_summary = plot_data.groupby(bins).agg(['max', 'mean']).reset_index()
             cat_summary.columns = ['Catégorie', 'Valeur Maximale', 'Moyenne']
