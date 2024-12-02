@@ -241,8 +241,9 @@ def main():
             
             # Display the categorized data table
             st.write("### Tableau des données catégorisées")
-            categorized_table = plot_data.groupby(bins).agg(['count', 'max', 'mean']).reset_index()
-            categorized_table.columns = ['Catégorie', 'Effectif', 'Valeur Maximale', 'Moyenne']
+            categorized_table = plot_data.value_counts().reset_index()
+            categorized_table.columns = ['Catégorie', 'Effectif']
+            categorized_table['Taux'] = (categorized_table['Effectif'] / categorized_table['Effectif'].sum() * 100).round(2)
             st.dataframe(categorized_table)
             
             # Configuration de la visualisation
