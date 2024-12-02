@@ -197,12 +197,15 @@ def main():
             # Select categorization method
             cat_method = st.selectbox(
                 "Méthode de catégorisation",
-                ["Quantile", "Manuel"],
-                index=0,  # Quantile as default
+                ["Aucune", "Quantile", "Manuel"],
+                index=0,  # Aucune as default
                 key="categorization_method"
             )
             
-            if cat_method == "Quantile":
+            if cat_method == "Aucune":
+                # No categorization, use original data
+                bins = plot_data
+            elif cat_method == "Quantile":
                 quantile_method = st.selectbox(
                     "Type de quantile",
                     ["Quartile", "Médiane", "Quintile", "Décile"],
@@ -219,7 +222,6 @@ def main():
                     bins = pd.qcut(plot_data, q=5, labels=["Quintile 1", "Quintile 2", "Quintile 3", "Quintile 4", "Quintile 5"])
                 elif quantile_method == "Décile":
                     bins = pd.qcut(plot_data, q=10, labels=[f"Décile {i+1}" for i in range(10)])
-            
             elif cat_method == "Manuel":
                 num_categories = st.number_input("Nombre de catégories", min_value=1, value=3, step=1)
                 categories = []
@@ -236,8 +238,9 @@ def main():
                 
                 bins = plot_data.apply(lambda x: manual_categorization(x, categories))
             
-            # Apply bins to plot_data
-            plot_data = bins
+            # Apply bins to plot_data if not 'Aucune'
+            if cat_method != "Aucune":
+                plot_data = bins
 
             # Calculate max and average values for each category
             categorized_stats = st.session_state.merged_data.groupby(bins).agg({var: ['max', 'mean']}).reset_index()
