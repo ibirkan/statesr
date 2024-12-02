@@ -1,4 +1,4 @@
-import streamlit as st
+cimport streamlit as st
 import requests
 import pandas as pd
 import plotly.express as px
@@ -187,8 +187,8 @@ def main():
         if plot_data.dtype == 'object':
             st.write(f"### Analyse univariée pour {var}")
             freq_table = plot_data.value_counts().reset_index()
-            freq_table.columns = ['Valeur', 'Compte']
-            freq_table['Pourcentage'] = (freq_table['Compte'] / freq_table['Compte'].sum() * 100).round(2)
+            freq_table.columns = ['Valeur', 'Effectif']
+            freq_table['Taux'] = (freq_table['Effectif'] / freq_table['Effectif'].sum() * 100).round(2)
             st.dataframe(freq_table)
         else:
             st.write(f"La variable sélectionnée ({var}) n'est pas qualitative.")
