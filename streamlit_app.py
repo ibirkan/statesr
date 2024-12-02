@@ -298,21 +298,35 @@ def main():
             if st.button("Générer la visualisation", key="generate_univariate"):
                 try:
                     if graph_type == "Barres":
-                        fig = px.bar(
-                            categorized_stats,
-                            x='Catégorie',
-                            y=value_type,
-                            title=title,
-                            color_discrete_sequence=COLOR_PALETTES[color_scheme]
-                        )
-                        if show_values:
-                            fig.update_traces(
-                                texttemplate='%{y}',
-                                textposition='outside'
+                        if cat_method == "Aucune":
+                            fig = px.bar(
+                                plot_data.reset_index(),
+                                x=plot_data.index,
+                                y='Valeur',
+                                title=title,
+                                color_discrete_sequence=COLOR_PALETTES[color_scheme]
                             )
+                            if show_values:
+                                fig.update_traces(
+                                    texttemplate='%{y}',
+                                    textposition='outside'
+                                )
+                        else:
+                            fig = px.bar(
+                                categorized_stats,
+                                x='Catégorie',
+                                y=value_type,
+                                title=title,
+                                color_discrete_sequence=COLOR_PALETTES[color_scheme]
+                            )
+                            if show_values:
+                                fig.update_traces(
+                                    texttemplate='%{y}',
+                                    textposition='outside'
+                                )
                     elif graph_type == "Histogramme":
                         fig = px.histogram(
-                            categorized_stats,
+                            plot_data,
                             x='Valeur',
                             title=title,
                             color_discrete_sequence=COLOR_PALETTES[color_scheme]
@@ -334,7 +348,7 @@ def main():
                         
                         unique_key = f"plot_uni_{var}_{graph_type}"
                         st.plotly_chart(fig, use_container_width=True, key=unique_key)
-                                                                
+                        
                         st.write("### Statistiques détaillées")
                         st.dataframe(categorized_stats)
             
