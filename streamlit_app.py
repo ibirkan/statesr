@@ -174,197 +174,189 @@ def main():
         key="analysis_type_selector"
     )
 
-    # Analyse univariée
-    if analysis_type == "Analyse univariée":
-        # Sélection de la variable
-        var = st.selectbox("Sélectionnez la variable:", options=st.session_state.merged_data.columns)
-        plot_data = st.session_state.merged_data[var]
+    # Analyse univariée pour une variable quantitative
+    if plot_data.dtype != 'object':
+        st.write(f"### Analyse univariée pour {var}")
+    
+        # Summarizing the quantitative variable
+        sum_value = plot_data.sum()
+        st.metric(label=f"Effectif total de la variable {var}", value=sum_value)
         
-        # Vérification du type de la variable et génération de la visualisation appropriée
-        if plot_data.dtype == 'object':
-            st.write(f"### Analyse univariée pour {var}")
-            freq_table = plot_data.value_counts().reset_index()
-            freq_table.columns = ['Valeur', 'Effectif']
-            freq_table['Taux'] = (freq_table['Effectif'] / freq_table['Effectif'].sum() * 100).round(2)
-            st.dataframe(freq_table)
-            
-        elif plot_data.dtype != 'object':
-            st.write(f"### Analyse univariée pour {var}")
-            sum_value = plot_data.sum()
-            st.metric(label=f"Effectif total de la variable {var}", value=sum_value)
-            
-            # Select categorization method
-            cat_method = st.selectbox(
-                "Méthode de catégorisation",
-                ["Quantile", "Manuel"],
-                index=0,  # Quantile as default
-                key="categorization_method"
+        # Select categorization method
+        cat_method = st.selectbox(
+            "Méthode de catégorisation",
+            ["Quantile", "Manuel"],
+            index=0,  # Quantile as default
+            key="categorization_method"
+        )
+        
+        if cat_method == "Quantile":
+            quantile_method = st.selectbox(
+                "Type de quantile",
+                ["Quartile", "Médiane", "Quintile", "Décile"],
+                index=0,  # Quartile as default
+                key="quantile_method"
             )
             
+            # Categorize the values based on selected method
+            if quantile_method == "Quartile":
+                bins = pd.qcut(plot_data, q=4, labels=["Quartile 1", "Quartile 2", "Quartile 3", "Quartile 4"])
+            elif quantile_method == "Médiane":
+                bins = pd.qcut(plot_data, q=2, labels=["Inférieur à la médiane", "Supérieur à la médiane"])
+            elif quantile_method == "Quintile":
+                bins = pd.qcut(plot_data, q=5, labels=["Quintile 1", "Quintile 2", "Quintile 3", "Quintile 4", "Quintile 5"])
+            elif quantile_method == "Décile":
+                bins = pd.qcut(plot_data, q=10, labels=[f"Décile {i+1}" for i in range(10)])
+        
+        elif cat_method == "Manuel":
+            num_categories = st.number_input("Nombre de catégories", min_value=1, value=3, step=1)
+            categories = []
+            for i in range(num_categories):
+                min_val = st.number_input(f"Valeur minimale pour Catégorie {i+1}")
+                max_val = st.number_input(f"Valeur maximale pour Catégorie {i+1}")
+                categories.append((min_val, max_val))
+            
+            def manual_categorization(value, categories):
+                for i, (min_val, max_val) in enumerate(categories):
+                    if min_val <= value <= max_val:
+                        return f"Catégorie {i+1}"
+                return "Hors catégorie"
+            
+            bins = plot_data.apply(lambda x: manual_categorization(x, categories))
+        
+        cat_summary = plot_data.groupby(bins).agg(['max', 'mean']).reset_index()
+        cat_summary.columns = ['Catégorie', 'Valeur Maximale', 'Moyenne']
+        st.write(f"### Répartition en catégories pour {var}")
+        st.dataframe(cat_summary)
+        
+        # Configuration de la visualisation
+        st.write("### Configuration de la visualisation")
+        viz_col1, viz_col2 = st.columns([1, 2])
+    
+        is_numeric = pd.api.types.is_numeric_dtype(plot_data)
+    
+        with viz_col1:
             if cat_method == "Quantile":
-                quantile_method = st.selectbox(
-                    "Type de quantile",
-                    ["Quartile", "Médiane", "Quintile", "Décile"],
-                    index=0,  # Quartile as default
-                    key="quantile_method"
+                graph_type = st.selectbox(
+                    "Type de graphique",
+                    ["Histogramme", "Boîte à moustaches"],
+                    key="univariate_graph",
+                    help="Pour les variables numériques, l'histogramme montre la distribution et la boîte à moustaches les statistiques de position"
                 )
-                
-                # Categorize the values based on selected method
-                if quantile_method == "Quartile":
-                    bins = pd.qcut(plot_data, q=4, labels=["Quartile 1", "Quartile 2", "Quartile 3", "Quartile 4"])
-                elif quantile_method == "Médiane":
-                    bins = pd.qcut(plot_data, q=2, labels=["Inférieur à la médiane", "Supérieur à la médiane"])
-                elif quantile_method == "Quintile":
-                    bins = pd.qcut(plot_data, q=5, labels=["Quintile 1", "Quintile 2", "Quintile 3", "Quintile 4", "Quintile 5"])
-                elif quantile_method == "Décile":
-                    bins = pd.qcut(plot_data, q=10, labels=[f"Décile {i+1}" for i in range(10)])
-            
-            elif cat_method == "Manuel":
-                num_categories = st.number_input("Nombre de catégories", min_value=1, value=3, step=1)
-                categories = []
-                for i in range(num_categories):
-                    min_val = st.number_input(f"Valeur minimale pour Catégorie {i+1}")
-                    max_val = st.number_input(f"Valeur maximale pour Catégorie {i+1}")
-                    categories.append((min_val, max_val))
-                
-                def manual_categorization(value, categories):
-                    for i, (min_val, max_val) in enumerate(categories):
-                        if min_val <= value <= max_val:
-                            return f"Catégorie {i+1}"
-                    return "Hors catégorie"
-                
-                bins = plot_data.apply(lambda x: manual_categorization(x, categories))
-            
-            cat_summary = plot_data.groupby(bins).agg(['max', 'mean']).reset_index()
-            cat_summary.columns = ['Catégorie', 'Valeur Maximale', 'Moyenne']
-            st.write(f"### Répartition en catégories pour {var}")
-            st.dataframe(cat_summary)
-            
-            # Configuration de la visualisation
-            st.write("### Configuration de la visualisation")
-            viz_col1, viz_col2 = st.columns([1, 2])
-
-            is_numeric = pd.api.types.is_numeric_dtype(plot_data)
-
-            with viz_col1:
-                if cat_method == "Quantile":
-                    graph_type = st.selectbox(
-                        "Type de graphique",
-                        ["Histogramme", "Boîte à moustaches"],
-                        key="univariate_graph",
-                        help="Pour les variables numériques, l'histogramme montre la distribution et la boîte à moustaches les statistiques de position"
-                    )
-                else:  # Manuel
-                    graph_type = st.selectbox(
-                        "Type de graphique",
-                        ["Barres", "Camembert"],
-                        key="univariate_graph",
-                        help="Pour les variables catégorielles, les barres montrent les fréquences et le camembert les proportions"
-                    )
-            
-            with viz_col2:
-                color_scheme = st.selectbox(
-                    "Palette de couleurs",
-                    list(COLOR_PALETTES.keys()),
-                    key="univariate_color"
+            else:  # Manuel
+                graph_type = st.selectbox(
+                    "Type de graphique",
+                    ["Barres", "Camembert"],
+                    key="univariate_graph",
+                    help="Pour les variables catégorielles, les barres montrent les fréquences et le camembert les proportions"
                 )
-
-            # Options avancées
-            with st.expander("Options avancées"):
-                title = st.text_input(
-                    "Titre du graphique", 
-                    f"Distribution de {var}",
-                    key="title_univariate"
-                )
-                show_values = st.checkbox("Afficher les valeurs", True, key="show_values_univariate")
-
-            if st.button("Générer la visualisation", key="generate_univariate"):
-                try:
-                    plot_data = st.session_state.merged_data[var].copy()
-                    
-                    if graph_type == "Histogramme":
-                        if pd.api.types.is_numeric_dtype(plot_data):
-                            fig = px.histogram(
-                                plot_data,
-                                title=title,
-                                color_discrete_sequence=COLOR_PALETTES[color_scheme]
-                            )
-                        else:
-                            st.error("L'histogramme n'est disponible que pour les variables numériques.")
-                    
-                    elif graph_type == "Boîte à moustaches":
-                        if pd.api.types.is_numeric_dtype(plot_data):
-                            fig = px.box(
-                                plot_data,
-                                title=title,
-                                color_discrete_sequence=COLOR_PALETTES[color_scheme]
-                            )
-                        else:
-                            st.error("La boîte à moustaches n'est disponible que pour les variables numériques.")
-                    
-                    elif graph_type in ["Barres", "Camembert"]:
-                        value_counts = plot_data.value_counts().reset_index()
-                        value_counts.columns = ['Valeur', 'Compte']
-                        value_counts['Pourcentage'] = (value_counts['Compte'] / value_counts['Compte'].sum() * 100).round(2)
-                        
-                        if graph_type == "Barres":
-                            fig = px.bar(
-                                value_counts,
-                                x='Valeur',
-                                y='Compte',
-                                title=title,
-                                color_discrete_sequence=COLOR_PALETTES[color_scheme]
-                            )
-                            if show_values:
-                                fig.update_traces(
-                                    texttemplate='%{y}',
-                                    textposition='outside'
-                                )
-                        else:  # Camembert
-                            fig = px.pie(
-                                value_counts,
-                                values='Compte',
-                                names='Valeur',
-                                title=title,
-                                color_discrete_sequence=COLOR_PALETTES[color_scheme]
-                            )
-                            if show_values:
-                                fig.update_traces(
-                                    textinfo='percent+label'
-                                )
-
-                    # Mise à jour du layout pour tous les graphiques
-                    if fig is not None:
-                        fig.update_layout(
-                            height=600,
-                            margin=dict(t=100, b=100),
-                            showlegend=True,
-                            plot_bgcolor='white',
-                            paper_bgcolor='white'
+        
+        with viz_col2:
+            color_scheme = st.selectbox(
+                "Palette de couleurs",
+                list(COLOR_PALETTES.keys()),
+                key="univariate_color"
+            )
+    
+        # Options avancées
+        with st.expander("Options avancées"):
+            title = st.text_input(
+                "Titre du graphique", 
+                f"Distribution de {var}",
+                key="title_univariate"
+            )
+            show_values = st.checkbox("Afficher les valeurs", True, key="show_values_univariate")
+    
+        if st.button("Générer la visualisation", key="generate_univariate"):
+            try:
+                plot_data = st.session_state.merged_data[var].copy()
+                
+                if graph_type == "Histogramme":
+                    if pd.api.types.is_numeric_dtype(plot_data):
+                        fig = px.histogram(
+                            plot_data,
+                            title=title,
+                            color_discrete_sequence=COLOR_PALETTES[color_scheme]
                         )
-                        
-                        # Création d'une clé unique pour le graphique
-                        unique_key = f"plot_uni_{var}_{graph_type}"
-                        
-                        # Affichage du graphique avec clé unique
-                        st.plotly_chart(fig, use_container_width=True, key=unique_key)
+                    else:
+                        st.error("L'histogramme n'est disponible que pour les variables numériques.")
+                
+                elif graph_type == "Boîte à moustaches":
+                    if pd.api.types.is_numeric_dtype(plot_data):
+                        fig = px.box(
+                            plot_data,
+                            title=title,
+                            color_discrete_sequence=COLOR_PALETTES[color_scheme]
+                        )
+                    else:
+                        st.error("La boîte à moustaches n'est disponible que pour les variables numériques.")
+                
+                elif graph_type in ["Barres", "Camembert"]:
+                    # Préparation des données
+                    value_counts = plot_data.value_counts().reset_index()
+                    value_counts.columns = ['Valeur', 'Compte']
+                    value_counts['Pourcentage'] = (value_counts['Compte'] / value_counts['Compte'].sum() * 100).round(2)
+                    
+                    if graph_type == "Barres":
+                        fig = px.bar(
+                            value_counts,
+                            x='Valeur',
+                            y='Compte',
+                            title=title,
+                            color_discrete_sequence=COLOR_PALETTES[color_scheme]
+                        )
+                        if show_values:
+                            fig.update_traces(
+                                texttemplate='%{y}',
+                                textposition='outside'
+                            )
+                    else:  # Camembert
+                        fig = px.pie(
+                            value_counts,
+                            values='Compte',
+                            names='Valeur',
+                            title=title,
+                            color_discrete_sequence=COLOR_PALETTES[color_scheme]
+                        )
+                        if show_values:
+                            fig.update_traces(
+                                textinfo='percent+label'
+                            )
+    
+                # Mise à jour du layout pour tous les graphiques
+                if fig is not None:
+                    fig.update_layout(
+                        height=600,
+                        margin=dict(t=100, b=100),
+                        showlegend=True,
+                        plot_bgcolor='white',
+                        paper_bgcolor='white'
+                    )
+                    
+                    # Création d'une clé unique pour le graphique
+                    unique_key = f"plot_uni_{var}_{graph_type}"
+                    
+                    # Affichage du graphique avec clé unique
+                    st.plotly_chart(fig, use_container_width=True, key=unique_key)
                                                                 
-                        st.write("### Statistiques détaillées")
-                        if pd.api.types.is_numeric_dtype(plot_data):
-                            stats = plot_data.describe()
-                            stats_df = pd.DataFrame({
-                                'Statistique': stats.index,
-                                'Valeur': stats.values.round(2)
-                            })
-                            st.dataframe(stats_df)
-                        else:
-                            freq_table = plot_data.value_counts().reset_index()
-                            freq_table.columns = ['Valeur', 'Fréquence']
-                            freq_table['Pourcentage'] = (freq_table['Fréquence'] / freq_table['Fréquence'].sum() * 100).round(2)
-                            st.dataframe(freq_table)
+                    # Statistiques détaillées
+                    st.write("### Statistiques détaillées")
+                    if pd.api.types.is_numeric_dtype(plot_data):
+                        stats = plot_data.describe()
+                        stats_df = pd.DataFrame({
+                            'Statistique': stats.index,
+                            'Valeur': stats.values.round(2)
+                        })
+                        st.dataframe(stats_df)
+                    else:
+                        freq_table = plot_data.value_counts().reset_index()
+                        freq_table.columns = ['Valeur', 'Fréquence']
+                        freq_table['Pourcentage'] = (freq_table['Fréquence'] / freq_table['Fréquence'].sum() * 100).round(2)
+                        st.dataframe(freq_table)
+    
+            except Exception as e:
+                st.error(f"Erreur lors de la visualisation : {str(e)}")
 
-                except Exception as e:
-                    st.error(f"Erreur lors de la visualisation : {str(e)}")
         # Analyse bivariée
         elif analysis_type == "Analyse bivariée":
             # Sélection des variables
