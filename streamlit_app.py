@@ -239,6 +239,13 @@ def main():
             # Apply bins to plot_data
             plot_data = bins
             
+            # Display the categorized data table
+            st.write("### Tableau des données catégorisées")
+            categorized_table = plot_data.value_counts().reset_index()
+            categorized_table.columns = ['Catégorie', 'Effectif']
+            categorized_table['Taux'] = (categorized_table['Effectif'] / categorized_table['Effectif'].sum() * 100).round(2)
+            st.dataframe(categorized_table)
+            
             # Configuration de la visualisation
             st.write("### Configuration de la visualisation")
             viz_col1, viz_col2 = st.columns([1, 2])
