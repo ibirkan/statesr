@@ -187,6 +187,17 @@ def main():
         var = st.selectbox("Sélectionnez la variable:", options=st.session_state.merged_data.columns)
         plot_data = st.session_state.merged_data[var]
 
+    # Option de création d'indicateur juste après la sélection de variable
+    st.write("### Créer un indicateur")
+    if st.button("📊 Créer un indicateur à partir de cette variable"):
+        st.session_state.indicator_params = {
+            "type": "univarié",
+            "variable": var,
+            "data": plot_data,
+            "tables_source": table_selections
+        }
+        st.switch_page("pages/create_indicator.py")
+
         # Vérification du type de la variable et génération de la visualisation appropriée
         fig = None  # Initialisation de la variable fig
 
@@ -309,14 +320,7 @@ def main():
                     
                     # Affichage du graphique avec clé unique
                     st.plotly_chart(fig, use_container_width=True, key=unique_key)
-                                      
-                    # Option de création d'indicateur (version avec lien)
-                    st.write("### Créer un indicateur")
-                    st.write("Vous pouvez créer un indicateur à partir de cette analyse")
-                    
-                    if st.button("📊 Aller à la création d'indicateur", key=f"create_indicator_{unique_key}"):
-                        st.markdown("[Redirection en cours...](/pages/create_indicator)", unsafe_allow_html=True)
-                    
+                                                          
                     # Statistiques détaillées
                     st.write("### Statistiques détaillées")
                     if pd.api.types.is_numeric_dtype(plot_data):
@@ -352,6 +356,18 @@ def main():
                 [col for col in st.session_state.merged_data.columns if col != var_x],
                 key="bivariate_var_y"
             )
+
+    # Option de création d'indicateur après la sélection des variables
+    st.write("### Créer un indicateur")
+    if st.button("📊 Créer un indicateur à partir de ces variables"):
+        st.session_state.indicator_params = {
+            "type": "bivarié",
+            "variable_x": var_x,
+            "variable_y": var_y,
+            "data": st.session_state.merged_data[[var_x, var_y]],
+            "tables_source": table_selections
+        }
+        st.switch_page("pages/create_indicator.py")
 
         # Configuration de la visualisation
         st.write("### Configuration de la visualisation")
