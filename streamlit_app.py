@@ -86,18 +86,6 @@ def get_grist_data(table_id):
         st.error(f"Erreur lors de la récupération des données : {str(e)}")
         return None
 
-# Fonctions pour les différentes pages
-def page_analyse():
-    st.title("Analyse des données ESR")
-
-def page_1():
-    st.title("Page 1")
-    st.write("Contenu de la Page 1")
-
-def page_2():
-    st.title("Page 2")
-    st.write("Contenu de la Page 2")
-
 def main():
     # App layout and navigation
     st.sidebar.title("Navigation")
