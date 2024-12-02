@@ -187,24 +187,6 @@ def main():
         # Sélection de la variable
         var = st.selectbox("Sélectionnez la variable:", options=st.session_state.merged_data.columns)
         plot_data = st.session_state.merged_data[var]
-
-        # Création d'indicateur avec lien direct
-        st.write("### Création d'indicateur")
-        if st.button("📊 Créer un indicateur", key="create_uni_indicator"):
-            data_dict = plot_data.to_frame().to_dict('records')
-            st.session_state.indicator_params = {
-                "type": "univarié",
-                "variable": var,
-                "data": data_dict,
-                "tables_source": table_selections
-            }
-            # Utilisation d'un lien HTML direct
-            st.markdown('<a href="/pages/create_indicator" target="_self">Cliquez pour continuer vers la création d\'indicateur</a>', unsafe_allow_html=True)
-
-    # Si la navigation est demandée
-    if st.session_state.get('nav_to_create', False):
-        st.session_state.nav_to_create = False  # Réinitialisation
-        st.markdown("[Cliquez ici pour créer l'indicateur](/pages/create_indicator)", unsafe_allow_html=True)
         
         # Vérification du type de la variable et génération de la visualisation appropriée
         fig = None  # Initialisation de la variable fig
@@ -354,21 +336,6 @@ def main():
             var_y = st.selectbox("Variable Y (axe vertical)", 
                                 [col for col in st.session_state.merged_data.columns if col != var_x])
     
-            # Création d'indicateur avec lien direct
-            st.write("### Création d'indicateur")
-            if st.button("📊 Créer un indicateur", key="create_bi_indicator"):
-                data_df = st.session_state.merged_data[[var_x, var_y]]
-                data_dict = data_df.to_dict('records')
-                st.session_state.indicator_params = {
-                    "type": "bivarié",
-                    "variable_x": var_x,
-                    "variable_y": var_y,
-                    "data": data_dict,
-                    "tables_source": table_selections
-                }
-                # Utilisation d'un lien HTML direct
-                st.markdown('<a href="/pages/create_indicator" target="_self">Cliquez pour continuer vers la création d\'indicateur</a>', unsafe_allow_html=True)
-        
             # Configuration de la visualisation
             st.write("### Configuration de la visualisation")
             viz_col1, viz_col2 = st.columns([1, 2])
