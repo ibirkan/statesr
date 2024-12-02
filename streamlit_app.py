@@ -191,20 +191,20 @@ def main():
             freq_table['Taux'] = (freq_table['Effectif'] / freq_table['Effectif'].sum() * 100).round(2)
             st.dataframe(freq_table)
             
-            # Analyse univariée pour une variable quantitative
-            if plot_data.dtype != 'object':
-                st.write(f"### Analyse univariée pour {var}")
-            
-                # Summarizing the quantitative variable
-                sum_value = plot_data.sum()
-                st.metric(label=f"Effectif total de la variable {var}", value=sum_value)
-            
-                # Categorizing the values into three categories based on equal distribution
-                bins = pd.qcut(plot_data, q=4, labels=["1", "2", "3", "4"])
-                cat_counts = bins.value_counts().reset_index()
-                cat_counts.columns = ['Catégorie', 'Effectif']
-                st.write(f"### Répartition en catégories pour {var}")
-                st.dataframe(cat_counts)
+        # Analyse univariée pour une variable quantitative
+        if plot_data.dtype != 'object':
+            st.write(f"### Analyse univariée pour {var}")
+        
+            # Summarizing the quantitative variable
+            sum_value = plot_data.sum()
+            st.metric(label=f"Effectif total de la variable {var}", value=sum_value)
+        
+            # Categorizing the values into three categories based on equal distribution
+            bins = pd.qcut(plot_data, q=3, labels=["Low", "Medium", "High"])
+            cat_counts = bins.value_counts().reset_index()
+            cat_counts.columns = ['Catégorie', 'Effectif']
+            st.write(f"### Répartition en catégories pour {var}")
+            st.dataframe(cat_counts)
     
         # Configuration de la visualisation
         st.write("### Configuration de la visualisation")
