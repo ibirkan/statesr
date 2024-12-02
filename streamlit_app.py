@@ -238,35 +238,31 @@ def main():
             
             # Apply bins to plot_data
             plot_data = bins
+
+            # Calculate max and average values for each category
+            categorized_stats = st.session_state.merged_data.groupby(bins).agg({var: ['max', 'mean']}).reset_index()
+            categorized_stats.columns = ['Catégorie', 'Valeur maximale', 'Valeur moyenne']
             
-            # Display the categorized data table
+            # Display the categorized data table with max and average values
             st.write("### Tableau des données catégorisées")
-            categorized_table = plot_data.value_counts().reset_index()
-            categorized_table.columns = ['Catégorie', 'Effectif']
-            categorized_table['Taux'] = (categorized_table['Effectif'] / categorized_table['Effectif'].sum() * 100).round(2)
-            st.dataframe(categorized_table)
+            st.dataframe(categorized_stats)
             
             # Configuration de la visualisation
             st.write("### Configuration de la visualisation")
             viz_col1, viz_col2 = st.columns([1, 2])
 
-            is_numeric = pd.api.types.is_numeric_dtype(plot_data)
-
             with viz_col1:
-                if is_numeric:
-                    graph_type = st.selectbox(
-                        "Type de graphique",
-                        ["Histogramme", "Boîte à moustaches"],
-                        key="univariate_graph",
-                        help="Pour les variables numériques, l'histogramme montre la distribution et la boîte à moustaches les statistiques de position"
-                    )
-                else:
-                    graph_type = st.selectbox(
-                        "Type de graphique",
-                        ["Barres", "Camembert"],
-                        key="univariate_graph",
-                        help="Pour les variables catégorielles, les barres montrent les fréquences et le camembert les proportions"
-                    )
+                graph_type = st.selectbox(
+                    "Type de graphique",
+                    ["Barres"],
+                    key="univariate_graph",
+                    help="Les barres montrent les valeurs maximales ou moyennes par catégorie"
+                )
+                value_type = st.selectbox(
+                    "Valeur à projeter",
+                    ["Valeur maximale", "Valeur moyenne"],
+                    key="value_type"
+                )
             
             with viz_col2:
                 color_scheme = st.selectbox(
@@ -286,56 +282,19 @@ def main():
 
             if st.button("Générer la visualisation", key="generate_univariate"):
                 try:
-                    if graph_type == "Histogramme":
-                        if is_numeric:
-                            fig = px.histogram(
-                                plot_data,
-                                title=title,
-                                color_discrete_sequence=COLOR_PALETTES[color_scheme]
+                    if graph_type == "Barres":
+                        fig = px.bar(
+                            categorized_stats,
+                            x='Catégorie',
+                            y=value_type,
+                            title=title,
+                            color_discrete_sequence=COLOR_PALETTES[color_scheme]
+                        )
+                        if show_values:
+                            fig.update_traces(
+                                texttemplate='%{y}',
+                                textposition='outside'
                             )
-                        else:
-                            st.error("L'histogramme n'est disponible que pour les variables numériques.")
-                    
-                    elif graph_type == "Boîte à moustaches":
-                        if is_numeric:
-                            fig = px.box(
-                                plot_data,
-                                title=title,
-                                color_discrete_sequence=COLOR_PALETTES[color_scheme]
-                            )
-                        else:
-                            st.error("La boîte à moustaches n'est disponible que pour les variables numériques.")
-                    
-                    elif graph_type in ["Barres", "Camembert"]:
-                        value_counts = plot_data.value_counts().reset_index()
-                        value_counts.columns = ['Valeur', 'Compte']
-                        value_counts['Pourcentage'] = (value_counts['Compte'] / value_counts['Compte'].sum() * 100).round(2)
-                        
-                        if graph_type == "Barres":
-                            fig = px.bar(
-                                value_counts,
-                                x='Valeur',
-                                y='Compte',
-                                title=title,
-                                color_discrete_sequence=COLOR_PALETTES[color_scheme]
-                            )
-                            if show_values:
-                                fig.update_traces(
-                                    texttemplate='%{y}',
-                                    textposition='outside'
-                                )
-                        else:  # Camembert
-                            fig = px.pie(
-                                value_counts,
-                                values='Compte',
-                                names='Valeur',
-                                title=title,
-                                color_discrete_sequence=COLOR_PALETTES[color_scheme]
-                            )
-                            if show_values:
-                                fig.update_traces(
-                                    textinfo='percent+label'
-                                )
 
                     # Mise à jour du layout pour tous les graphiques
                     if fig is not None:
@@ -354,18 +313,7 @@ def main():
                         st.plotly_chart(fig, use_container_width=True, key=unique_key)
                                                                 
                         st.write("### Statistiques détaillées")
-                        if is_numeric:
-                            stats = plot_data.describe()
-                            stats_df = pd.DataFrame({
-                                'Statistique': stats.index,
-                                'Valeur': stats.values.round(2)
-                            })
-                            st.dataframe(stats_df)
-                        else:
-                            freq_table = plot_data.value_counts().reset_index()
-                            freq_table.columns = ['Valeur', 'Fréquence']
-                            freq_table['Pourcentage'] = (freq_table['Fréquence'] / freq_table['Fréquence'].sum() * 100).round(2)
-                            st.dataframe(freq_table)
+                        st.dataframe(categorized_stats)
 
                 except Exception as e:
                     st.error(f"Erreur lors de la visualisation : {str(e)}")
