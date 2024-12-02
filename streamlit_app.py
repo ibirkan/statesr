@@ -199,12 +199,12 @@ def main():
             sum_value = plot_data.sum()
             st.metric(label=f"Effectif total de la variable {var}", value=sum_value)
         
-            # Categorizing the values into three categories based on equal distribution
-            bins = pd.qcut(plot_data, q=3, labels=["Low", "Medium", "High"])
-            cat_counts = bins.value_counts().reset_index()
-            cat_counts.columns = ['Catégorie', 'Effectif']
+            # Categorizing the values into four categories based on equal distribution
+            bins = pd.qcut(plot_data, q=4, labels=["Quartile 1", "Quartile 2", "Quartile 3", "Quartile 4"])
+            cat_summary = plot_data.groupby(bins).agg(['count', 'mean']).reset_index()
+            cat_summary.columns = ['Catégorie', 'Effectif', 'Moyenne']
             st.write(f"### Répartition en catégories pour {var}")
-            st.dataframe(cat_counts)
+            st.dataframe(cat_summary)
     
         # Configuration de la visualisation
         st.write("### Configuration de la visualisation")
