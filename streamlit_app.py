@@ -362,17 +362,21 @@ def main():
                 key="bivariate_var_y"
             )
 
-    # Option de création d'indicateur après la sélection des variables
+    # Option de création d'indicateur juste après la sélection de variable
     st.write("### Créer un indicateur")
-    if st.button("📊 Créer un indicateur à partir de ces variables"):
+    create_button_key = f"create_indicator_{var}"
+    if st.button("📊 Créer un indicateur à partir de cette variable", key=create_button_key):
         st.session_state.indicator_params = {
-            "type": "bivarié",
-            "variable_x": var_x,
-            "variable_y": var_y,
-            "data": st.session_state.merged_data[[var_x, var_y]],
+            "type": "univarié",
+            "variable": var,
+            "data": plot_data.to_dict('records'),  # Convertir en format sérialisable
             "tables_source": table_selections
         }
-        st.switch_page("pages/create_indicator.py")
+        try:
+            st.experimental_rerun()  # Force un rechargement propre
+        finally:
+            st.markdown("Redirection vers la création d'indicateur...", unsafe_allow_html=True)
+            st.switch_page("create_indicator")  # Sans le 'pages/' et le '.py'
 
         # Configuration de la visualisation
         st.write("### Configuration de la visualisation")
