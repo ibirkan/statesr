@@ -91,8 +91,89 @@ def page_analyse():
     st.title("Analyse des données ESR")
 
 def main():
-    # Existing code...
+    # App layout and navigation
+    st.sidebar.title("Navigation")
+    page = st.sidebar.radio("Aller à", ["Analyse des données ESR", "Page 1", "Page 2"])
 
+    if page == "Analyse des données ESR":
+        page_analyse()
+    elif page == "Page 1":
+        page_1()
+    elif page == "Page 2":
+        page_2()
+
+    # Initialisation de l'état de session pour les données fusionnées
+    if 'merged_data' not in st.session_state:
+        st.session_state.merged_data = None
+
+    # Sélection des tables
+    tables = get_grist_tables()
+    if not tables:
+        st.error("Aucune table disponible.")
+        return
+
+    table_selections = st.multiselect(
+        "Sélectionnez une ou plusieurs tables à analyser", 
+        tables
+    )
+    
+    if not table_selections:
+        st.warning("Veuillez sélectionner au moins une table pour l'analyse.")
+        return
+
+    # Chargement et fusion des données
+    if len(table_selections) == 1:
+        df = get_grist_data(table_selections[0])
+        if df is not None:
+            st.session_state.merged_data = df
+        else:
+            st.error("Impossible de charger la table sélectionnée.")
+            return
+    else:
+        dataframes = []
+        merge_configs = []
+
+        for table_id in table_selections:
+            df = get_grist_data(table_id)
+            if df is not None:
+                dataframes.append(df)
+
+        if len(dataframes) < 2:
+            st.warning("Impossible de charger les tables sélectionnées.")
+            return
+
+        # Configuration de la fusion
+        st.write("### Configuration de la fusion")
+        for i in range(len(dataframes) - 1):
+            col1, col2 = st.columns(2)
+            with col1:
+                left_col = st.selectbox(
+                    f"Colonne de fusion pour {table_selections[i]}", 
+                    dataframes[i].columns.tolist(),
+                    key=f"left_{i}"
+                )
+            with col2:
+                right_col = st.selectbox(
+                    f"Colonne de fusion pour {table_selections[i + 1]}", 
+                    dataframes[i + 1].columns.tolist(),
+                    key=f"right_{i}"
+                )
+            merge_configs.append({"left": left_col, "right": right_col})
+
+        st.session_state.merged_data = merge_multiple_tables(dataframes, merge_configs)
+
+    # Vérification des données fusionnées
+    if st.session_state.merged_data is None:
+        st.error("Erreur lors du chargement ou de la fusion des tables.")
+        return
+
+    # Sélection du type d'analyse
+    analysis_type = st.selectbox(
+        "Type d'analyse",
+        ["Analyse univariée", "Analyse bivariée"],
+        key="analysis_type_selector"
+    )
+    
     # Analyse univariée
     if analysis_type == "Analyse univariée":
         # Sélection de la variable
