@@ -361,7 +361,7 @@ def main():
                 [col for col in st.session_state.merged_data.columns if col != var_x],
                 key="bivariate_var_y"
             )
-
+    
     # Option de création d'indicateur
     col1, col2 = st.columns([1, 2])
     with col1:
@@ -378,16 +378,16 @@ def main():
     with col2:
         st.write("")  # Pour l'alignement
         st.write("Créer un indicateur à partir des variables sélectionnées")
-
+    
         # Configuration de la visualisation
         st.write("### Configuration de la visualisation")
         viz_col1, viz_col2 = st.columns([1, 2])
-
+    
         plot_data = st.session_state.merged_data[[var_x, var_y]].copy()
-
+    
         is_x_numeric = pd.api.types.is_numeric_dtype(plot_data[var_x])
         is_y_numeric = pd.api.types.is_numeric_dtype(plot_data[var_y])
-
+    
         with viz_col1:
             # Déterminer les types de graphiques appropriés
             if is_x_numeric and is_y_numeric:
@@ -418,14 +418,14 @@ def main():
                     key="bivariate_graph",
                     help="Pour deux variables catégorielles, la heatmap montre les fréquences croisées"
                 )
-
+    
         with viz_col2:
             color_scheme = st.selectbox(
                 "Palette de couleurs",
                 list(COLOR_PALETTES.keys()),
                 key="bivariate_color"
             )
-
+    
         # Options avancées
         with st.expander("Options avancées"):
             col1, col2 = st.columns(2)
@@ -449,15 +449,15 @@ def main():
                     ["Valeurs", "Fréquences/Moyennes"] if graph_type != "Nuage de points" else ["Valeurs"],
                     key="sort_by"
                 )
-
+    
         if st.button("Générer la visualisation", key="generate_bivariate"):
             try:
                 plot_data = st.session_state.merged_data[[var_x, var_y]].copy()
-
+    
                 # Création du graphique selon le type et application du tri
                 if sort_order != "Pas de tri":
                     ascending = sort_order == "Croissant"
-
+    
                 if graph_type == "Nuage de points":
                     if sort_order != "Pas de tri":
                         if sort_by == "Valeurs":
@@ -482,7 +482,7 @@ def main():
                             trendline="ols"
                         ).data
                     )
-
+    
                 elif graph_type == "Ligne":
                     if sort_order != "Pas de tri":
                         if sort_by == "Valeurs":
@@ -497,7 +497,7 @@ def main():
                         title=title,
                         color_discrete_sequence=COLOR_PALETTES[color_scheme]
                     )
-
+    
                 elif graph_type in ["Barres", "Barres groupées"]:
                     if graph_type == "Barres":
                         agg_data = plot_data.groupby(var_x)[var_y].mean().reset_index()
@@ -530,7 +530,7 @@ def main():
                             barmode='group',
                             color_discrete_sequence=COLOR_PALETTES[color_scheme]
                         )
-
+    
                 elif graph_type == "Heatmap":
                     pivot_table = pd.pivot_table(
                         plot_data,
@@ -559,11 +559,11 @@ def main():
                     plot_bgcolor='white',
                     paper_bgcolor='white'
                 )
-
+    
                 # Affichage des valeurs si demandé
                 if show_values and graph_type in ["Barres", "Barres groupées"]:
                     fig.update_traces(textposition='outside', texttemplate='%{y:.2f}')
-
+    
                 # Création d'une clé unique pour le graphique
                 unique_key = f"plot_bi_{var_x}_{var_y}_{graph_type}"
                 
@@ -588,16 +588,16 @@ def main():
                     cross_tab = pd.crosstab(plot_data[var_x], plot_data[var_y], normalize='index') * 100
                     st.write("Distribution croisée (%):")
                     st.dataframe(cross_tab.round(2))   
-
+    
                 # Statistiques descriptives
                 st.write("### Statistiques descriptives")
-
+    
                 # Vérifier les types de variables
                 is_var_x_numeric = pd.api.types.is_numeric_dtype(plot_data[var_x])
                 is_var_y_numeric = pd.api.types.is_numeric_dtype(plot_data[var_y])
                 is_var_x_categorical = isinstance(plot_data[var_x].dtype, pd.CategoricalDtype) or pd.api.types.is_object_dtype(plot_data[var_x])
                 is_var_y_categorical = isinstance(plot_data[var_y].dtype, pd.CategoricalDtype) or pd.api.types.is_object_dtype(plot_data[var_y])
-
+    
                 if is_var_x_numeric and is_var_y_numeric:
                     correlation = plot_data[var_x].corr(plot_data[var_y])
                     st.write(f"Coefficient de corrélation : {correlation:.4f}")
@@ -609,7 +609,7 @@ def main():
                     st.dataframe(grouped_stats)
                 else:
                     st.write("Les statistiques descriptives ne sont pas disponibles pour cette combinaison de variables.")
-
+    
             except Exception as e:
                 st.error(f"Erreur lors de la visualisation : {str(e)}")
 
