@@ -90,6 +90,26 @@ def get_grist_data(table_id):
 def page_analyse():
     st.title("Analyse des données ESR")
 
+def page_1():
+    st.title("Page 1")
+    st.write("Contenu de la Page 1")
+
+def page_2():
+    st.title("Page 2")
+    st.write("Contenu de la Page 2")
+
+def main():
+    # App layout and navigation
+    st.sidebar.title("Navigation")
+    page = st.sidebar.radio("Aller à", ["Analyse des données ESR", "Page 1", "Page 2"])
+
+    if page == "Analyse des données ESR":
+        page_analyse()
+    elif page == "Page 1":
+        page_1()
+    elif page == "Page 2":
+        page_2()
+
     # Initialisation de l'état de session pour les données fusionnées
     if 'merged_data' not in st.session_state:
         st.session_state.merged_data = None
@@ -601,14 +621,6 @@ def page_analyse():
 
             except Exception as e:
                 st.error(f"Erreur lors de la visualisation : {str(e)}")
-
-def main():
-    # App layout and navigation
-    st.sidebar.title("Navigation")
-    page = st.sidebar.radio("Aller à", ["Analyse des données ESR"])
-
-    if page == "Analyse des données ESR":
-        page_analyse()
 
 # Exécution de l'application
 if __name__ == "__main__":
