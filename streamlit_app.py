@@ -187,9 +187,7 @@ def main():
         var = st.selectbox("Sélectionnez la variable:", options=st.session_state.merged_data.columns)
         plot_data = st.session_state.merged_data[var]
 
-    # Option de création d'indicateur
-    col1, col2 = st.columns([1, 2])
-    with col1:
+        # Option de création d'indicateur simple
         st.write("### Création d'indicateur")
         if st.button("📊 Créer un indicateur", key="create_uni_indicator"):
             st.session_state.indicator_params = {
@@ -199,9 +197,6 @@ def main():
                 "tables_source": table_selections
             }
             st.switch_page("create_indicator")
-    with col2:
-        st.write("")  # Pour l'alignement
-        st.write("Créer un indicateur à partir de la variable sélectionnée")
 
         # Vérification du type de la variable et génération de la visualisation appropriée
         fig = None  # Initialisation de la variable fig
@@ -362,22 +357,17 @@ def main():
                     key="bivariate_var_y"
                 )
         
-        # Option de création d'indicateur
-        col1, col2 = st.columns([1, 2])
-        with col1:
-            st.write("### Création d'indicateur")
-            if st.button("📊 Créer un indicateur", key="create_bi_indicator"):
-                st.session_state.indicator_params = {
-                    "type": "bivarié",
-                    "variable_x": var_x,
-                    "variable_y": var_y,
-                    "data": st.session_state.merged_data[[var_x, var_y]].to_dict('records'),
-                    "tables_source": table_selections
-                }
-                st.switch_page("create_indicator")
-        with col2:
-            st.write("")  # Pour l'alignement
-            st.write("Créer un indicateur à partir des variables sélectionnées")
+        # Option de création d'indicateur simple
+        st.write("### Création d'indicateur")
+        if st.button("📊 Créer un indicateur", key="create_bi_indicator"):
+            st.session_state.indicator_params = {
+                "type": "bivarié",
+                "variable_x": var_x,
+                "variable_y": var_y,
+                "data": st.session_state.merged_data[[var_x, var_y]].to_dict('records'),
+                "tables_source": table_selections
+            }
+            st.switch_page("create_indicator")
         
             # Configuration de la visualisation
             st.write("### Configuration de la visualisation")
