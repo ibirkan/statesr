@@ -167,6 +167,7 @@ def main():
         st.error("Erreur lors du chargement ou de la fusion des tables.")
         return
 
+
     # Sélection du type d'analyse
     analysis_type = st.selectbox(
         "Type d'analyse",
@@ -235,10 +236,8 @@ def main():
                 
                 bins = plot_data.apply(lambda x: manual_categorization(x, categories))
             
-            cat_summary = plot_data.groupby(bins).agg(['max', 'mean']).reset_index()
-            cat_summary.columns = ['Catégorie', 'Valeur Maximale', 'Moyenne']
-            st.write(f"### Répartition en catégories pour {var}")
-            st.dataframe(cat_summary)
+            # Apply bins to plot_data
+            plot_data = bins
             
             # Configuration de la visualisation
             st.write("### Configuration de la visualisation")
@@ -280,10 +279,8 @@ def main():
 
             if st.button("Générer la visualisation", key="generate_univariate"):
                 try:
-                    plot_data = st.session_state.merged_data[var].copy()
-                    
                     if graph_type == "Histogramme":
-                        if pd.api.types.is_numeric_dtype(plot_data):
+                        if is_numeric:
                             fig = px.histogram(
                                 plot_data,
                                 title=title,
@@ -293,7 +290,7 @@ def main():
                             st.error("L'histogramme n'est disponible que pour les variables numériques.")
                     
                     elif graph_type == "Boîte à moustaches":
-                        if pd.api.types.is_numeric_dtype(plot_data):
+                        if is_numeric:
                             fig = px.box(
                                 plot_data,
                                 title=title,
@@ -350,7 +347,7 @@ def main():
                         st.plotly_chart(fig, use_container_width=True, key=unique_key)
                                                                 
                         st.write("### Statistiques détaillées")
-                        if pd.api.types.is_numeric_dtype(plot_data):
+                        if is_numeric:
                             stats = plot_data.describe()
                             stats_df = pd.DataFrame({
                                 'Statistique': stats.index,
@@ -365,6 +362,7 @@ def main():
 
                 except Exception as e:
                     st.error(f"Erreur lors de la visualisation : {str(e)}")
+                    
         # Analyse bivariée
         elif analysis_type == "Analyse bivariée":
             # Sélection des variables
