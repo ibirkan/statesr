@@ -184,16 +184,19 @@ def main():
 
     # Analyse univariée
     if analysis_type == "Analyse univariée":
+        # Sélection de la variable
         var = st.selectbox("Sélectionnez la variable:", options=st.session_state.merged_data.columns)
         plot_data = st.session_state.merged_data[var]
 
         # Option de création d'indicateur simple
         st.write("### Création d'indicateur")
         if st.button("📊 Créer un indicateur", key="create_uni_indicator"):
+            # Conversion correcte des données
+            data_dict = plot_data.to_frame().to_dict('records')
             st.session_state.indicator_params = {
                 "type": "univarié",
                 "variable": var,
-                "data": plot_data.to_dict('records'),
+                "data": data_dict,
                 "tables_source": table_selections
             }
             st.switch_page("create_indicator")
@@ -341,33 +344,25 @@ def main():
 
         # Analyse bivariée
         elif analysis_type == "Analyse bivariée":
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                var_x = st.selectbox(
-                    "Variable X (axe horizontal)", 
-                    st.session_state.merged_data.columns,
-                    key="bivariate_var_x"
-                )
-            
-            with col2:
-                var_y = st.selectbox(
-                    "Variable Y (axe vertical)", 
-                    [col for col in st.session_state.merged_data.columns if col != var_x],
-                    key="bivariate_var_y"
-                )
-        
-        # Option de création d'indicateur simple
-        st.write("### Création d'indicateur")
-        if st.button("📊 Créer un indicateur", key="create_bi_indicator"):
-            st.session_state.indicator_params = {
-                "type": "bivarié",
-                "variable_x": var_x,
-                "variable_y": var_y,
-                "data": st.session_state.merged_data[[var_x, var_y]].to_dict('records'),
-                "tables_source": table_selections
-            }
-            st.switch_page("create_indicator")
+            # Sélection des variables
+            var_x = st.selectbox("Variable X (axe horizontal)", st.session_state.merged_data.columns)
+            var_y = st.selectbox("Variable Y (axe vertical)", 
+                                [col for col in st.session_state.merged_data.columns if col != var_x])
+    
+            # Option de création d'indicateur simple
+            st.write("### Création d'indicateur")
+            if st.button("📊 Créer un indicateur", key="create_bi_indicator"):
+                # Création d'un DataFrame avec les deux variables
+                data_df = st.session_state.merged_data[[var_x, var_y]]
+                data_dict = data_df.to_dict('records')
+                st.session_state.indicator_params = {
+                    "type": "bivarié",
+                    "variable_x": var_x,
+                    "variable_y": var_y,
+                    "data": data_dict,
+                    "tables_source": table_selections
+                }
+                st.switch_page("create_indicator")
         
             # Configuration de la visualisation
             st.write("### Configuration de la visualisation")
