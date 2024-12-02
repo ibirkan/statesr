@@ -193,7 +193,7 @@ def main():
         else:
             st.write(f"### Analyse univariée pour {var}")
             sum_value = plot_data.sum()
-            st.metric(label=f"Somme de {var}", value=sum_value)
+            st.metric(label=f"Effectif total de la variable {var}", value=sum_value)
 
         # Configuration de la visualisation
         st.write("### Configuration de la visualisation")
