@@ -309,23 +309,13 @@ def main():
                     
                     # Affichage du graphique avec clé unique
                     st.plotly_chart(fig, use_container_width=True, key=unique_key)
-                    
-                    # Initialisation de l'état de navigation si nécessaire
-                    if 'nav_to_create' not in st.session_state:
-                        st.session_state.nav_to_create = False
-
-                    # Option de création d'indicateur
+                                      
+                    # Option de création d'indicateur (version avec lien)
                     st.write("### Créer un indicateur")
                     st.write("Vous pouvez créer un indicateur à partir de cette analyse")
                     
                     if st.button("📊 Aller à la création d'indicateur", key=f"create_indicator_{unique_key}"):
-                        st.session_state.nav_to_create = True
-                        st.experimental_rerun()
-
-                    # Vérification de l'état et redirection si nécessaire
-                    if st.session_state.get('nav_to_create', False):
-                        st.session_state.nav_to_create = False  # Réinitialisation de l'état
-                        st.switch_page("pages/create_indicator.py")
+                        st.markdown("[Redirection en cours...](/pages/create_indicator)", unsafe_allow_html=True)
                     
                     # Statistiques détaillées
                     st.write("### Statistiques détaillées")
