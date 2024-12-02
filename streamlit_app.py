@@ -191,7 +191,9 @@ def main():
             freq_table['Taux'] = (freq_table['Effectif'] / freq_table['Effectif'].sum() * 100).round(2)
             st.dataframe(freq_table)
         else:
-            st.write(f"La variable sélectionnée ({var}) n'est pas qualitative.")
+            st.write(f"### Analyse univariée pour {var}")
+            sum_value = plot_data.sum()
+            st.write(f"Somme de {var} : {sum_value}")
 
         # Configuration de la visualisation
         st.write("### Configuration de la visualisation")
