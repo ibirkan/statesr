@@ -189,14 +189,19 @@ def main():
 
     # Option de création d'indicateur juste après la sélection de variable
     st.write("### Créer un indicateur")
-    if st.button("📊 Créer un indicateur à partir de cette variable"):
+    create_button_key = f"create_indicator_{var}"
+    if st.button("📊 Créer un indicateur à partir de cette variable", key=create_button_key):
         st.session_state.indicator_params = {
             "type": "univarié",
             "variable": var,
-            "data": plot_data,
+            "data": plot_data.to_dict('records'),  # Convertir en format sérialisable
             "tables_source": table_selections
         }
-        st.switch_page("pages/create_indicator.py")
+        try:
+            st.experimental_rerun()  # Force un rechargement propre
+        finally:
+            st.markdown("Redirection vers la création d'indicateur...", unsafe_allow_html=True)
+            st.switch_page("create_indicator")  # Sans le 'pages/' et le '.py'
 
         # Vérification du type de la variable et génération de la visualisation appropriée
         fig = None  # Initialisation de la variable fig
