@@ -210,7 +210,7 @@ def main():
             
             # Catégoriser les valeurs en catégories selon une répartition égale
             bins = pd.qcut(plot_data, q=num_categories, labels=[f"Catégorie {i+1}" for i in range(num_categories)], duplicates='drop')
-            cat_means = plot_data.groupby(bins, observed=False).mean().reset_index()
+            cat_means = plot_data.groupby(bins, observed=False).mean().reset_index().rename(columns={var: 'Moyenne'})
             cat_means.columns = ['Catégorie', 'Moyenne']
             st.write(f"### Moyennes par catégorie pour {var}")
             st.dataframe(cat_means)
