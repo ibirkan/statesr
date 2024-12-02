@@ -194,10 +194,10 @@ def main():
             sum_value = plot_data.sum()
             st.metric(label=f"Effectif total de la variable {var}", value=sum_value)
             
-            # Select categorization method
+            # Selectionner la méthode de catégorisation
             cat_method = st.selectbox(
-                "Méthode de catégorisation",
-                ["Aucune", "Quantile", "Manuel"],
+                "Méthode de regroupement des modalités",
+                ["Aucune", "Quantile", "Manuelle"],
                 index=0,  # Aucune as default
                 key="categorization_method"
             )
@@ -222,7 +222,7 @@ def main():
                     bins = pd.qcut(plot_data, q=5, labels=["Quintile 1", "Quintile 2", "Quintile 3", "Quintile 4", "Quintile 5"])
                 elif quantile_method == "Décile":
                     bins = pd.qcut(plot_data, q=10, labels=[f"Décile {i+1}" for i in range(10)])
-            elif cat_method == "Manuel":
+            elif cat_method == "Manuelle":
                 num_categories = st.number_input("Nombre de catégories", min_value=1, value=3, step=1)
                 categories = []
                 for i in range(num_categories):
