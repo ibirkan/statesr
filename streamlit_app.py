@@ -199,7 +199,7 @@ def main():
                 "data": data_dict,
                 "tables_source": table_selections
             }
-            st.switch_page("create_indicator")
+            st.switch_page("pages/create_indicator.py")
 
         # Vérification du type de la variable et génération de la visualisation appropriée
         fig = None  # Initialisation de la variable fig
@@ -362,7 +362,7 @@ def main():
                     "data": data_dict,
                     "tables_source": table_selections
                 }
-                st.switch_page("create_indicator")
+                st.switch_page("pages/create_indicator.py")
         
             # Configuration de la visualisation
             st.write("### Configuration de la visualisation")
