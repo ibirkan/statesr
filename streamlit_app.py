@@ -310,12 +310,14 @@ def main():
                     # Affichage du graphique avec clé unique
                     st.plotly_chart(fig, use_container_width=True, key=unique_key)
 
-                    # Option de création d'indicateur (version simplifiée)
+                    # Option de création d'indicateur (version avec lien)
                     st.write("### Créer un indicateur")
                     st.write("Vous pouvez créer un indicateur à partir de cette analyse")
                     
                     if st.button("📊 Aller à la création d'indicateur", key=f"create_indicator_{unique_key}"):
-                        st.switch_page("pages/create_indicator.py")
+                        js = f"window.location.href = '/{st.session_state.get('_page_config').get('page_script_hash')}/create_indicator'"
+                        html = f'<script>{js}</script>'
+                        st.components.v1.html(html)
                     
                     # Statistiques détaillées
                     st.write("### Statistiques détaillées")
@@ -563,12 +565,14 @@ def main():
                     st.write("Distribution croisée (%):")
                     st.dataframe(cross_tab.round(2))
                     
-                    # Option de création d'indicateur (version simplifiée)
+                    # Option de création d'indicateur (version avec lien)
                     st.write("### Créer un indicateur")
                     st.write("Vous pouvez créer un indicateur à partir de cette analyse")
                     
                     if st.button("📊 Aller à la création d'indicateur", key=f"create_indicator_{unique_key}"):
-                        st.switch_page("pages/create_indicator.py")           
+                        js = f"window.location.href = '/{st.session_state.get('_page_config').get('page_script_hash')}/create_indicator'"
+                        html = f'<script>{js}</script>'
+                        st.components.v1.html(html)          
 
                 # Statistiques descriptives
                 st.write("### Statistiques descriptives")
