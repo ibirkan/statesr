@@ -90,6 +90,12 @@ def get_grist_data(table_id):
 def page_analyse():
     st.title("Analyse des données ESR")
 
+def manual_categorization(value, categories):
+    for i, (min_val, max_val) in enumerate(categories):
+        if min_val <= value <= max_val:
+            return f"Catégorie {i+1}"
+    return "Hors catégorie"
+
 def main():
     # App layout and navigation
     st.sidebar.title("Navigation")
@@ -203,55 +209,43 @@ def main():
             )
             
             if cat_method == "Aucune":
-                # No categorization, use original data
                 bins = plot_data
-            else:
-                if cat_method == "Quantile":
-                    quantile_method = st.selectbox(
-                        "Type de quantile",
-                        ["Quartile", "Médiane", "Quintile", "Décile"],
-                        index=0,  # Quartile as default
-                        key="quantile_method"
-                    )
-                    
-                    # Categorize the values based on selected method
-                    if quantile_method == "Quartile":
-                        bins = pd.qcut(plot_data, q=4, labels=["Quartile 1", "Quartile 2", "Quartile 3", "Quartile 4"])
-                    elif quantile_method == "Médiane":
-                        bins = pd.qcut(plot_data, q=2, labels=["Inférieur à la médiane", "Supérieur à la médiane"])
-                    elif quantile_method == "Quintile":
-                        bins = pd.qcut(plot_data, q=5, labels=["Quintile 1", "Quintile 2", "Quintile 3", "Quintile 4", "Quintile 5"])
-                    elif quantile_method == "Décile":
-                        bins = pd.qcut(plot_data, q=10, labels=[f"Décile {i+1}" for i in range(10)])
-                elif cat_method == "Manuelle":
-                    num_categories = st.number_input("Nombre de catégories", min_value=1, value=3, step=1)
-                    categories = []
-                    for i in range(num_categories):
-                        min_val = st.number_input(f"Valeur minimale pour Catégorie {i+1}")
-                        max_val = st.number_input(f"Valeur maximale pour Catégorie {i+1}")
-                        categories.append((min_val, max_val))
-                    
-                    def manual_categorization(value, categories):
-                        for i, (min_val, max_val) in enumerate(categories):
-                            if min_val <= value <= max_val:
-                                return f"Catégorie {i+1}"
-                        return "Hors catégorie"
-                    
-                    bins = plot_data.apply(lambda x: manual_categorization(x, categories))
+            elif cat_method == "Quantile":
+                quantile_method = st.selectbox(
+                    "Type de quantile",
+                    ["Quartile", "Médiane", "Quintile", "Décile"],
+                    index=0,  # Quartile as default
+                    key="quantile_method"
+                )
                 
-                # Apply bins to plot_data
-                plot_data = bins
+                if quantile_method == "Quartile":
+                    bins = pd.qcut(plot_data, q=4, labels=["Quartile 1", "Quartile 2", "Quartile 3", "Quartile 4"])
+                elif quantile_method == "Médiane":
+                    bins = pd.qcut(plot_data, q=2, labels=["Inférieur à la médiane", "Supérieur à la médiane"])
+                elif quantile_method == "Quintile":
+                    bins = pd.qcut(plot_data, q=5, labels=["Quintile 1", "Quintile 2", "Quintile 3", "Quintile 4", "Quintile 5"])
+                elif quantile_method == "Décile":
+                    bins = pd.qcut(plot_data, q=10, labels=[f"Décile {i+1}" for i in range(10)])
+            elif cat_method == "Manuelle":
+                num_categories = st.number_input("Nombre de catégories", min_value=1, value=3, step=1)
+                categories = []
+                for i in range(num_categories):
+                    min_val = st.number_input(f"Valeur minimale pour Catégorie {i+1}")
+                    max_val = st.number_input(f"Valeur maximale pour Catégorie {i+1}")
+                    categories.append((min_val, max_val))
+                
+                bins = plot_data.apply(lambda x: manual_categorization(x, categories))
             
-            # Calculate max and average values for each category if not 'Aucune'
-            if cat_method != "Aucune":
+            if cat_method == "Manuelle":
+                categorized_stats = plot_data.apply(lambda x: manual_categorization(x, categories)).value_counts().reset_index()
+                categorized_stats.columns = ['Catégorie', 'Effectif']
+                categorized_stats['Taux'] = (categorized_stats['Effectif'] / categorized_stats['Effectif'].sum() * 100).round(2)
+            else:
                 categorized_stats = st.session_state.merged_data.groupby(bins).agg({var: ['max', 'mean']}).reset_index()
                 categorized_stats.columns = ['Catégorie', 'Valeur maximale', 'Valeur moyenne']
-            else:
-                categorized_stats = plot_data.value_counts().reset_index()
-                categorized_stats.columns = ['Valeur', 'Effectif']
             
-            # Display the categorized data table with max and average values
-            st.write("### Tableau des données")
+            # Display the categorized data table
+            st.write("### Tableau des données catégorisées")
             st.dataframe(categorized_stats)
             
             # Configuration de la visualisation
@@ -273,7 +267,13 @@ def main():
                         key="univariate_graph",
                         help="Les barres montrent les valeurs maximales ou moyennes par catégorie"
                     )
-                if cat_method != "Aucune":
+                if cat_method == "Manuelle":
+                    value_type = st.selectbox(
+                        "Valeur à projeter",
+                        ["Valeur maximale", "Valeur moyenne", "Effectif", "Taux"],
+                        key="value_type"
+                    )
+                elif cat_method != "Aucune":
                     value_type = st.selectbox(
                         "Valeur à projeter",
                         ["Valeur maximale", "Valeur moyenne"],
@@ -287,7 +287,6 @@ def main():
                     key="univariate_color"
                 )
             
-            # Options avancées
             with st.expander("Options avancées"):
                 title = st.text_input(
                     "Titre du graphique", 
@@ -299,32 +298,18 @@ def main():
             if st.button("Générer la visualisation", key="generate_univariate"):
                 try:
                     if graph_type == "Barres":
-                        if cat_method == "Aucune":
-                            fig = px.bar(
-                                categorized_stats,
-                                x='Valeur',
-                                y='Effectif',
-                                title=title,
-                                color_discrete_sequence=COLOR_PALETTES[color_scheme]
+                        fig = px.bar(
+                            categorized_stats,
+                            x='Catégorie',
+                            y=value_type,
+                            title=title,
+                            color_discrete_sequence=COLOR_PALETTES[color_scheme]
+                        )
+                        if show_values:
+                            fig.update_traces(
+                                texttemplate='%{y}',
+                                textposition='outside'
                             )
-                            if show_values:
-                                fig.update_traces(
-                                    texttemplate='%{y}',
-                                    textposition='outside'
-                                )
-                        else:
-                            fig = px.bar(
-                                categorized_stats,
-                                x='Catégorie',
-                                y=value_type,
-                                title=title,
-                                color_discrete_sequence=COLOR_PALETTES[color_scheme]
-                            )
-                            if show_values:
-                                fig.update_traces(
-                                    texttemplate='%{y}',
-                                    textposition='outside'
-                                )
                     elif graph_type == "Histogramme":
                         fig = px.histogram(
                             categorized_stats,
@@ -338,7 +323,6 @@ def main():
                                 textposition='outside'
                             )
             
-                    # Mise à jour du layout pour tous les graphiques
                     if fig is not None:
                         fig.update_layout(
                             height=600,
@@ -348,10 +332,7 @@ def main():
                             paper_bgcolor='white'
                         )
                         
-                        # Création d'une clé unique pour le graphique
                         unique_key = f"plot_uni_{var}_{graph_type}"
-                        
-                        # Affichage du graphique avec clé unique
                         st.plotly_chart(fig, use_container_width=True, key=unique_key)
                                                                 
                         st.write("### Statistiques détaillées")
