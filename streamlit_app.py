@@ -194,7 +194,7 @@ def main():
         # Analyse univariée pour une variable quantitative
         else:
             st.write(f"### Analyse univariée pour {var}")
-
+        
             # Affichage de la somme de la variable
             sum_value = plot_data.sum()
             st.metric(label=f"Somme de la variable {var}", value=sum_value)
@@ -209,12 +209,12 @@ def main():
             )
             
             # Catégoriser les valeurs en catégories selon une répartition égale
-            bins = pd.qcut(plot_data, q=num_categories, labels=[f"Catégorie {i+1}" for i in range(num_categories)])
-            cat_means = plot_data.groupby(bins).mean().reset_index()
+            bins = pd.qcut(plot_data, q=num_categories, labels=[f"Catégorie {i+1}" for i in range(num_categories)], duplicates='drop')
+            cat_means = plot_data.groupby(bins, observed=False).mean().reset_index()
             cat_means.columns = ['Catégorie', 'Moyenne']
             st.write(f"### Moyennes par catégorie pour {var}")
             st.dataframe(cat_means)
-
+    
         # Configuration de la visualisation
         st.write("### Configuration de la visualisation")
         viz_col1, viz_col2 = st.columns([1, 2])
