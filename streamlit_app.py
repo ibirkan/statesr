@@ -577,16 +577,7 @@ def main():
                 else:
                     cross_tab = pd.crosstab(plot_data[var_x], plot_data[var_y], normalize='index') * 100
                     st.write("Distribution croisée (%):")
-                    st.dataframe(cross_tab.round(2))
-                    
-                    # Option de création d'indicateur (version avec lien)
-                    st.write("### Créer un indicateur")
-                    st.write("Vous pouvez créer un indicateur à partir de cette analyse")
-                    
-                    if st.button("📊 Aller à la création d'indicateur", key=f"create_indicator_{unique_key}"):
-                        js = f"window.location.href = '/{st.session_state.get('_page_config').get('page_script_hash')}/create_indicator'"
-                        html = f'<script>{js}</script>'
-                        st.components.v1.html(html)          
+                    st.dataframe(cross_tab.round(2))   
 
                 # Statistiques descriptives
                 st.write("### Statistiques descriptives")
