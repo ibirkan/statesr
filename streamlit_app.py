@@ -253,14 +253,14 @@ def main():
             is_numeric = pd.api.types.is_numeric_dtype(plot_data)
 
             with viz_col1:
-                if cat_method == "Quantile":
+                if is_numeric:
                     graph_type = st.selectbox(
                         "Type de graphique",
                         ["Histogramme", "Boîte à moustaches"],
                         key="univariate_graph",
                         help="Pour les variables numériques, l'histogramme montre la distribution et la boîte à moustaches les statistiques de position"
                     )
-                else:  # Manuel
+                else:
                     graph_type = st.selectbox(
                         "Type de graphique",
                         ["Barres", "Camembert"],
