@@ -217,8 +217,8 @@ def main():
             elif cat_method == "Décile":
                 bins = pd.qcut(plot_data, q=10, labels=[f"Décile {i+1}" for i in range(10)])
             
-            cat_summary = plot_data.groupby(bins).agg(['count', 'mean']).reset_index()
-            cat_summary.columns = ['Catégorie', 'Effectif', 'Moyenne']
+            cat_summary = plot_data.groupby(bins).agg(['max', 'mean']).reset_index()
+            cat_summary.columns = ['Catégorie', 'Valeur Maximale', 'Moyenne']
             st.write(f"### Répartition en catégories pour {var}")
             st.dataframe(cat_summary)
             
