@@ -191,29 +191,20 @@ def main():
             freq_table['Taux'] = (freq_table['Effectif'] / freq_table['Effectif'].sum() * 100).round(2)
             st.dataframe(freq_table)
             
-        # Analyse univariée pour une variable quantitative
-        else:
-            st.write(f"### Analyse univariée pour {var}")
-        
-            # Affichage de la somme de la variable
-            sum_value = plot_data.sum()
-            st.metric(label=f"Somme de la variable {var}", value=sum_value)
+            # Analyse univariée pour une variable quantitative
+            if plot_data.dtype != 'object':
+                st.write(f"### Analyse univariée pour {var}")
             
-            # Option pour choisir le nombre de catégories (entre 2 et 6)
-            num_categories = st.slider(
-                "Nombre de catégories",
-                min_value=2,
-                max_value=6,
-                value=3,
-                help="Choisissez le nombre de catégories pour la répartition égale"
-            )
+                # Summarizing the quantitative variable
+                sum_value = plot_data.sum()
+                st.metric(label=f"Effectif total de la variable {var}", value=sum_value)
             
-            # Catégoriser les valeurs en catégories selon une répartition égale
-            bins = pd.qcut(plot_data, q=num_categories, labels=[f"Catégorie {i+1}" for i in range(num_categories)], duplicates='drop')
-            cat_means = plot_data.groupby(bins, observed=False).mean().reset_index().rename(columns={var: 'Moyenne'})
-            cat_means.columns = ['Catégorie', 'Moyenne']
-            st.write(f"### Moyennes par catégorie pour {var}")
-            st.dataframe(cat_means)
+                # Categorizing the values into three categories based on equal distribution
+                bins = pd.qcut(plot_data, q=4, labels=["1", "2", "3", "4"])
+                cat_counts = bins.value_counts().reset_index()
+                cat_counts.columns = ['Catégorie', 'Effectif']
+                st.write(f"### Répartition en catégories pour {var}")
+                st.dataframe(cat_counts)
     
         # Configuration de la visualisation
         st.write("### Configuration de la visualisation")
