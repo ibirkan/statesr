@@ -189,9 +189,7 @@ def main():
         plot_data = st.session_state.merged_data[var]
 
         # Option de création d'indicateur simple
-        st.write("### Création d'indicateur")
         if st.button("📊 Créer un indicateur", key="create_uni_indicator"):
-            # Conversion correcte des données
             data_dict = plot_data.to_frame().to_dict('records')
             st.session_state.indicator_params = {
                 "type": "univarié",
@@ -199,8 +197,14 @@ def main():
                 "data": data_dict,
                 "tables_source": table_selections
             }
-            st.switch_page("pages/create_indicator.py")
+            st.session_state.nav_to_create = True  # Variable de navigation
+            st.experimental_rerun()
 
+    # Si la navigation est demandée
+    if st.session_state.get('nav_to_create', False):
+        st.session_state.nav_to_create = False  # Réinitialisation
+        st.markdown("[Cliquez ici pour créer l'indicateur](/pages/create_indicator)", unsafe_allow_html=True)
+        
         # Vérification du type de la variable et génération de la visualisation appropriée
         fig = None  # Initialisation de la variable fig
 
@@ -352,7 +356,6 @@ def main():
             # Option de création d'indicateur simple
             st.write("### Création d'indicateur")
             if st.button("📊 Créer un indicateur", key="create_bi_indicator"):
-                # Création d'un DataFrame avec les deux variables
                 data_df = st.session_state.merged_data[[var_x, var_y]]
                 data_dict = data_df.to_dict('records')
                 st.session_state.indicator_params = {
@@ -362,7 +365,8 @@ def main():
                     "data": data_dict,
                     "tables_source": table_selections
                 }
-                st.switch_page("pages/create_indicator.py")
+                st.session_state.nav_to_create = True
+                st.experimental_rerun()
         
             # Configuration de la visualisation
             st.write("### Configuration de la visualisation")
