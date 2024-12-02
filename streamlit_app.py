@@ -199,12 +199,21 @@ def main():
             sum_value = plot_data.sum()
             st.metric(label=f"Somme de la variable {var}", value=sum_value)
             
-            # Catégoriser les valeurs en trois catégories selon une répartition égale
-            bins = pd.qcut(plot_data, q=3, labels=["Low", "Medium", "High"])
-            cat_counts = bins.value_counts().reset_index()
-            cat_counts.columns = ['Catégorie', 'Effectif']
-            st.write(f"### Répartition en catégories pour {var}")
-            st.dataframe(cat_counts)
+            # Option pour choisir le nombre de catégories (entre 2 et 6)
+            num_categories = st.slider(
+                "Nombre de catégories",
+                min_value=2,
+                max_value=6,
+                value=3,
+                help="Choisissez le nombre de catégories pour la répartition égale"
+            )
+            
+            # Catégoriser les valeurs en catégories selon une répartition égale
+            bins = pd.qcut(plot_data, q=num_categories, labels=[f"Catégorie {i+1}" for i in range(num_categories)])
+            cat_means = plot_data.groupby(bins).mean().reset_index()
+            cat_means.columns = ['Catégorie', 'Moyenne']
+            st.write(f"### Moyennes par catégorie pour {var}")
+            st.dataframe(cat_means)
 
         # Configuration de la visualisation
         st.write("### Configuration de la visualisation")
