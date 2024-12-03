@@ -5,6 +5,8 @@ import plotly.express as px
 import numpy as np
 from datetime import datetime
 import json
+import plotly.graph_objects as go
+import plotly.figure_factory as ff
 
 # Configuration de la page
 st.set_page_config(
