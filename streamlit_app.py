@@ -176,6 +176,7 @@ def main():
         ["Analyse univariée", "Analyse bivariée"],
         key="analysis_type_selector"
     )
+    
     # Analyse univariée
         if analysis_type == "Analyse univariée":
             # Sélection de la variable
