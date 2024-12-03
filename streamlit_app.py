@@ -174,153 +174,348 @@ def main():
         ["Analyse univariée", "Analyse bivariée"],
         key="analysis_type_selector"
     )
-
     # Analyse univariée
-    if analysis_type == "Analyse univariée":
-        # Sélection de la variable
-        var = st.selectbox("Sélectionnez la variable:", options=st.session_state.merged_data.columns)
-        plot_data = st.session_state.merged_data[var]
-        
-        # Vérification du type de la variable et génération de la visualisation appropriée
-        if plot_data.dtype == 'object':
-            st.write(f"### Analyse univariée pour {var}")
-            freq_table = plot_data.value_counts().reset_index()
-            freq_table.columns = ['Valeur', 'Effectif']
-            freq_table['Taux'] = (freq_table['Effectif'] / freq_table['Effectif'].sum() * 100).round(2)
-            st.dataframe(freq_table)
+        if analysis_type == "Analyse univariée":
+            # Sélection de la variable
+            var = st.selectbox("Sélectionnez la variable:", options=st.session_state.merged_data.columns)
+            plot_data = st.session_state.merged_data[var]
+    
+            # Détecter le type de variable
+            is_numeric = pd.api.types.is_numeric_dtype(plot_data)
             
-        elif plot_data.dtype != 'object':
-            st.write(f"### Analyse univariée pour {var}")
-            sum_value = plot_data.sum()
-            st.metric(label=f"Effectif total de la variable {var}", value=sum_value)
+            # Affichage des statistiques de base
+            st.write(f"### Statistiques principales de la variable {var}")
             
-            # Selectionner la méthode de catégorisation
-            cat_method = st.selectbox(
-                "Méthode de regroupement des modalités",
-                ["Aucune", "Quantile", "Manuelle"],
-                index=0,  # Aucune as default
-                key="categorization_method"
-            )
-            
-            if cat_method == "Aucune":
-                # No categorization, use original data
-                bins = plot_data
-            elif cat_method == "Quantile":
-                quantile_method = st.selectbox(
-                    "Type de quantile",
-                    ["Quartile", "Médiane", "Quintile", "Décile"],
-                    index=0,  # Quartile as default
-                    key="quantile_method"
+            if is_numeric:
+                # Statistiques pour variable quantitative
+                stats_df = pd.DataFrame({
+                    'Statistique': ['Effectif total', 'Moyenne', 'Médiane', 'Écart-type', 'Minimum', 'Maximum'],
+                    'Valeur': [
+                        len(plot_data),
+                        plot_data.mean().round(2),
+                        plot_data.median().round(2),
+                        plot_data.std().round(2),
+                        plot_data.min(),
+                        plot_data.max()
+                    ]
+                })
+                st.dataframe(stats_df)
+                
+                # Options de regroupement
+                st.write("### Options de regroupement")
+                grouping_method = st.selectbox(
+                    "Méthode de regroupement",
+                    ["Aucune", "Quantile", "Manuelle"],
+                    key="grouping_method"
                 )
                 
-                # Categorize the values based on selected method
-                if quantile_method == "Quartile":
-                    bins = pd.qcut(plot_data, q=4, labels=["Quartile 1", "Quartile 2", "Quartile 3", "Quartile 4"])
-                elif quantile_method == "Médiane":
-                    bins = pd.qcut(plot_data, q=2, labels=["Inférieur à la médiane", "Supérieur à la médiane"])
-                elif quantile_method == "Quintile":
-                    bins = pd.qcut(plot_data, q=5, labels=["Quintile 1", "Quintile 2", "Quintile 3", "Quintile 4", "Quintile 5"])
-                elif quantile_method == "Décile":
-                    bins = pd.qcut(plot_data, q=10, labels=[f"Décile {i+1}" for i in range(10)])
-            elif cat_method == "Manuelle":
-                num_categories = st.number_input("Nombre de catégories", min_value=1, value=3, step=1)
-                categories = []
-                for i in range(num_categories):
-                    min_val = st.number_input(f"Valeur minimale pour Catégorie {i+1}")
-                    max_val = st.number_input(f"Valeur maximale pour Catégorie {i+1}")
-                    categories.append((min_val, max_val))
-                
-                def manual_categorization(value, categories):
-                    for i, (min_val, max_val) in enumerate(categories):
-                        if min_val <= value <= max_val:
-                            return f"Catégorie {i+1}"
-                    return "Hors catégorie"
-                
-                bins = plot_data.apply(lambda x: manual_categorization(x, categories))
-            
-            # Apply bins to plot_data if not 'Aucune'
-            if cat_method != "Aucune":
-                plot_data = bins
-
-            # Calculate max and average values for each category
-            categorized_stats = st.session_state.merged_data.groupby(bins).agg({var: ['max', 'mean']}).reset_index()
-            categorized_stats.columns = ['Catégorie', 'Valeur maximale', 'Valeur moyenne']
-            
-            # Display the categorized data table with max and average values
-            st.write("### Tableau des données catégorisées")
-            st.dataframe(categorized_stats)
-            
-            # Configuration de la visualisation
-            st.write("### Configuration de la visualisation")
-            viz_col1, viz_col2 = st.columns([1, 2])
-
-            with viz_col1:
-                graph_type = st.selectbox(
-                    "Type de graphique",
-                    ["Barres"],
-                    key="univariate_graph",
-                    help="Les barres montrent les valeurs maximales ou moyennes par catégorie"
-                )
-                value_type = st.selectbox(
-                    "Valeur à projeter",
-                    ["Valeur maximale", "Valeur moyenne"],
-                    key="value_type"
-                )
-            
-            with viz_col2:
-                color_scheme = st.selectbox(
-                    "Palette de couleurs",
-                    list(COLOR_PALETTES.keys()),
-                    key="univariate_color"
-                )
-
-            # Options avancées
-            with st.expander("Options avancées"):
-                title = st.text_input(
-                    "Titre du graphique", 
-                    f"Distribution de {var}",
-                    key="title_univariate"
-                )
-                show_values = st.checkbox("Afficher les valeurs", True, key="show_values_univariate")
-
-            if st.button("Générer la visualisation", key="generate_univariate"):
-                try:
-                    if graph_type == "Barres":
-                        fig = px.bar(
-                            categorized_stats,
-                            x='Catégorie',
-                            y=value_type,
-                            title=title,
-                            color_discrete_sequence=COLOR_PALETTES[color_scheme]
-                        )
-                        if show_values:
-                            fig.update_traces(
-                                texttemplate='%{y}',
-                                textposition='outside'
-                            )
-
-                    # Mise à jour du layout pour tous les graphiques
-                    if fig is not None:
-                        fig.update_layout(
-                            height=600,
-                            margin=dict(t=100, b=100),
-                            showlegend=True,
-                            plot_bgcolor='white',
-                            paper_bgcolor='white'
-                        )
-                        
-                        # Création d'une clé unique pour le graphique
-                        unique_key = f"plot_uni_{var}_{graph_type}"
-                        
-                        # Affichage du graphique avec clé unique
-                        st.plotly_chart(fig, use_container_width=True, key=unique_key)
-                                                                
-                        st.write("### Statistiques détaillées")
-                        st.dataframe(categorized_stats)
-
-                except Exception as e:
-                    st.error(f"Erreur lors de la visualisation : {str(e)}")
+                if grouping_method == "Quantile":
+                    quantile_type = st.selectbox(
+                        "Type de regroupement",
+                        ["Quartile (4 groupes)", "Quintile (5 groupes)", "Décile (10 groupes)"],
+                        key="quantile_type"
+                    )
                     
+                    n_groups = {"Quartile (4 groupes)": 4, 
+                              "Quintile (5 groupes)": 5, 
+                              "Décile (10 groupes)": 10}[quantile_type]
+                    
+                    grouped_data = pd.qcut(plot_data, q=n_groups)
+                    value_counts = grouped_data.value_counts().reset_index()
+                    value_counts.columns = ['Groupe', 'Effectif']
+                    value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
+                    
+                    # Statistiques par groupe
+                    group_stats = plot_data.groupby(grouped_data).agg(['mean', 'max']).round(2)
+                    group_stats.columns = ['Moyenne', 'Maximum']
+                    
+                    st.write("### Statistiques par groupe")
+                    st.dataframe(pd.concat([value_counts.set_index('Groupe'), 
+                                          group_stats], axis=1))
+                    
+                elif grouping_method == "Manuelle":
+                    n_groups = st.number_input("Nombre de groupes", min_value=2, value=3)
+                    breaks = []
+                    for i in range(n_groups + 1):
+                        if i == 0:
+                            val = plot_data.min()
+                        elif i == n_groups:
+                            val = plot_data.max()
+                        else:
+                            val = st.number_input(f"Seuil {i}", 
+                                                value=float(plot_data.min() + (i/n_groups)*(plot_data.max()-plot_data.min())))
+                        breaks.append(val)
+                    
+                    grouped_data = pd.cut(plot_data, bins=breaks)
+                    value_counts = grouped_data.value_counts().reset_index()
+                    value_counts.columns = ['Groupe', 'Effectif']
+                    value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
+                    
+                    st.write("### Répartition des groupes")
+                    st.dataframe(value_counts)
+                    
+            else:
+                # Statistiques pour variable qualitative
+                value_counts = plot_data.value_counts().reset_index()
+                value_counts.columns = ['Modalité', 'Effectif']
+                value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
+                st.dataframe(value_counts)
+
+            # Visualisation
+                    st.write("### Configuration de la visualisation")
+                    
+                    # Option d'évolution temporelle
+                    show_evolution = st.checkbox("Afficher l'évolution temporelle", key="show_evolution")
+                    
+                    if show_evolution:
+                        # Sélection de la variable temporelle
+                        time_var = st.selectbox(
+                            "Variable temporelle",
+                            [col for col in st.session_state.merged_data.columns if col != var],
+                            key="time_variable"
+                        )
+                        
+                        # Configuration du graphique d'évolution
+                        viz_col1, viz_col2 = st.columns([1, 2])
+                        with viz_col1:
+                            if is_numeric:
+                                if grouping_method == "Aucune":
+                                    evolution_type = "sum"  # Une seule option pour les variables quantitatives sans regroupement
+                                    graph_type = st.selectbox(
+                                        "Type de graphique",
+                                        ["Line plot", "Bar plot", "Lollipop plot"],
+                                        key="evolution_graph_type"
+                                    )
+                                else:  # Pour les variables quantitatives regroupées
+                                    evolution_type = st.selectbox(
+                                        "Valeur à afficher",
+                                        ["Somme globale", "Effectif par catégorie", "Moyenne par catégorie", "Maximum par catégorie"],
+                                        key="evolution_value_type"
+                                    )
+                                    graph_type = st.selectbox(
+                                        "Type de graphique",
+                                        ["Line plot", "Bar plot", "Lollipop plot"],
+                                        key="evolution_graph_type"
+                                    )
+                            else:  # Pour les variables qualitatives
+                                evolution_type = st.selectbox(
+                                    "Valeur à afficher",
+                                    ["Effectifs", "Taux (%)"],
+                                    key="evolution_value_type"
+                                )
+                                graph_type = st.selectbox(
+                                    "Type de graphique",
+                                    ["Line plot", "Bar plot", "Lollipop plot"],
+                                    key="evolution_graph_type"
+                                )
+                        
+                        with viz_col2:
+                            color_scheme = st.selectbox(
+                                "Palette de couleurs",
+                                list(COLOR_PALETTES.keys()),
+                                key="evolution_color"
+                            )
+                    
+                    else:  # Visualisation standard (non temporelle)
+                        viz_col1, viz_col2 = st.columns([1, 2])
+                        with viz_col1:
+                            if is_numeric:
+                                if grouping_method == "Aucune":
+                                    graph_type = st.selectbox(
+                                        "Type de graphique",
+                                        ["Histogramme", "Density plot"],
+                                        key="static_graph_type"
+                                    )
+                                else:  # Pour les variables quantitatives regroupées
+                                    value_type = st.selectbox(
+                                        "Valeur à afficher",
+                                        ["Valeur maximale", "Valeur moyenne"] if grouping_method == "Quantile" else ["Effectifs"],
+                                        key="static_value_type"
+                                    )
+                                    graph_type = st.selectbox(
+                                        "Type de graphique",
+                                        ["Bar plot", "Lollipop plot", "Doughnut", "Treemap", "Circular packing"],
+                                        key="static_graph_type"
+                                    )
+                            else:  # Pour les variables qualitatives
+                                graph_type = st.selectbox(
+                                    "Type de graphique",
+                                    ["Bar plot", "Lollipop plot", "Doughnut", "Treemap", "Circular packing"],
+                                    key="static_graph_type"
+                                )
+                        
+                        with viz_col2:
+                            color_scheme = st.selectbox(
+                                "Palette de couleurs",
+                                list(COLOR_PALETTES.keys()),
+                                key="static_color"
+                            )
+            
+                    # Options avancées
+                    with st.expander("Options avancées"):
+                        adv_col1, adv_col2 = st.columns(2)
+                        with adv_col1:
+                            title = st.text_input("Titre du graphique", f"Distribution de {var}")
+                            x_axis = st.text_input("Titre de l'axe X", var)
+                            y_axis = st.text_input("Titre de l'axe Y", "Valeur")
+                        with adv_col2:
+                            source = st.text_input("Source des données", "")
+                            show_values = st.checkbox("Afficher les valeurs", True)
+            
+                    # Génération du graphique
+                    if st.button("Générer la visualisation"):
+                        try:
+                            fig = None 
+
+                    # Génération du graphique
+                    try:
+                        if show_evolution:
+                            # Préparation des données temporelles
+                            if is_numeric:
+                                if grouping_method == "Aucune":
+                                    # Évolution de la somme pour variables quantitatives sans regroupement
+                                    evolution_data = plot_data.groupby(time_var).sum().reset_index()
+                                    y_values = evolution_data[var]
+                                else:
+                                    # Pour les données regroupées
+                                    if evolution_type == "Somme globale":
+                                        evolution_data = plot_data.groupby(time_var).sum().reset_index()
+                                        y_values = evolution_data[var]
+                                    elif evolution_type == "Effectif par catégorie":
+                                        evolution_data = pd.crosstab(plot_data, time_var)
+                                        y_values = evolution_data.values
+                                    elif evolution_type == "Moyenne par catégorie":
+                                        evolution_data = plot_data.groupby([grouped_data, time_var]).mean().reset_index()
+                                        y_values = evolution_data[var]
+                                    else:  # Maximum par catégorie
+                                        evolution_data = plot_data.groupby([grouped_data, time_var]).max().reset_index()
+                                        y_values = evolution_data[var]
+                            else:
+                                # Pour les variables qualitatives
+                                evolution_data = pd.crosstab(plot_data, time_var, normalize='columns' if evolution_type == "Taux (%)" else None)
+                                if evolution_type == "Taux (%)":
+                                    evolution_data *= 100
+    
+                            # Création du graphique d'évolution
+                            if graph_type == "Line plot":
+                                fig = px.line(evolution_data, x=time_var, y=y_values,
+                                            title=title,
+                                            color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                            elif graph_type == "Bar plot":
+                                fig = px.bar(evolution_data, x=time_var, y=y_values,
+                                           title=title,
+                                           color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                            else:  # Lollipop plot
+                                fig = go.Figure()
+                                fig.add_trace(go.Scatter(x=evolution_data[time_var], y=y_values,
+                                                       mode='markers+lines',
+                                                       name=var,
+                                                       line=dict(color=COLOR_PALETTES[color_scheme][0])))
+    
+                        else:  # Visualisation standard
+                            if is_numeric:
+                                if grouping_method == "Aucune":
+                                    if graph_type == "Histogramme":
+                                        fig = px.histogram(plot_data, title=title,
+                                                         color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                                    else:  # Density plot
+                                        fig = ff.create_distplot([plot_data.dropna()],
+                                                               [var],
+                                                               colors=COLOR_PALETTES[color_scheme])
+                                else:
+                                    # Pour les données regroupées
+                                    if graph_type == "Bar plot":
+                                        fig = px.bar(value_counts, x='Groupe', 
+                                                   y='Effectif' if value_type == "Effectifs" else value_type,
+                                                   title=title,
+                                                   color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                                    elif graph_type == "Lollipop plot":
+                                        fig = go.Figure()
+                                        y_val = 'Effectif' if value_type == "Effectifs" else value_type
+                                        fig.add_trace(go.Scatter(x=value_counts['Groupe'],
+                                                               y=value_counts[y_val],
+                                                               mode='markers+lines',
+                                                               line=dict(color=COLOR_PALETTES[color_scheme][0])))
+                                    elif graph_type == "Doughnut":
+                                        fig = px.pie(value_counts, names='Groupe',
+                                                   values='Effectif' if value_type == "Effectifs" else value_type,
+                                                   hole=0.3,
+                                                   title=title,
+                                                   color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                                    elif graph_type == "Treemap":
+                                        fig = px.treemap(value_counts, path=['Groupe'],
+                                                       values='Effectif' if value_type == "Effectifs" else value_type,
+                                                       title=title,
+                                                       color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                                    else:  # Circular packing
+                                        fig = px.sunburst(value_counts, path=['Groupe'],
+                                                        values='Effectif' if value_type == "Effectifs" else value_type,
+                                                        title=title,
+                                                        color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                            else:
+                                # Pour les variables qualitatives
+                                if graph_type == "Bar plot":
+                                    fig = px.bar(value_counts, x='Modalité', y='Effectif',
+                                               title=title,
+                                               color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                                elif graph_type == "Lollipop plot":
+                                    fig = go.Figure()
+                                    fig.add_trace(go.Scatter(x=value_counts['Modalité'],
+                                                           y=value_counts['Effectif'],
+                                                           mode='markers+lines',
+                                                           line=dict(color=COLOR_PALETTES[color_scheme][0])))
+                                elif graph_type == "Doughnut":
+                                    fig = px.pie(value_counts, names='Modalité',
+                                               values='Effectif',
+                                               hole=0.3,
+                                               title=title,
+                                               color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                                elif graph_type == "Treemap":
+                                    fig = px.treemap(value_counts, path=['Modalité'],
+                                                   values='Effectif',
+                                                   title=title,
+                                                   color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                                else:  # Circular packing
+                                    fig = px.sunburst(value_counts, path=['Modalité'],
+                                                    values='Effectif',
+                                                    title=title,
+                                                    color_discrete_sequence=COLOR_PALETTES[color_scheme])
+    
+                        # Mise à jour du layout pour tous les graphiques
+                        if fig is not None:
+                            fig.update_layout(
+                                height=600,
+                                margin=dict(t=100, b=100),
+                                showlegend=True,
+                                plot_bgcolor='white',
+                                paper_bgcolor='white',
+                                xaxis_title=x_axis,
+                                yaxis_title=y_axis
+                            )
+    
+                            # Ajout de la source si spécifiée
+                            if source:
+                                fig.add_annotation(
+                                    text=f"Source: {source}",
+                                    xref="paper",
+                                    yref="paper",
+                                    x=0,
+                                    y=-0.15,
+                                    showarrow=False,
+                                    font=dict(size=10),
+                                    align="left"
+                                )
+    
+                            # Affichage des valeurs si demandé
+                            if show_values and hasattr(fig.data[0], "text"):
+                                fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
+    
+                            # Affichage du graphique
+                            st.plotly_chart(fig, use_container_width=True)
+    
+                    except Exception as e:
+                        st.error(f"Erreur lors de la génération du graphique : {str(e)}")
+                        
         # Analyse bivariée
         elif analysis_type == "Analyse bivariée":
             # Sélection des variables
