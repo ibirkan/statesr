@@ -734,7 +734,7 @@ def main():
         
                     # Affichage des valeurs si demandé
                     if show_values and graph_type in ["Barres", "Barres groupées"]:
-                        fig.update_traces(textposition='outside', texttemplate='%{y:.2f}')
+                        fig.update_traces(textposition='topcenter', texttemplate='%{y:.2f}')
         
                     # Création d'une clé unique pour le graphique
                     unique_key = f"plot_bi_{var_x}_{var_y}_{graph_type}"
