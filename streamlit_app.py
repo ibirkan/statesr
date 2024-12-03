@@ -1,12 +1,12 @@
-import streamlit as st
+import streamlit as st 
 import requests
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go  # Inclus dans plotly
+import plotly.figure_factory as ff  # Inclus dans plotly
 import numpy as np
 from datetime import datetime
 import json
-import plotly.graph_objects as go
-import plotly.figure_factory as ff
 
 # Configuration de la page
 st.set_page_config(
