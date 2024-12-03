@@ -271,12 +271,27 @@ def main():
         show_evolution = st.checkbox("Afficher l'évolution temporelle", key="show_evolution")
         
         if show_evolution:
-            # Sélection de la variable temporelle
-            time_var = st.selectbox(
-                "Variable temporelle",
-                [col for col in st.session_state.merged_data.columns if col != var],
-                key="time_variable"
-            )
+            # Détection des colonnes de type date dans le même dataframe
+            date_columns = st.session_state.merged_data.select_dtypes(include=['datetime64', 'datetime64[ns]']).columns
+            
+            if len(date_columns) > 0:
+                # Sélection de la variable temporelle parmi les colonnes de type date
+                time_var = st.selectbox(
+                    "Sélectionner la variable temporelle",
+                    date_columns,
+                    key="time_variable"
+                )
+                
+                # Suite du code pour la configuration du graphique d'évolution
+                viz_col1, viz_col2 = st.columns([1, 2])
+                with viz_col1:
+                    if is_numeric:
+                        # ... reste du code existant pour les variables numériques
+                
+            else:
+                st.warning("Aucune colonne de type date n'a été détectée dans les données. " 
+                          "Veuillez vous assurer qu'au moins une colonne contient des dates, et de convertir sur Grist votre variable si nécessaire")
+                show_evolution = False
             
             # Configuration du graphique d'évolution
             viz_col1, viz_col2 = st.columns([1, 2])
