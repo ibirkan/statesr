@@ -533,7 +533,7 @@ def main():
         
                         # Affichage des valeurs si demandé
                         if show_values and hasattr(fig.data[0], "text"):
-                            fig.update_traces(texttemplate='%{y:.2f}', textposition='top')
+                            fig.update_traces(texttemplate='%{y:.2f}', textposition='top center')
         
                         # Affichage du graphique
                         st.plotly_chart(fig, use_container_width=True)
