@@ -498,12 +498,23 @@ def main():
                                              color_discrete_sequence=COLOR_PALETTES[color_scheme])
                             elif graph_type == "Lollipop plot":
                                 fig = go.Figure()
-                                fig.add_trace(go.Scatter(x=value_counts['Modalité'],
-                                                         y=value_counts['Effectif'],
-                                                         mode='markers+lines+text',
-                                                         line=dict(color=COLOR_PALETTES[color_scheme][0]),
-                                                         text=value_counts['Effectif'],
-                                                         textposition='top center'))
+                                fig.add_trace(go.Scatter(
+                                    x=value_counts['Modalité'],
+                                    y=value_counts['Effectif'],
+                                    mode='markers+lines',
+                                    marker=dict(size=10, color=COLOR_PALETTES[color_scheme][0]),
+                                    line=dict(color=COLOR_PALETTES[color_scheme][0])
+                                ))
+                                
+                                if show_values:
+                                    fig.add_trace(go.Scatter(
+                                        x=value_counts['Modalité'],
+                                        y=value_counts['Effectif'],
+                                        mode='text',
+                                        text=value_counts['Effectif'],
+                                        textposition='top center',
+                                        showlegend=False
+                                    ))
                             elif graph_type == "Doughnut":
                                 fig = px.pie(value_counts, names='Modalité',
                                              values='Effectif',
