@@ -631,13 +631,13 @@ def main():
             
                 except Exception as e:
                     st.error(f"Erreur lors de la génération du graphique : {str(e)}")
-
+    
     # Analyse bivariée
     elif analysis_type == "Analyse bivariée":
         try:
             # Sélection des variables
             var_x = st.selectbox("Variable X (axe horizontal)", st.session_state.merged_data.columns)
-            var_y = st.selectbox("Variable Y (axe vertical)", 
+            var_y = st.selectbox("Variable Y (axe vertical)",
                                  [col for col in st.session_state.merged_data.columns if col != var_x])
     
             # Configuration de la visualisation
@@ -714,6 +714,15 @@ def main():
             if st.button("Générer la visualisation", key="generate_bivariate"):
                 try:
                     plot_data = st.session_state.merged_data[[var_x, var_y]].copy()
+    
+                    # Cross-tabulation
+                    crosstab = pd.crosstab(plot_data[var_x], plot_data[var_y], margins=True, margins_name="Total")
+                    crosstab_percentage = crosstab.div(crosstab["Total"], axis=0) * 100
+                    
+                    st.write("### Tableau croisé des effectifs")
+                    st.write(crosstab)
+                    st.write("### Tableau croisé des taux (%)")
+                    st.write(crosstab_percentage)
     
                     # Création du graphique selon le type et application du tri
                     if sort_order != "Pas de tri":
@@ -842,56 +851,14 @@ def main():
                         if show_values and hasattr(fig.data[0], "text"):
                             fig.update_traces(texttemplate='%{y:.2f}', textposition='top center')
     
-                    # Création d'une clé unique pour le graphique
-                    unique_key = f"plot_bi_{var_x}_{var_y}_{graph_type}"
-    
                     # Affichage du graphique avec clé unique
-                    st.plotly_chart(fig, use_container_width=True, key=unique_key)
-                    st.write("### Statistiques détaillées")
-                    if is_x_numeric and is_y_numeric:
-                        correlation = plot_data[var_x].corr(plot_data[var_y])
-                        st.write(f"Coefficient de corrélation : {correlation:.4f}")
-    
-                        stats = pd.DataFrame({
-                            'Statistique': ['Moyenne', 'Médiane', 'Écart-type', 'Min', 'Max'],
-                            f'{var_x}': [plot_data[var_x].mean(), plot_data[var_x].median(), 
-                                         plot_data[var_x].std(), plot_data[var_x].min(), 
-                                         plot_data[var_x].max()],
-                            f'{var_y}': [plot_data[var_y].mean(), plot_data[var_y].median(), 
-                                         plot_data[var_y].std(), plot_data[var_y].min(), 
-                                         plot_data[var_y].max()]
-                        }).round(2)
-                        st.dataframe(stats)
-                    else:
-                        cross_tab = pd.crosstab(plot_data[var_x], plot_data[var_y], normalize='index') * 100
-                        st.write("Distribution croisée (%):")
-                        st.dataframe(cross_tab.round(2))
-    
-                    # Statistiques descriptives
-                    st.write("### Statistiques descriptives")
-    
-                    # Vérifier les types de variables
-                    is_var_x_numeric = pd.api.types.is_numeric_dtype(plot_data[var_x])
-                    is_var_y_numeric = pd.api.types.is_numeric_dtype(plot_data[var_y])
-                    is_var_x_categorical = isinstance(plot_data[var_x].dtype, pd.CategoricalDtype) or pd.api.types.is_object_dtype(plot_data[var_x])
-                    is_var_y_categorical = isinstance(plot_data[var_y].dtype, pd.CategoricalDtype) or pd.api.types.is_object_dtype(plot_data[var_y])
-    
-                    if is_var_x_numeric and is_var_y_numeric:
-                        correlation = plot_data[var_x].corr(plot_data[var_y])
-                        st.write(f"Coefficient de corrélation : {correlation:.4f}")
-                    elif is_var_x_categorical and is_var_y_numeric:
-                        grouped_stats = plot_data.groupby(var_x)[var_y].describe().reset_index()
-                        st.dataframe(grouped_stats)
-                    elif is_var_x_numeric and is_var_y_categorical:
-                        grouped_stats = plot_data.groupby(var_y)[var_x].describe().reset_index()
-                        st.dataframe(grouped_stats)
-                    else:
-                        st.write("Les statistiques descriptives ne sont pas disponibles pour cette combinaison de variables.")
+                    st.plotly_chart(fig, use_container_width=True, key=f"plot_bi_{var_x}_{var_y}_{graph_type}")
     
                 except Exception as e:
                     st.error(f"Erreur lors de la visualisation : {str(e)}")
         except Exception as e:
             st.error(f"Erreur lors de la configuration de l'analyse bivariée : {str(e)}")
+
 
 # Exécution de l'application
 if __name__ == "__main__":
