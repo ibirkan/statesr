@@ -435,11 +435,14 @@ def main():
                             if grouping_method == "Aucune":
                                 if graph_type == "Histogramme":
                                     fig = px.histogram(plot_data, title=title,
-                                                     color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                                                       color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                                    if show_values:
+                                        fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')  # Corrected textposition value
                                 else:  # Density plot
                                     fig = ff.create_distplot([plot_data.dropna()],
-                                                           [var],
-                                                           colors=COLOR_PALETTES[color_scheme])
+                                                             [var],
+                                                             colors=COLOR_PALETTES[color_scheme])
+                    
                             else:
                                 data = value_counts
                                 if value_type != "Effectifs":
