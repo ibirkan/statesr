@@ -19,12 +19,12 @@ st.set_page_config(
 
 # Palettes de couleurs prédéfinies
 COLOR_PALETTES = {
-    "Bleu": ['#C6DBEF', '#9ECAE1', '#6BAED6', '#4292C6', '#2171B5', '#084594'],
-    "Vert": ['#C7E9C0', '#A1D99B', '#74C476', '#41AB5D', '#238B45', '#005A32'],
-    "Rouge": ['#FEE5D9', '#FCBBA1', '#FC9272', '#FB6A4A', '#DE2D26', '#A50F15'],
-    "Orange": ['#FEE6CE', '#FDD0A2', '#FDAE6B', '#FD8D3C', '#F16913', '#D94801'],
-    "Violet": ['#EFEDF5', '#DADAEB', '#BCBDDC', '#9E9AC8', '#807DBA', '#6A51A3'],
-    "Gris": ['#F7F7F7', '#D9D9D9', '#BDBDBD', '#969696', '#737373', '#525252']
+    "Bleu": sns.color_palette("Blues", 6).as_hex(),
+    "Vert": sns.color_palette("Greens", 6).as_hex(),
+    "Rouge": sns.color_palette("Reds", 6).as_hex(),
+    "Orange": sns.color_palette("Oranges", 6).as_hex(),
+    "Violet": sns.color_palette("Purples", 6).as_hex(),
+    "Gris": sns.color_palette("Greys", 6).as_hex()
 }
 
 # Configuration Grist
