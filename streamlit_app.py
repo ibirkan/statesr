@@ -337,7 +337,7 @@ def main():
                         else:
                             graph_type = st.selectbox(
                                 "Type de graphique",
-                                ["Bar plot", "Lollipop plot", "Treemap", "Circular packing"],
+                                ["Bar plot", "Lollipop plot", "Treemap"],
                                 key="static_graph_type"
                             )
                             value_type = "Effectifs" if grouping_method == "Manuelle" else st.selectbox(
@@ -348,7 +348,7 @@ def main():
                     else:
                         graph_type = st.selectbox(
                             "Type de graphique",
-                            ["Bar plot", "Lollipop plot", "Treemap", "Circular packing"],
+                            ["Bar plot", "Lollipop plot", "Treemap"],
                             key="static_graph_type"
                         )
                 
