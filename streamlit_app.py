@@ -9,6 +9,7 @@ from datetime import datetime
 import json
 import matplotlib.pyplot as plt
 import squarify
+import seaborn as sns
 
 # Configuration de la page
 st.set_page_config(
