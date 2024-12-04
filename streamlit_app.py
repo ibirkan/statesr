@@ -617,6 +617,9 @@ def main():
                                 
                                     # Affichage du graphique Plotly
                                     st.plotly_chart(fig, use_container_width=True)
+            
+                except Exception as e:
+                    st.error(f"Erreur lors de la visualisation : {str(e)}")
 
     # Analyse bivariée
     elif analysis_type == "Analyse bivariée":
