@@ -749,19 +749,36 @@ def main():
                             title=title,
                             color_continuous_scale=COLOR_PALETTES[color_scheme]
                         )
+
                     # Mise à jour du layout pour tous les graphiques
-                    fig.update_layout(
-                        height=600,
-                        margin=dict(t=100, b=100),
-                        showlegend=True,
-                        plot_bgcolor='white',
-                        paper_bgcolor='white'
-                    )
-        
-                    # Affichage des valeurs si demandé
-                    if show_values and graph_type in ["Barres", "Barres groupées"]:
-                        fig.update_traces(textposition='topcenter', texttemplate='%{y:.2f}')
-        
+                    if fig is not None:
+                        fig.update_layout(
+                            height=600,
+                            margin=dict(t=100, b=100),
+                            showlegend=True,
+                            plot_bgcolor='white',
+                            paper_bgcolor='white',
+                            xaxis_title=x_axis,
+                            yaxis_title=y_axis
+                        )
+                    
+                        # Ajout de la source si spécifiée
+                        if source:
+                            fig.add_annotation(
+                                text=f"Source: {source}",
+                                xref="paper",
+                                yref="paper",
+                                x=0,
+                                y=-0.15,
+                                showarrow=False,
+                                font=dict(size=10),
+                                align="left"
+                            )
+                    
+                        # Affichage des valeurs si demandé
+                        if show_values and hasattr(fig.data[0], "text"):
+                            fig.update_traces(texttemplate='%{y:.2f}', textposition='top center')  # Correction ici
+                    
                     # Création d'une clé unique pour le graphique
                     unique_key = f"plot_bi_{var_x}_{var_y}_{graph_type}"
                     
