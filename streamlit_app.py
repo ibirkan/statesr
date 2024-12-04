@@ -447,10 +447,9 @@ def main():
                                     fig = px.bar(data, x='Groupe', y='Effectif',
                                                title=title,
                                                color_discrete_sequence=COLOR_PALETTES[color_scheme])
-                                
+
                                 elif graph_type == "Lollipop plot":
                                     fig, ax = plt.subplots(figsize=(12, 6))
-                                    
                                     markerline, stemlines, baseline = ax.stem(
                                         value_counts['Modalité'],
                                         value_counts['Effectif'],
@@ -478,7 +477,7 @@ def main():
                                     st.pyplot(fig)
                                     plt.close()
                                     return
-                                    
+                                
                                 elif graph_type == "Treemap":
                                     fig, ax = plt.subplots(figsize=(12, 8))
                                     values = data['Effectif'].values
