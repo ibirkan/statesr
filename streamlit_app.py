@@ -543,7 +543,7 @@ def main():
                             xaxis_title=x_axis,
                             yaxis_title=y_axis
                         )
-        
+                    
                         # Ajout de la source si spécifiée
                         if source:
                             fig.add_annotation(
@@ -556,11 +556,11 @@ def main():
                                 font=dict(size=10),
                                 align="left"
                             )
-        
+                    
                         # Affichage des valeurs si demandé
                         if show_values and hasattr(fig.data[0], "text"):
-                            fig.update_traces(texttemplate='%{y:.2f}', textposition='top center')
-        
+                            fig.update_traces(texttemplate='%{y:.2f}', textposition='top center')  # Correction ici
+                    
                         # Affichage du graphique
                         st.plotly_chart(fig, use_container_width=True)
         
