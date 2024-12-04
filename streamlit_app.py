@@ -7,6 +7,8 @@ import plotly.figure_factory as ff  # Inclus dans plotly
 import numpy as np
 from datetime import datetime
 import json
+import matplotlib.pyplot as plt
+import squarify
 
 # Configuration de la page
 st.set_page_config(
@@ -222,8 +224,8 @@ def main():
                     )
                     
                     n_groups = {"Quartile (4 groupes)": 4, 
-                                "Quintile (5 groupes)": 5, 
-                                "Décile (10 groupes)": 10}[quantile_type]
+                               "Quintile (5 groupes)": 5, 
+                               "Décile (10 groupes)": 10}[quantile_type]
                     
                     grouped_data = pd.qcut(plot_data, q=n_groups)
                     value_counts = grouped_data.value_counts().reset_index()
@@ -236,7 +238,7 @@ def main():
                     
                     st.write("### Statistiques par groupe")
                     st.dataframe(pd.concat([value_counts.set_index('Groupe'), 
-                                            group_stats], axis=1))
+                                          group_stats], axis=1))
                     
                 elif grouping_method == "Manuelle":
                     n_groups = st.number_input("Nombre de groupes", min_value=2, value=3)
@@ -248,7 +250,7 @@ def main():
                             val = plot_data.max()
                         else:
                             val = st.number_input(f"Seuil {i}", 
-                                                  value=float(plot_data.min() + (i/n_groups)*(plot_data.max()-plot_data.min())))
+                                                value=float(plot_data.min() + (i/n_groups)*(plot_data.max()-plot_data.min())))
                         breaks.append(val)
                     
                     grouped_data = pd.cut(plot_data, bins=breaks)
@@ -273,76 +275,51 @@ def main():
             show_evolution = st.checkbox("Afficher l'évolution temporelle", key="show_evolution")
             
             if show_evolution:
-                # Détection des colonnes de type date dans le même dataframe
+                # Détection des colonnes de type date
                 date_columns = st.session_state.merged_data.select_dtypes(include=['datetime64', 'datetime64[ns]']).columns
                 
                 if len(date_columns) > 0:
-                    # Sélection de la variable temporelle parmi les colonnes de type date
                     time_var = st.selectbox(
                         "Sélectionner la variable temporelle",
                         date_columns,
                         key="time_variable"
                     )
                     
-                    # Vérification de la colonne temporelle
                     if pd.api.types.is_datetime64_any_dtype(st.session_state.merged_data[time_var]):
-                        try:
-                            # Suite du code pour la configuration du graphique d'évolution
-                            viz_col1, viz_col2 = st.columns([1, 2])
-                            with viz_col1:
-                                if is_numeric:
-                                    # ... reste du code existant pour les variables numériques
+                        # Configuration du graphique d'évolution
+                        viz_col1, viz_col2 = st.columns([1, 2])
+                        with viz_col1:
+                            if is_numeric:
+                                evolution_type = st.selectbox(
+                                    "Valeur à afficher",
+                                    ["Somme globale", "Moyenne", "Maximum"],
+                                    key="evolution_value_type"
+                                )
+                            else:
+                                evolution_type = st.selectbox(
+                                    "Valeur à afficher",
+                                    ["Effectifs", "Taux (%)"],
+                                    key="evolution_value_type"
+                                )
+                            
+                            graph_type = st.selectbox(
+                                "Type de graphique",
+                                ["Line plot", "Bar plot", "Lollipop plot"],
+                                key="evolution_graph_type"
+                            )
                         
-                        except Exception as e:
-                            st.error(f"Erreur lors de la génération du graphique d'évolution temporelle : {str(e)}")
+                        with viz_col2:
+                            color_scheme = st.selectbox(
+                                "Palette de couleurs",
+                                list(COLOR_PALETTES.keys()),
+                                key="evolution_color"
+                            )
                     else:
                         st.warning("La colonne sélectionnée n'est pas de type datetime.")
-                        
+                        show_evolution = False
                 else:
-                    st.warning("Aucune colonne de type date n'a été détectée dans les données. " 
-                               "Veuillez vous assurer qu'au moins une colonne contient des dates, et de convertir sur Grist votre variable si nécessaire")
+                    st.warning("Aucune colonne de type date n'a été détectée dans les données.")
                     show_evolution = False
-                
-                # Configuration du graphique d'évolution
-                viz_col1, viz_col2 = st.columns([1, 2])
-                with viz_col1:
-                    if is_numeric:
-                        if grouping_method == "Aucune":
-                            evolution_type = "sum"  # Une seule option pour les variables quantitatives sans regroupement
-                            graph_type = st.selectbox(
-                                "Type de graphique",
-                                ["Line plot", "Bar plot", "Lollipop plot"],
-                                key="evolution_graph_type"
-                            )
-                        else:  # Pour les variables quantitatives regroupées
-                            evolution_type = st.selectbox(
-                                "Valeur à afficher",
-                                ["Somme globale", "Effectif par catégorie", "Moyenne par catégorie", "Maximum par catégorie"],
-                                key="evolution_value_type"
-                            )
-                            graph_type = st.selectbox(
-                                "Type de graphique",
-                                ["Line plot", "Bar plot", "Lollipop plot"],
-                                key="evolution_graph_type"
-                            )
-                    else:  # Pour les variables qualitatives
-                        evolution_type = st.selectbox(
-                            "Valeur à afficher",
-                            ["Effectifs", "Taux (%)"],
-                            key="evolution_value_type"
-                        )
-                        graph_type = st.selectbox(
-                            "Type de graphique",
-                            ["Line plot", "Bar plot", "Lollipop plot"],
-                            key="evolution_graph_type"
-                        )
-                
-                with viz_col2:
-                    color_scheme = st.selectbox(
-                        "Palette de couleurs",
-                        list(COLOR_PALETTES.keys()),
-                        key="evolution_color"
-                    )
             
             else:  # Visualisation standard (non temporelle)
                 viz_col1, viz_col2 = st.columns([1, 2])
@@ -354,21 +331,21 @@ def main():
                                 ["Histogramme", "Density plot"],
                                 key="static_graph_type"
                             )
-                        else:  # Pour les variables quantitatives regroupées
-                            value_type = st.selectbox(
-                                "Valeur à afficher",
-                                ["Valeur maximale", "Valeur moyenne"] if grouping_method == "Quantile" else ["Effectifs"],
-                                key="static_value_type"
-                            )
+                        else:
                             graph_type = st.selectbox(
                                 "Type de graphique",
-                                ["Bar plot", "Lollipop plot", "Doughnut", "Treemap", "Circular packing"],
+                                ["Bar plot", "Lollipop plot", "Treemap", "Circular packing"],
                                 key="static_graph_type"
                             )
-                    else:  # Pour les variables qualitatives
+                            value_type = "Effectifs" if grouping_method == "Manuelle" else st.selectbox(
+                                "Valeur à afficher",
+                                ["Effectifs", "Moyenne", "Maximum"],
+                                key="static_value_type"
+                            )
+                    else:
                         graph_type = st.selectbox(
                             "Type de graphique",
-                            ["Bar plot", "Lollipop plot", "Doughnut", "Treemap", "Circular packing"],
+                            ["Bar plot", "Lollipop plot", "Treemap", "Circular packing"],
                             key="static_graph_type"
                         )
                 
@@ -393,181 +370,257 @@ def main():
             # Génération du graphique
             if st.button("Générer la visualisation"):
                 try:
-                    fig = None
                     if show_evolution:
                         # Préparation des données temporelles
+                        evolution_data = plot_data.groupby(time_var)
+                        
                         if is_numeric:
-                            if grouping_method == "Aucune":
-                                # Évolution de la somme pour variables quantitatives sans regroupement
-                                evolution_data = plot_data.groupby(time_var).sum().reset_index()
-                                y_values = evolution_data[var]
-                            else:
-                                # Pour les données regroupées
-                                if evolution_type == "Somme globale":
-                                    evolution_data = plot_data.groupby(time_var).sum().reset_index()
-                                    y_values = evolution_data[var]
-                                elif evolution_type == "Effectif par catégorie":
-                                    evolution_data = pd.crosstab(plot_data, time_var)
-                                    y_values = evolution_data.values
-                                elif evolution_type == "Moyenne par catégorie":
-                                    evolution_data = plot_data.groupby([grouped_data, time_var]).mean().reset_index()
-                                    y_values = evolution_data[var]
-                                else:  # Maximum par catégorie
-                                    evolution_data = plot_data.groupby([grouped_data, time_var]).max().reset_index()
-                                    y_values = evolution_data[var]
+                            if evolution_type == "Somme globale":
+                                y_values = evolution_data.sum()
+                            elif evolution_type == "Moyenne":
+                                y_values = evolution_data.mean()
+                            else:  # Maximum
+                                y_values = evolution_data.max()
                         else:
-                            # Pour les variables qualitatives
-                            evolution_data = pd.crosstab(plot_data, time_var, normalize='columns' if evolution_type == "Taux (%)" else None)
-                            if evolution_type == "Taux (%)":
-                                evolution_data *= 100
-        
+                            if evolution_type == "Effectifs":
+                                y_values = evolution_data.count()
+                            else:  # Taux
+                                y_values = (evolution_data.count() / len(plot_data)) * 100
+                        
+                        evolution_data = pd.DataFrame({'date': y_values.index, 'value': y_values.values})
+                        
                         # Création du graphique d'évolution
                         if graph_type == "Line plot":
-                            fig = px.line(evolution_data, x=time_var, y=y_values,
-                                          title=title,
-                                          color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                            fig = px.line(evolution_data, x='date', y='value',
+                                        title=title,
+                                        color_discrete_sequence=COLOR_PALETTES[color_scheme])
                         elif graph_type == "Bar plot":
-                            fig = px.bar(evolution_data, x=time_var, y=y_values,
-                                         title=title,
-                                         color_discrete_sequence=COLOR_PALETTES[color_scheme])
-                        else:  # Lollipop plot
-                            fig = go.Figure()
-                            fig.add_trace(go.Scatter(x=evolution_data[time_var], y=y_values,
-                                                     mode='markers+lines',
-                                                     name=var,
-                                                     line=dict(color=COLOR_PALETTES[color_scheme][0])))
-        
+                            fig = px.bar(evolution_data, x='date', y='value',
+                                       title=title,
+                                       color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                        else:  # Lollipop plot avec matplotlib
+                            fig, ax = plt.subplots(figsize=(12, 6))
+                            
+                            markerline, stemlines, baseline = ax.stem(
+                                evolution_data['date'],
+                                evolution_data['value'],
+                                linefmt=COLOR_PALETTES[color_scheme][0],
+                                markerfmt=f'o{COLOR_PALETTES[color_scheme][0]}',
+                                basefmt=' '
+                            )
+                            
+                            plt.setp(markerline, markersize=10)
+                            plt.setp(stemlines, linewidth=2)
+                            
+                            if show_values:
+                                for x, y in zip(evolution_data['date'], evolution_data['value']):
+                                    ax.text(x, y, f'{y:.0f}', ha='center', va='bottom')
+                            
+                            ax.set_title(title, pad=20)
+                            ax.set_xlabel(x_axis)
+                            ax.set_ylabel(y_axis)
+                            ax.grid(True, linestyle='--', alpha=0.3)
+                            plt.xticks(rotation=45, ha='right')
+                            plt.tight_layout()
+                            
+                            st.pyplot(fig)
+                            plt.close()
+                            return
+                    
                     else:  # Visualisation standard
                         if is_numeric:
                             if grouping_method == "Aucune":
                                 if graph_type == "Histogramme":
                                     fig = px.histogram(plot_data, title=title,
-                                                       color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                                                     color_discrete_sequence=COLOR_PALETTES[color_scheme])
                                 else:  # Density plot
                                     fig = ff.create_distplot([plot_data.dropna()],
-                                                             [var],
-                                                             colors=COLOR_PALETTES[color_scheme])
+                                                           [var],
+                                                           colors=COLOR_PALETTES[color_scheme])
                             else:
-                                # Pour les données regroupées
-                                if graph_type == "Bar plot":
-                                    fig = px.bar(value_counts, x='Groupe', 
-                                                 y='Effectif' if value_type == "Effectifs" else value_type,
-                                                 title=title,
-                                                 color_discrete_sequence=COLOR_PALETTES[color_scheme])
-                                elif graph_type == "Lollipop plot":
-                                    fig = go.Figure()
-                                    fig.add_trace(go.Scatter(
-                                        x=value_counts['Modalité'],
-                                        y=value_counts['Effectif'],
-                                        mode='markers+lines',
-                                        marker=dict(size=10, color=COLOR_PALETTES[color_scheme][0]),
-                                        line=dict(color=COLOR_PALETTES[color_scheme][0])
-                                    ))
-                                    
-                                    # Ajout des valeurs au-dessus des points si show_values est True
-                                    if show_values:
-                                        fig.add_trace(go.Scatter(
-                                            x=value_counts['Modalité'],
-                                            y=value_counts['Effectif'],
-                                            mode='text',
-                                            text=value_counts['Effectif'],
-                                            textposition='top center',
-                                            showlegend=False
-                                        ))
-                                elif graph_type == "Doughnut":
-                                    fig = px.pie(value_counts, names='Groupe',
-                                                 values='Effectif' if value_type == "Effectifs" else value_type,
-                                                 hole=0.3,
-                                                 title=title,
-                                                 color_discrete_sequence=COLOR_PALETTES[color_scheme])
-                                elif graph_type == "Treemap":
-                                    fig = px.treemap(value_counts, path=['Groupe'],
-                                                     values='Effectif' if value_type == "Effectifs" else value_type,
-                                                     title=title,
-                                                     color_discrete_sequence=COLOR_PALETTES[color_scheme])
-                                else:  # Circular packing
-                                    fig = px.sunburst(value_counts, path=['Groupe'],
-                                                      values='Effectif' if value_type == "Effectifs" else value_type,
-                                                      title=title,
-                                                      color_discrete_sequence=COLOR_PALETTES[color_scheme])
-                        else:
-                            # Pour les variables qualitatives
-                            if graph_type == "Bar plot":
-                                fig = px.bar(value_counts, x='Modalité', y='Effectif',
-                                             title=title,
-                                             color_discrete_sequence=COLOR_PALETTES[color_scheme])
-                            elif graph_type == "Lollipop plot":
-                                fig = go.Figure()
-                                fig.add_trace(go.Scatter(
-                                    x=value_counts['Modalité'],
-                                    y=value_counts['Effectif'],
-                                    mode='markers+lines',
-                                    marker=dict(size=10, color=COLOR_PALETTES[color_scheme][0]),
-                                    line=dict(color=COLOR_PALETTES[color_scheme][0])
-                                ))
+                                data = value_counts
+                                if value_type != "Effectifs":
+                                    y_col = 'Moyenne' if value_type == "Moyenne" else 'Maximum'
+                                    data = pd.concat([value_counts, group_stats[y_col]], axis=1)
                                 
-                                if show_values:
-                                    fig.add_trace(go.Scatter(
-                                        x=value_counts['Modalité'],
-                                        y=value_counts['Effectif'],
-                                        mode='text',
-                                        text=value_counts['Effectif'],
-                                        textposition='top center',
-                                        showlegend=False
-                                    ))
-                            elif graph_type == "Doughnut":
-                                fig = px.pie(value_counts, names='Modalité',
-                                             values='Effectif',
-                                             hole=0.3,
-                                             title=title,
-                                             color_discrete_sequence=COLOR_PALETTES[color_scheme])
-                            elif graph_type == "Treemap":
-                                fig = px.treemap(value_counts, path=['Modalité'],
-                                                 values='Effectif',
-                                                 title=title,
-                                                 color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                                if graph_type == "Bar plot":
+                                    fig = px.bar(data, x='Groupe', y='Effectif',
+                                               title=title,
+                                               color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                                
+                                elif graph_type == "Lollipop plot":
+                                    fig, ax = plt.subplots(figsize=(12, 6))
+                                    
+                                    markerline, stemlines, baseline = ax.stem(
+                                        data['Groupe'],
+                                        data['Effectif'],
+                                        linefmt=COLOR_PALETTES[color_scheme][0],
+                                        markerfmt=f'o{COLOR_PALETTES[color_scheme][0]}',
+                                        basefmt=' '
+                                    )
+                                    
+                                    plt.setp(markerline, markersize=10)
+                                    plt.setp(stemlines, linewidth=2)
+                                    
+                                    if show_values:
+                                        for x, y in zip(data['Groupe'], data['Effectif']):
+                                            ax.text(x, y, f'{y:.0f}', ha='center', va='bottom')
+                                    
+                                    ax.set_title(title, pad=20)
+                                    ax.set_xlabel(x_axis)
+                                    ax.set_ylabel(y_axis)
+                                    ax.grid(True, linestyle='--', alpha=0.3)
+                                    plt.xticks(rotation=45, ha='right')
+                                    plt.tight_layout()
+                                    
+                                    st.pyplot(fig)
+                                    plt.close()
+                                    return
+                                
+                                elif graph_type == "Treemap":
+                                    fig, ax = plt.subplots(figsize=(12, 8))
+                                    
+                                    values = data['Effectif'].values
+                                    norm_values = (values - values.min()) / (values.max() - values.min())
+                                    colors = [COLOR_PALETTES[color_scheme][int(v * (len(COLOR_PALETTES[color_scheme])-1))] 
+                                            for v in norm_values]
+                                    
+                                    squarify.plot(
+                                        sizes=values,
+                                        label=data['Groupe'],
+                                        color=colors,
+                                        alpha=0.8,
+                                        text_kwargs={'fontsize':10}
+                                    )
+                                    
+                                    plt.title(title, pad=20)
+                                    plt.axis('off')
+                                    
+                                    if show_values:
+                                        rects = ax.patches
+                                        for i, rect in enumerate(rects):
+                                            x = rect.get_x() + rect.get_width()/2
+                                            y = rect.get_y() + rect.get_height()/2
+                                            value = values[i]
+                                            plt.text(x, y, f'{value:.0f}', ha='center', va='center')
+                                            plt.tight_layout()
+                                st.pyplot(fig)
+                                plt.close()
+                                return
+                            
                             else:  # Circular packing
-                                fig = px.sunburst(value_counts, path=['Modalité'],
-                                                  values='Effectif',
-                                                  title=title,
-                                                  color_discrete_sequence=COLOR_PALETTES[color_scheme])
-        
-                    # Mise à jour du layout pour tous les graphiques
-                    if fig is not None:
-                        fig.update_layout(
-                            height=600,
-                            margin=dict(t=100, b=100),
-                            showlegend=True,
-                            plot_bgcolor='white',
-                            paper_bgcolor='white',
-                            xaxis_title=x_axis,
-                            yaxis_title=y_axis
+                                fig = px.sunburst(data, path=['Groupe'],
+                                                values='Effectif',
+                                                title=title,
+                                                color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                    else:  # Pour les variables qualitatives
+                        if graph_type == "Bar plot":
+                            fig = px.bar(value_counts, x='Modalité', y='Effectif',
+                                       title=title,
+                                       color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                        
+                        elif graph_type == "Lollipop plot":
+                            fig, ax = plt.subplots(figsize=(12, 6))
+                            
+                            markerline, stemlines, baseline = ax.stem(
+                                value_counts['Modalité'],
+                                value_counts['Effectif'],
+                                linefmt=COLOR_PALETTES[color_scheme][0],
+                                markerfmt=f'o{COLOR_PALETTES[color_scheme][0]}',
+                                basefmt=' '
+                            )
+                            
+                            plt.setp(markerline, markersize=10)
+                            plt.setp(stemlines, linewidth=2)
+                            
+                            if show_values:
+                                for x, y in zip(value_counts['Modalité'], value_counts['Effectif']):
+                                    ax.text(x, y, f'{y:.0f}', ha='center', va='bottom')
+                            
+                            ax.set_title(title, pad=20)
+                            ax.set_xlabel(x_axis)
+                            ax.set_ylabel(y_axis)
+                            ax.grid(True, linestyle='--', alpha=0.3)
+                            plt.xticks(rotation=45, ha='right')
+                            plt.tight_layout()
+                            
+                            st.pyplot(fig)
+                            plt.close()
+                            return
+                        
+                        elif graph_type == "Treemap":
+                            fig, ax = plt.subplots(figsize=(12, 8))
+                            
+                            values = value_counts['Effectif'].values
+                            norm_values = (values - values.min()) / (values.max() - values.min())
+                            colors = [COLOR_PALETTES[color_scheme][int(v * (len(COLOR_PALETTES[color_scheme])-1))] 
+                                    for v in norm_values]
+                            
+                            squarify.plot(
+                                sizes=values,
+                                label=value_counts['Modalité'],
+                                color=colors,
+                                alpha=0.8,
+                                text_kwargs={'fontsize':10}
+                            )
+                            
+                            plt.title(title, pad=20)
+                            plt.axis('off')
+                            
+                            if show_values:
+                                rects = ax.patches
+                                for i, rect in enumerate(rects):
+                                    x = rect.get_x() + rect.get_width()/2
+                                    y = rect.get_y() + rect.get_height()/2
+                                    value = values[i]
+                                    plt.text(x, y, f'{value:.0f}', ha='center', va='center')
+                            plt.tight_layout()
+                            st.pyplot(fig)
+                            plt.close()
+                            return
+                        
+                        else:  # Circular packing
+                            fig = px.sunburst(value_counts, path=['Modalité'],
+                                            values='Effectif',
+                                            title=title,
+                                            color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                
+                # Mise à jour du layout pour les graphiques Plotly
+                if fig is not None:
+                    fig.update_layout(
+                        height=600,
+                        margin=dict(t=100, b=100),
+                        showlegend=True,
+                        plot_bgcolor='white',
+                        paper_bgcolor='white',
+                        xaxis_title=x_axis,
+                        yaxis_title=y_axis
+                    )
+                    
+                    # Ajout de la source si spécifiée
+                    if source:
+                        fig.add_annotation(
+                            text=f"Source: {source}",
+                            xref="paper",
+                            yref="paper",
+                            x=0,
+                            y=-0.15,
+                            showarrow=False,
+                            font=dict(size=10),
+                            align="left"
                         )
                     
-                        # Ajout de la source si spécifiée
-                        if source:
-                            fig.add_annotation(
-                                text=f"Source: {source}",
-                                xref="paper",
-                                yref="paper",
-                                x=0,
-                                y=-0.15,
-                                showarrow=False,
-                                font=dict(size=10),
-                                align="left"
-                            )
+                    # Affichage des valeurs pour les graphiques Plotly si demandé
+                    if show_values and hasattr(fig.data[0], "text"):
+                        fig.update_traces(texttemplate='%{y:.2f}', textposition='top center')
                     
-                        # Affichage des valeurs si demandé
-                        if show_values and hasattr(fig.data[0], "text"):
-                            fig.update_traces(texttemplate='%{y:.2f}', textposition='top center')  # Correction ici
-                    
-                        # Affichage du graphique
-                        st.plotly_chart(fig, use_container_width=True)
-        
-                except Exception as e:
-                    st.error(f"Erreur lors de la génération du graphique : {str(e)}")
-        else:
-            st.warning("Données non disponibles ou vides.")
+                    # Affichage du graphique Plotly
+                    st.plotly_chart(fig, use_container_width=True)
+            
+            except Exception as e:
+                st.error(f"Erreur lors de la génération du graphique : {str(e)}")
+    else:
+        st.warning("Données non disponibles ou vides.")
 
                         
         # Analyse bivariée
