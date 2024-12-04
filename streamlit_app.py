@@ -437,12 +437,16 @@ def main():
                                     fig = px.histogram(plot_data, title=title,
                                                        color_discrete_sequence=COLOR_PALETTES[color_scheme])
                                     if show_values:
-                                        fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')  # Corrected textposition value
-                                else:  # Density plot
-                                    fig = ff.create_distplot([plot_data.dropna()],
-                                                             [var],
-                                                             colors=COLOR_PALETTES[color_scheme])
-                    
+                                        fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
+                                else:  # Density plot with Seaborn
+                                    fig, ax = plt.subplots(figsize=(12, 6))
+                                    sns.kdeplot(plot_data.dropna(), ax=ax, fill=True, color=COLOR_PALETTES[color_scheme][0])
+                                    ax.set_title(title)
+                                    ax.set_xlabel(x_axis)
+                                    ax.set_ylabel(y_axis)
+                                    st.pyplot(fig)
+                                    plt.close()
+                          
                             else:
                                 data = value_counts
                                 if value_type != "Effectifs":
