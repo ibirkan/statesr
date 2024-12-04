@@ -95,6 +95,36 @@ def get_grist_data(table_id):
 def page_analyse():
     st.title("Analyse des données ESR")
 
+def create_lollipop_plot(value_counts, color_scheme, title, x_axis, y_axis, show_values=True):
+    fig, ax = plt.subplots(figsize=(12, 6))
+    x = value_counts['Modalité'].tolist()
+    y = value_counts['Effectif'].tolist()
+    color = COLOR_PALETTES[color_scheme][0]
+
+    markerline, stemlines, baseline = ax.stem(
+        x, y,
+        linefmt='-',
+        markerfmt='o',
+        basefmt=' ',
+        use_line_collection=True
+    )
+
+    plt.setp(markerline, color=color, markersize=10)
+    plt.setp(stemlines, color=color, linewidth=2)
+
+    if show_values:
+        for i, v in enumerate(y):
+            ax.text(i, v, f'{v:.0f}', ha='center', va='bottom')
+
+    ax.set_title(title, pad=20)
+    ax.set_xlabel(x_axis)
+    ax.set_ylabel(y_axis)
+    ax.grid(True, linestyle='--', alpha=0.3)
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+
+    return fig
+
 def main():
     # App layout and navigation
     st.sidebar.title("Navigation")
@@ -450,33 +480,14 @@ def main():
                                                color_discrete_sequence=COLOR_PALETTES[color_scheme])
 
                                 elif graph_type == "Lollipop plot":
-                                    fig, ax = plt.subplots(figsize=(12, 6))
-                                    
-                                    # Get color from palette - ensure it's a string
-                                    color = COLOR_PALETTES[color_scheme][0]
-                                    
-                                    markerline, stemlines, baseline = ax.stem(
-                                        value_counts['Modalité'],
-                                        value_counts['Effectif'],
-                                        linefmt=f'{color}-',  # Specify color for line
-                                        markerfmt=f'o',       # Just marker shape
-                                        basefmt=' ',
-                                        use_line_collection=True
+                                    fig = create_lollipop_plot(
+                                        value_counts=value_counts,
+                                        color_scheme=color_scheme,
+                                        title=title,
+                                        x_axis=x_axis,
+                                        y_axis=y_axis,
+                                        show_values=show_values
                                     )
-                                    
-                                    plt.setp(markerline, color=color, markersize=10)
-                                    plt.setp(stemlines, color=color, linewidth=2)                                 
-                                    if show_values:
-                                        for x, y in zip(value_counts['Modalité'], value_counts['Effectif']):
-                                            ax.text(x, y, f'{y:.0f}', ha='center', va='bottom')
-                                    
-                                    ax.set_title(title, pad=20)
-                                    ax.set_xlabel(x_axis)
-                                    ax.set_ylabel(y_axis)
-                                    ax.grid(True, linestyle='--', alpha=0.3)
-                                    plt.xticks(rotation=45, ha='right')
-                                    plt.tight_layout()
-                                    
                                     st.pyplot(fig)
                                     plt.close()
                                     return
