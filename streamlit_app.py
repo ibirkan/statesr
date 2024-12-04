@@ -451,14 +451,14 @@ def main():
                                 elif graph_type == "Lollipop plot":
                                     fig, ax = plt.subplots(figsize=(12, 6))
                                     markerline, stemlines, baseline = ax.stem(
-                                        data['Groupe'],
-                                        data['Effectif'],
+                                        value_counts['Modalité'],
+                                        value_counts['Effectif'],
                                         linefmt=COLOR_PALETTES[color_scheme][0],
-                                        markerfmt=f'o{COLOR_PALETTES[color_scheme][0]}',
+                                        markerfmt='o',
                                         basefmt=' '
                                     )
-                                    plt.setp(markerline, markersize=10)
-                                    plt.setp(stemlines, linewidth=2)
+                                    plt.setp(markerline, color=COLOR_PALETTES[color_scheme][0], markersize=10)
+                                    plt.setp(stemlines, linewidth=2, color=COLOR_PALETTES[color_scheme][0])
                                     if show_values:
                                         for x, y in zip(data['Groupe'], data['Effectif']):
                                             ax.text(x, y, f'{y:.0f}', ha='center', va='bottom')
