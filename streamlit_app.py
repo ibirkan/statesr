@@ -508,11 +508,11 @@ def main():
                                 plt.close()
                                 return
                             
-                            else:  # Circular packing
-                                fig = px.sunburst(data, path=['Groupe'],
-                                                values='Effectif',
-                                                title=title,
-                                                color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                                else:  # Circular packing
+                                    fig = px.sunburst(data, path=['Groupe'],
+                                                    values='Effectif',
+                                                    title=title,
+                                                    color_discrete_sequence=COLOR_PALETTES[color_scheme])
                     else:  # Pour les variables qualitatives
                         if graph_type == "Bar plot":
                             fig = px.bar(value_counts, x='Modalité', y='Effectif',
