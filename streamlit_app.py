@@ -450,28 +450,35 @@ def main():
                                 
                                 elif graph_type == "Lollipop plot":
                                     fig, ax = plt.subplots(figsize=(12, 6))
+                                    
                                     markerline, stemlines, baseline = ax.stem(
                                         value_counts['Modalité'],
                                         value_counts['Effectif'],
-                                        linefmt=COLOR_PALETTES[color_scheme][0],
-                                        markerfmt='o',
-                                        basefmt=' '
+                                        linefmt='-',  # Use a dash for the line format
+                                        markerfmt='o',  # Use 'o' for the marker format
+                                        basefmt=' ',
+                                        use_line_collection=True
                                     )
+                                    
+                                    # Set color for marker and stem lines separately
                                     plt.setp(markerline, color=COLOR_PALETTES[color_scheme][0], markersize=10)
-                                    plt.setp(stemlines, linewidth=2, color=COLOR_PALETTES[color_scheme][0])
+                                    plt.setp(stemlines, color=COLOR_PALETTES[color_scheme][0], linewidth=2)
+                                    
                                     if show_values:
-                                        for x, y in zip(data['Groupe'], data['Effectif']):
+                                        for x, y in zip(value_counts['Modalité'], value_counts['Effectif']):
                                             ax.text(x, y, f'{y:.0f}', ha='center', va='bottom')
+                                    
                                     ax.set_title(title, pad=20)
                                     ax.set_xlabel(x_axis)
                                     ax.set_ylabel(y_axis)
                                     ax.grid(True, linestyle='--', alpha=0.3)
                                     plt.xticks(rotation=45, ha='right')
                                     plt.tight_layout()
+                                    
                                     st.pyplot(fig)
                                     plt.close()
                                     return
-                                
+                                    
                                 elif graph_type == "Treemap":
                                     fig, ax = plt.subplots(figsize=(12, 8))
                                     values = data['Effectif'].values
