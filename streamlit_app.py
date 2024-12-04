@@ -591,9 +591,12 @@ def main():
                                     font=dict(size=10),
                                     align="left"
                                 )
-             
+
                             if show_values and hasattr(fig.data[0], "text"):
-                                fig.update_traces(texttemplate='%{y:.2f}', textposition='top center')
+                                if isinstance(fig.data[0], go.Bar):
+                                    fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
+                                else:
+                                    fig.update_traces(texttemplate='%{y:.2f}', textposition='top center')
                             
                             st.plotly_chart(fig, use_container_width=True)
             
