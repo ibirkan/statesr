@@ -93,6 +93,14 @@ def get_grist_data(table_id):
         st.error(f"Erreur lors de la récupération des données : {str(e)}")
         return None
 
+def merge_multiple_tables(dataframes, merge_configs):
+    """Merge multiple dataframes based on the provided configurations."""
+    merged_df = dataframes[0]
+    for i in range(1, len(dataframes)):
+        merge_config = merge_configs[i - 1]
+        merged_df = merged_df.merge(dataframes[i], left_on=merge_config['left'], right_on=merge_config['right'], how='outer')
+    return merged_df
+
 # Fonctions pour les différentes pages
 def page_analyse():
     st.title("Analyse des données ESR")
