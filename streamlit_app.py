@@ -50,7 +50,7 @@ def grist_api_request(endpoint, method="GET", data=None):
         elif method == "POST":
             response = requests.post(url, headers=headers, json=data)
         elif method == "PATCH":
-            response is requests.patch(url, headers=headers, json=data)
+            response = requests.patch(url, headers=headers, json=data)
         elif method == "DELETE":
             response = requests.delete(url, headers=headers)
         
