@@ -4,3 +4,5 @@ pandas
 numpy
 plotly.express
 plotly
+matplotlib
+squarify
