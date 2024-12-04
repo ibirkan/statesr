@@ -446,75 +446,66 @@ def main():
                                     y_col = 'Moyenne' if value_type == "Moyenne" else 'Maximum'
                                     data = pd.concat([value_counts, group_stats[y_col]], axis=1)
                                 
-                                if graph_type == "Bar plot":
-                                    fig = px.bar(data, x='Groupe', y='Effectif',
-                                               title=title,
-                                               color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                            if graph_type == "Bar plot":
+                                fig = px.bar(value_counts, x='Modalité', y='Effectif',
+                                           title=title,
+                                           color_discrete_sequence=COLOR_PALETTES[color_scheme])
 
-                                elif graph_type == "Lollipop plot":
-                                    fig = create_lollipop_plot(
-                                        value_counts=value_counts,
-                                        color_scheme=color_scheme,
-                                        title=title,
-                                        x_axis=x_axis,
-                                        y_axis=y_axis,
-                                        show_values=show_values
-                                    )
-                                    st.pyplot(fig)
-                                    plt.close()
-                                    return
-                                
-                                elif graph_type == "Treemap":
-                                    fig, ax = plt.subplots(figsize=(12, 8))
-                                    values = data['Effectif'].values
-                                    norm_values = (values - values.min()) / (values.max() - values.min())
-                                    colors = [COLOR_PALETTES[color_scheme][int(v * (len(COLOR_PALETTES[color_scheme])-1))] 
-                                             for v in norm_values]
-                                    squarify.plot(
-                                        sizes=values,
-                                        label=data['Groupe'],
-                                        color=colors,
-                                        alpha=0.8,
-                                        text_kwargs={'fontsize':10}
-                                    )
-                                    plt.title(title, pad=20)
-                                    plt.axis('off')
-                                    if show_values:
-                                        rects = ax.patches
-                                        for i, rect in enumerate(rects):
-                                            x = rect.get_x() + rect.get_width()/2
-                                            y = rect.get_y() + rect.get_height()/2
-                                            value = values[i]
-                                            plt.text(x, y, f'{value:.0f}', ha='center', va='center')
-                                    plt.tight_layout()
-                                    st.pyplot(fig)
-                                    plt.close()
-                                    return
-                                
-                                else:  # Circular packing (avec squarify au lieu de plotly)
-                                   fig, ax = plt.subplots(figsize=(12, 8))
-                                   values = value_counts['Effectif'].values
-                                   norm_values = (values - values.min()) / (values.max() - values.min())
-                                   colors = [COLOR_PALETTES[color_scheme][int(v * (len(COLOR_PALETTES[color_scheme])-1))] 
-                                             for v in norm_values]
-                                   
-                                   squarify.plot(
-                                       sizes=values,
-                                       label=value_counts['Modalité'],
-                                       color=colors,
-                                       alpha=0.8,
-                                       text_kwargs={'fontsize':10},
-                                       pad=True,
-                                       value=values if show_values else None
-                                   )
-                                   
-                                   plt.title(title, pad=20)
-                                   plt.axis('off')
-                                   plt.tight_layout()
-                                   
-                                   st.pyplot(fig)
-                                   plt.close()
-                                   return
+                            elif graph_type == "Lollipop plot":
+                                fig, ax = plt.subplots(figsize=(12, 6))
+                                color = COLOR_PALETTES[color_scheme][0]
+                                x = value_counts['Modalité'].tolist()
+                                y = value_counts['Effectif'].tolist()
+                            
+                                markerline, stemlines, baseline = ax.stem(
+                                    x, y,
+                                    linefmt='-',
+                                    markerfmt='o',
+                                    basefmt=' '
+                                )
+                            
+                                markerline.set_color(color)
+                                markerline.set_markersize(10)
+                                plt.setp(stemlines, color=color, linewidth=2)
+                            
+                                if show_values:
+                                    for i, v in enumerate(y):
+                                        ax.text(x[i], v, f'{v:.0f}', ha='center', va='bottom')
+                            
+                                ax.set_title(title)
+                                ax.set_xlabel(x_axis)
+                                ax.set_ylabel(y_axis)
+                                plt.xticks(rotation=45, ha='right')
+                                plt.tight_layout()
+                            
+                                st.pyplot(fig)
+                                plt.close()
+                                return
+                            
+                            elif graph_type == "Treemap":
+                               fig, ax = plt.subplots(figsize=(12, 8))
+                               values = value_counts['Effectif'].values
+                               norm_values = (values - values.min()) / (values.max() - values.min())
+                               colors = [COLOR_PALETTES[color_scheme][int(v * (len(COLOR_PALETTES[color_scheme])-1))] 
+                                         for v in norm_values]
+                               
+                               squarify.plot(
+                                   sizes=values,
+                                   label=value_counts['Modalité'],
+                                   color=colors,
+                                   alpha=0.8,
+                                   text_kwargs={'fontsize':10},
+                                   pad=True,
+                                   value=values if show_values else None
+                               )
+                               
+                               plt.title(title, pad=20)
+                               plt.axis('off')
+                               plt.tight_layout()
+                               
+                               st.pyplot(fig)
+                               plt.close()
+                               return
 
                         
                         else:  # Pour les variables qualitatives
@@ -555,33 +546,6 @@ def main():
                                 return
                             
                             elif graph_type == "Treemap":
-                                fig, ax = plt.subplots(figsize=(12, 8))
-                                values = value_counts['Effectif'].values
-                                norm_values = (values - values.min()) / (values.max() - values.min())
-                                colors = [COLOR_PALETTES[color_scheme][int(v * (len(COLOR_PALETTES[color_scheme])-1))] 
-                                         for v in norm_values]
-                                squarify.plot(
-                                    sizes=values,
-                                    label=value_counts['Modalité'],
-                                    color=colors,
-                                    alpha=0.8,
-                                    text_kwargs={'fontsize':10}
-                                )
-                                plt.title(title, pad=20)
-                                plt.axis('off')
-                                if show_values:
-                                    rects = ax.patches
-                                    for i, rect in enumerate(rects):
-                                        x = rect.get_x() + rect.get_width()/2
-                                        y = rect.get_y() + rect.get_height()/2
-                                        value = values[i]
-                                        plt.text(x, y, f'{value:.0f}', ha='center', va='center')
-                                plt.tight_layout()
-                                st.pyplot(fig)
-                                plt.close()
-                                return
-
-                            else:  # Circular packing (avec squarify au lieu de plotly)
                                fig, ax = plt.subplots(figsize=(12, 8))
                                values = value_counts['Effectif'].values
                                norm_values = (values - values.min()) / (values.max() - values.min())
@@ -605,7 +569,6 @@ def main():
                                st.pyplot(fig)
                                plt.close()
                                return
-
                         
                         # Mise à jour du layout pour les graphiques Plotly
                         if fig is not None:
