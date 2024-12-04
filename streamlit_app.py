@@ -92,13 +92,25 @@ def get_grist_data(table_id):
     except Exception as e:
         st.error(f"Erreur lors de la récupération des données : {str(e)}")
         return None
-
 def merge_multiple_tables(dataframes, merge_configs):
     """Merge multiple dataframes based on the provided configurations."""
     merged_df = dataframes[0]
     for i in range(1, len(dataframes)):
         merge_config = merge_configs[i - 1]
+        # Print data types for debugging
+        print(f"Merging on columns: {merge_config['left']} and {merge_config['right']}")
+        print(f"Data types before merge: {merged_df[merge_config['left']].dtype}, {dataframes[i][merge_config['right']].dtype}")
+        # Convert data types if necessary
+        if merged_df[merge_config['left']].dtype != dataframes[i][merge_config['right']].dtype:
+            if pd.api.types.is_numeric_dtype(merged_df[merge_config['left']]) and pd.api.types.is_numeric_dtype(dataframes[i][merge_config['right']]):
+                merged_df[merge_config['left']] = merged_df[merge_config['left']].astype(float)
+                dataframes[i][merge_config['right']] = dataframes[i][merge_config['right']].astype(float)
+            else:
+                merged_df[merge_config['left']] = merged_df[merge_config['left']].astype(str)
+                dataframes[i][merge_config['right']] = dataframes[i][merge_config['right']].astype(str)
         merged_df = merged_df.merge(dataframes[i], left_on=merge_config['left'], right_on=merge_config['right'], how='outer')
+        # Print data types after merge for debugging
+        print(f"Data types after merge: {merged_df[merge_config['left']].dtype}, {merged_df[merge_config['right']].dtype}")
     return merged_df
 
 # Fonctions pour les différentes pages
