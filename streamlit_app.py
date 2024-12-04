@@ -487,8 +487,10 @@ def main():
                                 fig = go.Figure()
                                 fig.add_trace(go.Scatter(x=value_counts['Modalité'],
                                                          y=value_counts['Effectif'],
-                                                         mode='markers+lines',
-                                                         line=dict(color=COLOR_PALETTES[color_scheme][0])))
+                                                         mode='markers+lines+text',
+                                                         line=dict(color=COLOR_PALETTES[color_scheme][0]),
+                                                         text=value_counts['Effectif'],
+                                                         textposition='top center'))
                             elif graph_type == "Doughnut":
                                 fig = px.pie(value_counts, names='Modalité',
                                              values='Effectif',
