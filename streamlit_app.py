@@ -578,7 +578,7 @@ def main():
                                return
                         
                         # Mise à jour du layout pour les graphiques Plotly
-                        if fig is not None:
+                        if fig is not None and isinstance(fig, go.Figure):
                             fig.update_layout(
                                 height=600,
                                 margin=dict(t=100, b=100),
@@ -600,7 +600,7 @@ def main():
                                     font=dict(size=10),
                                     align="left"
                                 )
-
+                        
                             if show_values and hasattr(fig.data[0], "text"):
                                 if isinstance(fig.data[0], go.Bar):
                                     fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
