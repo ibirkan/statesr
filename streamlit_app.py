@@ -479,148 +479,144 @@ def main():
                                 
                                 elif graph_type == "Treemap":
                                     fig, ax = plt.subplots(figsize=(12, 8))
-                                    
+                                
                                     values = data['Effectif'].values
                                     norm_values = (values - values.min()) / (values.max() - values.min())
                                     colors = [COLOR_PALETTES[color_scheme][int(v * (len(COLOR_PALETTES[color_scheme])-1))] 
-                                            for v in norm_values]
-                                    
+                                              for v in norm_values]
+                                
                                     squarify.plot(
                                         sizes=values,
                                         label=data['Groupe'],
                                         color=colors,
                                         alpha=0.8,
-                                        text_kwargs={'fontsize':10}
+                                        text_kwargs={'fontsize': 10}
                                     )
-                                    
+                                
                                     plt.title(title, pad=20)
                                     plt.axis('off')
-                                    
+                                
                                     if show_values:
                                         rects = ax.patches
                                         for i, rect in enumerate(rects):
-                                            x = rect.get_x() + rect.get_width()/2
-                                            y = rect.get_y() + rect.get_height()/2
+                                            x = rect.get_x() + rect.get_width() / 2
+                                            y = rect.get_y() + rect.get_height() / 2
                                             value = values[i]
                                             plt.text(x, y, f'{value:.0f}', ha='center', va='center')
-                                            plt.tight_layout()
-                                st.pyplot(fig)
-                                plt.close()
-                                return
-                            
-                                    else:  # Circular packing
-                                        fig = px.sunburst(data, path=['Groupe'],
-                                                        values='Effectif',
-                                                        title=title,
-                                                        color_discrete_sequence=COLOR_PALETTES[color_scheme])
-                    else:  # Pour les variables qualitatives
-                        if graph_type == "Bar plot":
-                            fig = px.bar(value_counts, x='Modalité', y='Effectif',
-                                       title=title,
-                                       color_discrete_sequence=COLOR_PALETTES[color_scheme])
-                        
-                        elif graph_type == "Lollipop plot":
-                            fig, ax = plt.subplots(figsize=(12, 6))
-                            
-                            markerline, stemlines, baseline = ax.stem(
-                                value_counts['Modalité'],
-                                value_counts['Effectif'],
-                                linefmt=COLOR_PALETTES[color_scheme][0],
-                                markerfmt=f'o{COLOR_PALETTES[color_scheme][0]}',
-                                basefmt=' '
-                            )
-                            
-                            plt.setp(markerline, markersize=10)
-                            plt.setp(stemlines, linewidth=2)
-                            
-                            if show_values:
-                                for x, y in zip(value_counts['Modalité'], value_counts['Effectif']):
-                                    ax.text(x, y, f'{y:.0f}', ha='center', va='bottom')
-                            
-                            ax.set_title(title, pad=20)
-                            ax.set_xlabel(x_axis)
-                            ax.set_ylabel(y_axis)
-                            ax.grid(True, linestyle='--', alpha=0.3)
-                            plt.xticks(rotation=45, ha='right')
-                            plt.tight_layout()
-                            
-                            st.pyplot(fig)
-                            plt.close()
-                            return
-                        
-                        elif graph_type == "Treemap":
-                            fig, ax = plt.subplots(figsize=(12, 8))
-                            
-                            values = value_counts['Effectif'].values
-                            norm_values = (values - values.min()) / (values.max() - values.min())
-                            colors = [COLOR_PALETTES[color_scheme][int(v * (len(COLOR_PALETTES[color_scheme])-1))] 
-                                    for v in norm_values]
-                            
-                            squarify.plot(
-                                sizes=values,
-                                label=value_counts['Modalité'],
-                                color=colors,
-                                alpha=0.8,
-                                text_kwargs={'fontsize':10}
-                            )
-                            
-                            plt.title(title, pad=20)
-                            plt.axis('off')
-                            
-                            if show_values:
-                                rects = ax.patches
-                                for i, rect in enumerate(rects):
-                                    x = rect.get_x() + rect.get_width()/2
-                                    y = rect.get_y() + rect.get_height()/2
-                                    value = values[i]
-                                    plt.text(x, y, f'{value:.0f}', ha='center', va='center')
-                            plt.tight_layout()
-                            st.pyplot(fig)
-                            plt.close()
-                            return
-                        
-                        else:  # Circular packing
-                            fig = px.sunburst(value_counts, path=['Modalité'],
-                                            values='Effectif',
-                                            title=title,
-                                            color_discrete_sequence=COLOR_PALETTES[color_scheme])
-                
-                # Mise à jour du layout pour les graphiques Plotly
-                if fig is not None:
-                    fig.update_layout(
-                        height=600,
-                        margin=dict(t=100, b=100),
-                        showlegend=True,
-                        plot_bgcolor='white',
-                        paper_bgcolor='white',
-                        xaxis_title=x_axis,
-                        yaxis_title=y_axis
-                    )
-                    
-                    # Ajout de la source si spécifiée
-                    if source:
-                        fig.add_annotation(
-                            text=f"Source: {source}",
-                            xref="paper",
-                            yref="paper",
-                            x=0,
-                            y=-0.15,
-                            showarrow=False,
-                            font=dict(size=10),
-                            align="left"
-                        )
-                    
-                    # Affichage des valeurs pour les graphiques Plotly si demandé
-                    if show_values and hasattr(fig.data[0], "text"):
-                        fig.update_traces(texttemplate='%{y:.2f}', textposition='top center')
-                    
-                    # Affichage du graphique Plotly
-                    st.plotly_chart(fig, use_container_width=True)
-            
-            except Exception as e:
-                st.error(f"Erreur lors de la génération du graphique : {str(e)}")
-    else:
-        st.warning("Données non disponibles ou vides.")
+                                    plt.tight_layout()
+                                    st.pyplot(fig)
+                                    plt.close()
+                                    return
+                                
+                                else:  # Circular packing
+                                    fig = px.sunburst(data, path=['Groupe'],
+                                                      values='Effectif',
+                                                      title=title,
+                                                      color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                                
+                                # Pour les variables qualitatives
+                                if graph_type == "Bar plot":
+                                    fig = px.bar(value_counts, x='Modalité', y='Effectif',
+                                                 title=title,
+                                                 color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                                
+                                elif graph_type == "Lollipop plot":
+                                    fig, ax = plt.subplots(figsize=(12, 6))
+                                
+                                    markerline, stemlines, baseline = ax.stem(
+                                        value_counts['Modalité'],
+                                        value_counts['Effectif'],
+                                        linefmt=COLOR_PALETTES[color_scheme][0],
+                                        markerfmt=f'o{COLOR_PALETTES[color_scheme][0]}',
+                                        basefmt=' '
+                                    )
+                                
+                                    plt.setp(markerline, markersize=10)
+                                    plt.setp(stemlines, linewidth=2)
+                                
+                                    if show_values:
+                                        for x, y in zip(value_counts['Modalité'], value_counts['Effectif']):
+                                            ax.text(x, y, f'{y:.0f}', ha='center', va='bottom')
+                                
+                                    ax.set_title(title, pad=20)
+                                    ax.set_xlabel(x_axis)
+                                    ax.set_ylabel(y_axis)
+                                    ax.grid(True, linestyle='--', alpha=0.3)
+                                    plt.xticks(rotation=45, ha='right')
+                                    plt.tight_layout()
+                                
+                                    st.pyplot(fig)
+                                    plt.close()
+                                    return
+                                
+                                elif graph_type == "Treemap":
+                                    fig, ax = plt.subplots(figsize=(12, 8))
+                                
+                                    values = value_counts['Effectif'].values
+                                    norm_values = (values - values.min()) / (values.max() - values.min())
+                                    colors = [COLOR_PALETTES[color_scheme][int(v * (len(COLOR_PALETTES[color_scheme]) - 1))]
+                                              for v in norm_values]
+                                
+                                    squarify.plot(
+                                        sizes=values,
+                                        label=value_counts['Modalité'],
+                                        color=colors,
+                                        alpha=0.8,
+                                        text_kwargs={'fontsize': 10}
+                                    )
+                                
+                                    plt.title(title, pad=20)
+                                    plt.axis('off')
+                                
+                                    if show_values:
+                                        rects = ax.patches
+                                        for i, rect in enumerate(rects):
+                                            x = rect.get_x() + rect.get_width() / 2
+                                            y = rect.get_y() + rect.get_height() / 2
+                                            value = values[i]
+                                            plt.text(x, y, f'{value:.0f}', ha='center', va='center')
+                                    plt.tight_layout()
+                                    st.pyplot(fig)
+                                    plt.close()
+                                    return
+                                
+                                else:  # Circular packing
+                                    fig = px.sunburst(value_counts, path=['Modalité'],
+                                                      values='Effectif',
+                                                      title=title,
+                                                      color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                                
+                                # Mise à jour du layout pour les graphiques Plotly
+                                if fig is not None:
+                                    fig.update_layout(
+                                        height=600,
+                                        margin=dict(t=100, b=100),
+                                        showlegend=True,
+                                        plot_bgcolor='white',
+                                        paper_bgcolor='white',
+                                        xaxis_title=x_axis,
+                                        yaxis_title=y_axis
+                                    )
+                                
+                                    # Ajout de la source si spécifiée
+                                    if source:
+                                        fig.add_annotation(
+                                            text=f"Source: {source}",
+                                            xref="paper",
+                                            yref="paper",
+                                            x=0,
+                                            y=-0.15,
+                                            showarrow=False,
+                                            font=dict(size=10),
+                                            align="left"
+                                        )
+                                
+                                    # Affichage des valeurs pour les graphiques Plotly si demandé
+                                    if show_values and hasattr(fig.data[0], "text"):
+                                        fig.update_traces(texttemplate='%{y:.2f}', textposition='top center')
+                                
+                                    # Affichage du graphique Plotly
+                                    st.plotly_chart(fig, use_container_width=True)
 
                         
         # Analyse bivariée
