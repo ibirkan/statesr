@@ -451,19 +451,21 @@ def main():
 
                                 elif graph_type == "Lollipop plot":
                                     fig, ax = plt.subplots(figsize=(12, 6))
+                                    
+                                    # Get color from palette - ensure it's a string
+                                    color = COLOR_PALETTES[color_scheme][0]
+                                    
                                     markerline, stemlines, baseline = ax.stem(
                                         value_counts['Modalité'],
                                         value_counts['Effectif'],
-                                        linefmt='-',  # Use a dash for the line format
-                                        markerfmt='o',  # Use 'o' for the marker format
+                                        linefmt=f'{color}-',  # Specify color for line
+                                        markerfmt=f'o',       # Just marker shape
                                         basefmt=' ',
                                         use_line_collection=True
                                     )
                                     
-                                    # Set color for marker and stem lines separately
-                                    plt.setp(markerline, color=COLOR_PALETTES[color_scheme][0], markersize=10)
-                                    plt.setp(stemlines, color=COLOR_PALETTES[color_scheme][0], linewidth=2)
-                                    
+                                    plt.setp(markerline, color=color, markersize=10)
+                                    plt.setp(stemlines, color=color, linewidth=2)                                 
                                     if show_values:
                                         for x, y in zip(value_counts['Modalité'], value_counts['Effectif']):
                                             ax.text(x, y, f'{y:.0f}', ha='center', va='bottom')
