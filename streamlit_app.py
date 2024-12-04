@@ -618,7 +618,7 @@ def main():
                                     # Affichage du graphique Plotly
                                     st.plotly_chart(fig, use_container_width=True)
 
-    # Analyse bivariée
+# Analyse bivariée
 elif analysis_type == "Analyse bivariée":
     # Sélection des variables
     var_x = st.selectbox("Variable X (axe horizontal)", st.session_state.merged_data.columns)
@@ -876,6 +876,3 @@ elif analysis_type == "Analyse bivariée":
         except Exception as e:
             st.error(f"Erreur lors de la visualisation : {str(e)}")
 
-# Exécution de l'application
-if __name__ == "__main__":
-    main()
