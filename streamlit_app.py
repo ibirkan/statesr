@@ -580,13 +580,33 @@ def main():
                                 st.pyplot(fig)
                                 plt.close()
                                 return
-                            
-                            else:  # Circular packing
-                                fig = px.sunburst(value_counts, path=['Modalité'],
-                                               values='Effectif',
-                                               title=title,
-                                               color_discrete_sequence=COLOR_PALETTES[color_scheme])
-            
+
+                            else:  # Circular packing (avec squarify au lieu de plotly)
+                               fig, ax = plt.subplots(figsize=(12, 8))
+                               values = value_counts['Effectif'].values
+                               norm_values = (values - values.min()) / (values.max() - values.min())
+                               colors = [COLOR_PALETTES[color_scheme][int(v * (len(COLOR_PALETTES[color_scheme])-1))] 
+                                         for v in norm_values]
+                               
+                               squarify.plot(
+                                   sizes=values,
+                                   label=value_counts['Modalité'],
+                                   color=colors,
+                                   alpha=0.8,
+                                   text_kwargs={'fontsize':10},
+                                   pad=True,
+                                   value=values if show_values else None
+                               )
+                               
+                               plt.title(title, pad=20)
+                               plt.axis('off')
+                               plt.tight_layout()
+                               
+                               st.pyplot(fig)
+                               plt.close()
+                               return
+
+                        
                         # Mise à jour du layout pour les graphiques Plotly
                         if fig is not None:
                             fig.update_layout(
