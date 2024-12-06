@@ -1047,7 +1047,7 @@ def main():
             
                 except Exception as e:
                     st.error(f"Erreur lors de la génération du graphique : {str(e)}")
-
+    
     # Analyse bivariée
     elif analysis_type == "Analyse bivariée":
         try:
@@ -1358,6 +1358,9 @@ def main():
                 
                 st.pyplot(fig)
                 plt.close()
+    
+        except Exception as e:
+            st.error(f"Une erreur s'est produite : {str(e)}")
 
 # Exécution de l'application
 if __name__ == "__main__":
