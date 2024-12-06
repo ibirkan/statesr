@@ -468,62 +468,123 @@ def analyze_quantitative_bivariate(df, var_x, var_y, groupby_col=None, agg_metho
     
     return results_df, response_rate_x, response_rate_y
     
-def plot_quantitative_bivariate(df, var_x, var_y, color, plot_options, groupby_col=None, agg_method=None):
+def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot_options, groupby_col=None, agg_method=None):
     """
-    Création d'un scatter plot pour l'analyse quantitative avec régression.
-    Gère les données agrégées si spécifiées.
-    
-    Parameters:
-        df: DataFrame avec les données à visualiser
-        var_x, var_y: noms des variables à analyser
-        color: couleur du graphique
-        plot_options: dictionnaire des options de personnalisation
-        groupby_col: colonne utilisée pour l'agrégation (si applicable)
-        agg_method: méthode d'agrégation utilisée (si applicable)
+    Création d'un scatter plot interactif avec Plotly pour l'analyse quantitative.
+    Inclut des info-bulles et une ligne de régression.
     """
-    fig, ax = plt.subplots(figsize=(12, 8))
-    
-    # Scatter plot
-    ax.scatter(df[var_x], df[var_y], alpha=0.5, color=color, s=50)
-    
-    # Régression linéaire
+    # Calcul de la régression
     z = np.polyfit(df[var_x], df[var_y], 1)
     p = np.poly1d(z)
+    
+    # Création du scatter plot
+    fig = go.Figure()
+    
+    # Ajout du nuage de points avec info-bulles personnalisées
+    hover_text = []
+    for idx, row in df.iterrows():
+        if groupby_col:
+            hover_text.append(
+                f"<b>{groupby_col}</b>: {row[groupby_col]}<br>" +
+                f"<b>{var_x}</b>: {row[var_x]:,.2f}<br>" +
+                f"<b>{var_y}</b>: {row[var_y]:,.2f}"
+            )
+        else:
+            hover_text.append(
+                f"<b>{var_x}</b>: {row[var_x]:,.2f}<br>" +
+                f"<b>{var_y}</b>: {row[var_y]:,.2f}"
+            )
+    
+    # Ajout du nuage de points
+    fig.add_trace(go.Scatter(
+        x=df[var_x],
+        y=df[var_y],
+        mode='markers',
+        name='Observations',
+        marker=dict(
+            color=color_scheme[0],
+            size=10,
+            opacity=0.7
+        ),
+        hovertext=hover_text,
+        hoverinfo='text',
+        hoverlabel=dict(
+            bgcolor='white',
+            font_size=12,
+            font_family="Arial"
+        )
+    ))
+    
+    # Ajout de la ligne de régression
     x_range = np.linspace(df[var_x].min(), df[var_x].max(), 100)
-    ax.plot(x_range, p(x_range), "--", color=color, alpha=0.8, 
-            label=f'y = {z[0]:.2f}x + {z[1]:.2f}')
+    fig.add_trace(go.Scatter(
+        x=x_range,
+        y=p(x_range),
+        mode='lines',
+        name=f'Régression (y = {z[0]:.2f}x + {z[1]:.2f})',
+        line=dict(
+            color=color_scheme[0],
+            dash='dash'
+        )
+    ))
     
-    # Configuration du graphique
-    plt.title(plot_options['title'], pad=20)
-    plt.xlabel(plot_options['x_label'])
-    plt.ylabel(plot_options['y_label'])
-    plt.grid(True, alpha=0.3)
-    
-    # Ajout de la légende avec l'équation de régression
-    plt.legend(loc='upper left', bbox_to_anchor=(1.05, 1))
-    
-    # Information sur l'agrégation si applicable
+    # Configuration du layout
+    title = plot_options['title']
     if groupby_col and agg_method:
-        agg_text = f"Données agrégées par {groupby_col}\nMéthode : {'Somme' if agg_method == 'sum' else 'Moyenne'}"
-        plt.figtext(1.05, 0.9, agg_text, fontsize=8, ha='left', va='top')
-        
-        # Ajout du nombre d'observations
-        n_obs = len(df)
-        plt.figtext(1.05, 0.85, f"n = {n_obs} observations", fontsize=8, ha='left', va='top')
+        title += f"<br><sup>Données agrégées par {groupby_col} ({agg_method})</sup>"
     
-    # Ajout de la source si spécifiée
+    fig.update_layout(
+        title=dict(
+            text=title,
+            x=0.5,
+            xanchor='center'
+        ),
+        xaxis_title=plot_options['x_label'],
+        yaxis_title=plot_options['y_label'],
+        hovermode='closest',
+        plot_bgcolor='white',
+        width=900,
+        height=600,
+        margin=dict(t=100, b=100),
+        showlegend=True,
+        legend=dict(
+            yanchor="top",
+            y=0.99,
+            xanchor="left",
+            x=0.01
+        )
+    )
+    
+    # Ajout de la grille
+    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
+    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
+    
+    # Ajout de la source et de la note si spécifiées
+    annotations = []
     if plot_options['source']:
-        plt.figtext(1.05, 0.1, f"Source : {plot_options['source']}", 
-                   ha='left', fontsize=8)
+        annotations.append(dict(
+            text=f"Source : {plot_options['source']}",
+            x=0,
+            y=-0.15,
+            xref="paper",
+            yref="paper",
+            showarrow=False,
+            font=dict(size=10)
+        ))
     
-    # Ajout de la note si spécifiée
     if plot_options['note']:
-        plt.figtext(1.05, 0.05, f"Note : {plot_options['note']}", 
-                   ha='left', fontsize=8)
+        annotations.append(dict(
+            text=f"Note : {plot_options['note']}",
+            x=0,
+            y=-0.2,
+            xref="paper",
+            yref="paper",
+            showarrow=False,
+            font=dict(size=10)
+        ))
     
-    # Ajustement de la mise en page pour accommoder les annotations
-    plt.tight_layout()
-    plt.subplots_adjust(right=0.85)
+    if annotations:
+        fig.update_layout(annotations=annotations)
     
     return fig
 
@@ -1352,20 +1413,19 @@ def main():
                     'show_values': True
                 }
                 
-                # Création et affichage du graphique avec les données agrégées si nécessaire
-                fig = plot_quantitative_bivariate(
-                    agg_data,  # Utilisation des données potentiellement agrégées
+                # Création et affichage du graphique avec Plotly
+                fig = plot_quantitative_bivariate_interactive(
+                    agg_data,
                     var_x,
                     var_y,
-                    COLOR_PALETTES[color_scheme][0],
+                    COLOR_PALETTES[color_scheme],
                     plot_options,
                     groupby_col if (has_duplicates and do_aggregate) else None,
                     agg_method if (has_duplicates and do_aggregate) else None
                 )
                 
-                st.pyplot(fig)
-                plt.close()
-    
+                st.plotly_chart(fig, use_container_width=True)
+        
         except Exception as e:
             st.error(f"Une erreur s'est produite : {str(e)}")
 
