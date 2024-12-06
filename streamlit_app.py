@@ -988,53 +988,53 @@ def main():
                 st.pyplot(fig)
                 plt.close()
 
-    # Analyse pour une variable qualitative et une quantitative
-    elif (is_x_numeric and not is_y_numeric) or (not is_x_numeric and is_y_numeric):
-        st.write("### Analyse Bivariée - Variable Qualitative et Quantitative")
+            # Analyse pour une variable qualitative et une quantitative
+            elif (is_x_numeric and not is_y_numeric) or (not is_x_numeric and is_y_numeric):
+                st.write("### Analyse Bivariée - Variable Qualitative et Quantitative")
+                
+                # Réorganisation des variables (qualitative en X, quantitative en Y)
+                qual_var = var_y if is_x_numeric else var_x
+                quant_var = var_x if is_x_numeric else var_y
+                
+                if qual_var != var_x:
+                    st.info("Les variables ont été réorganisées : variable qualitative en X et quantitative en Y")
         
-        # Réorganisation des variables (qualitative en X, quantitative en Y)
-        qual_var = var_y if is_x_numeric else var_x
-        quant_var = var_x if is_x_numeric else var_y
+                # Affichage des statistiques descriptives
+                stats_df = analyze_mixed_bivariate(st.session_state.merged_data, qual_var, quant_var)
+                st.write("Statistiques descriptives par modalité")
+                st.dataframe(stats_df)
         
-        if qual_var != var_x:
-            st.info("Les variables ont été réorganisées : variable qualitative en X et quantitative en Y")
+                # Création et affichage du box plot
+                fig = plot_mixed_bivariate(
+                    st.session_state.merged_data,
+                    qual_var,
+                    quant_var,
+                    COLOR_PALETTES[color_scheme]
+                )
+                st.plotly_chart(fig)
         
-        # Affichage des statistiques descriptives
-        stats_df = analyze_mixed_bivariate(st.session_state.merged_data, qual_var, quant_var)
-        st.write("Statistiques descriptives par modalité")
-        st.dataframe(stats_df)
-        
-        # Création et affichage du box plot
-        fig = plot_mixed_bivariate(
-            st.session_state.merged_data,
-            qual_var,
-            quant_var,
-            COLOR_PALETTES[color_scheme]
-        )
-        st.plotly_chart(fig)
-        
-    # Analyse pour deux variables quantitatives
-    else:
-        st.write("### Analyse Bivariée - Variables Quantitatives")
-        
-        # Affichage des statistiques de corrélation
-        corr_stats = analyze_quantitative_bivariate(
-            st.session_state.merged_data,
-            var_x,
-            var_y
-        )
-        st.write("Statistiques de corrélation")
-        st.dataframe(corr_stats)
-        
-        # Création et affichage du scatter plot
-        fig = plot_quantitative_bivariate(
-            st.session_state.merged_data,
-            var_x,
-            var_y,
-            COLOR_PALETTES[color_scheme][0]
-        )
-        st.pyplot(fig)
-        plt.close()
+            # Analyse pour deux variables quantitatives
+            else:
+                st.write("### Analyse Bivariée - Variables Quantitatives")
+                
+                # Affichage des statistiques de corrélation
+                corr_stats = analyze_quantitative_bivariate(
+                    st.session_state.merged_data,
+                    var_x,
+                    var_y
+                )
+                st.write("Statistiques de corrélation")
+                st.dataframe(corr_stats)
+                
+                # Création et affichage du scatter plot
+                fig = plot_quantitative_bivariate(
+                    st.session_state.merged_data,
+                    var_x,
+                    var_y,
+                    COLOR_PALETTES[color_scheme][0]
+                )
+                st.pyplot(fig)
+                plt.close()
 
             
         except Exception as e:
