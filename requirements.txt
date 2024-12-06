@@ -8,3 +8,4 @@ matplotlib
 squarify
 seaborn
 numpy
+stats
