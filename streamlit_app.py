@@ -114,24 +114,48 @@ def merge_multiple_tables(dataframes, merge_configs):
         print(f"Data types after merge: {merged_df[merge_config['left']].dtype}, {merged_df[merge_config['right']].dtype}")
     return merged_df
 
-def analyze_qualitative_bivariate(df, var_x, var_y):
+def analyze_qualitative_bivariate(df, var_x, var_y, exclude_missing=True):
     """
     Analyse bivariée pour deux variables qualitatives.
-    Retourne un tableau croisé avec effectifs et pourcentages en ligne.
+    Parameters:
+        df: DataFrame source
+        var_x: Variable en ligne
+        var_y: Variable en colonne
+        exclude_missing: Si True, exclut les non-réponses
     """
+    # Copie du DataFrame pour éviter les modifications sur l'original
+    data = df.copy()
+    
+    # Gestion des non-réponses
+    if exclude_missing:
+        # Liste des valeurs considérées comme non-réponses
+        missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr']
+        
+        # Filtrage des non-réponses pour les deux variables
+        mask_x = ~data[var_x].isin(missing_values)
+        mask_y = ~data[var_y].isin(missing_values)
+        data = data[mask_x & mask_y]
+        
+        # Calcul du taux de réponse
+        response_rate_x = (mask_x.sum() / len(df)) * 100
+        response_rate_y = (mask_y.sum() / len(df)) * 100
+        
+        response_stats = {
+            f"{var_x}": f"{response_rate_x:.1f}%",
+            f"{var_y}": f"{response_rate_y:.1f}%"
+        }
+    
     # Création du tableau croisé avec effectifs
-    crosstab_n = pd.crosstab(df[var_x], df[var_y])
+    crosstab_n = pd.crosstab(data[var_x], data[var_y])
     
     # Calcul des pourcentages en ligne
-    crosstab_pct = pd.crosstab(df[var_x], df[var_y], normalize='index') * 100
+    crosstab_pct = pd.crosstab(data[var_x], data[var_y], normalize='index') * 100
     
     # Création du tableau combiné
     combined_table = pd.DataFrame(index=crosstab_n.index, columns=crosstab_n.columns)
     
-    # Ajout des totaux en ligne
+    # Ajout des totaux en ligne et en colonne
     row_totals = crosstab_n.sum(axis=1)
-    
-    # Ajout des totaux en colonne
     col_totals = crosstab_n.sum(axis=0)
     
     # Remplissage du tableau principal
@@ -145,33 +169,42 @@ def analyze_qualitative_bivariate(df, var_x, var_y):
     combined_table.loc['Total'] = [f"100% ({n})" for n in col_totals]
     combined_table['Total'] = [f"100% ({n})" for n in row_totals] + [f"100% ({crosstab_n.values.sum()})"]
     
+    if exclude_missing:
+        return combined_table, response_stats
     return combined_table
 
-def plot_qualitative_bivariate(df, var_x, var_y, plot_type, color_palette):
+def plot_qualitative_bivariate(df, var_x, var_y, plot_type, color_palette, plot_options):
     """
     Création des visualisations pour l'analyse bivariée qualitative.
     """
-    # Données de base pour les graphiques (sans les totaux)
-    crosstab_n = pd.crosstab(df[var_x], df[var_y])
+    # Filtrage des non-réponses
+    data = df.copy()
+    missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr']
+    mask_x = ~data[var_x].isin(missing_values)
+    mask_y = ~data[var_y].isin(missing_values)
+    data = data[mask_x & mask_y]
+    
+    # Données de base pour les graphiques
+    crosstab_n = pd.crosstab(data[var_x], data[var_y])
     
     if plot_type == "Grouped Bar Chart":
         fig, ax = plt.subplots(figsize=(12, 6))
         crosstab_n.plot(kind='bar', ax=ax, color=color_palette)
-        plt.title(f"Graphique groupé : {var_x} par {var_y}")
-        plt.xlabel(var_x)
-        plt.ylabel("Effectifs")
+        plt.title(plot_options['title'])
+        plt.xlabel(plot_options['x_label'])
+        plt.ylabel(plot_options['y_label'])
         plt.legend(title=var_y, bbox_to_anchor=(1.05, 1), loc='upper left')
-        plt.xticks(rotation=45)
+        plt.xticks(rotation=45, ha='right')
         
     elif plot_type == "Stacked Bar Chart":
         fig, ax = plt.subplots(figsize=(12, 6))
-        crosstab_pct = pd.crosstab(df[var_x], df[var_y], normalize='index') * 100
+        crosstab_pct = pd.crosstab(data[var_x], data[var_y], normalize='index') * 100
         crosstab_pct.plot(kind='bar', stacked=True, ax=ax, color=color_palette)
-        plt.title(f"Graphique empilé : {var_x} par {var_y}")
-        plt.xlabel(var_x)
+        plt.title(plot_options['title'])
+        plt.xlabel(plot_options['x_label'])
         plt.ylabel("Pourcentage")
         plt.legend(title=var_y, bbox_to_anchor=(1.05, 1), loc='upper left')
-        plt.xticks(rotation=45)
+        plt.xticks(rotation=45, ha='right')
         
     elif plot_type == "Mosaic Plot":
         fig, ax = plt.subplots(figsize=(12, 6))
@@ -189,7 +222,8 @@ def plot_qualitative_bivariate(df, var_x, var_y, plot_type, color_palette):
                                    edgecolor='white')
                 ax.add_patch(rect)
                 
-                if width * height > 0.02:
+                # Affichage des valeurs si demandé
+                if plot_options['show_values'] and width * height > 0.02:
                     plt.text(x + width/2, y + height/2, 
                             f'{val*100:.1f}%',
                             ha='center', va='center')
@@ -198,7 +232,7 @@ def plot_qualitative_bivariate(df, var_x, var_y, plot_type, color_palette):
             
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
-        plt.title(f"Diagramme en mosaïque : {var_x} par {var_y}")
+        plt.title(plot_options['title'])
         
         legend_elements = [plt.Rectangle((0,0),1,1, facecolor=color_palette[i % len(color_palette)])
                          for i in range(len(crosstab_n.columns))]
@@ -207,6 +241,16 @@ def plot_qualitative_bivariate(df, var_x, var_y, plot_type, color_palette):
         
         ax.set_xticks([])
         ax.set_yticks([])
+    
+    # Ajout de la source si spécifiée
+    if plot_options['source']:
+        plt.figtext(0.01, -0.1, f"Source : {plot_options['source']}", 
+                   ha='left', fontsize=8)
+    
+    # Ajout des notes de lecture si spécifiées
+    if plot_options['note']:
+        plt.figtext(0.01, -0.15, f"Note : {plot_options['note']}", 
+                   ha='left', fontsize=8)
     
     plt.tight_layout()
     return fig
@@ -829,35 +873,30 @@ def main():
 
     # Analyse bivariée
     elif analysis_type == "Analyse bivariée":
-        # Sélection des variables
-        var_x = st.selectbox("Variable X", st.session_state.merged_data.columns, key='var_x_select')
-        var_y = st.selectbox("Variable Y", 
-                            [col for col in st.session_state.merged_data.columns if col != var_x],
-                            key='var_y_select')
-        
-        # Détection des types de variables
-        is_x_numeric = pd.api.types.is_numeric_dtype(st.session_state.merged_data[var_x])
-        is_y_numeric = pd.api.types.is_numeric_dtype(st.session_state.merged_data[var_y])
-        
-        # Analyse pour deux variables qualitatives
         if not is_x_numeric and not is_y_numeric:
             st.write("### Analyse Bivariée - Variables Qualitatives")
             
-            # Option d'inversion des variables avec une clé unique
+            # Option d'inversion des variables
             invert_vars = st.checkbox("Inverser les variables X et Y", key='invert_vars_qual')
             
-            # Variables actuelles en tenant compte de l'inversion
+            # Variables actuelles
             current_x = var_y if invert_vars else var_x
             current_y = var_x if invert_vars else var_y
             
-            # Affichage du tableau croisé
-            combined_table = analyze_qualitative_bivariate(
-                st.session_state.merged_data, current_x, current_y
+            # Affichage du tableau croisé avec les taux de réponse
+            combined_table, response_stats = analyze_qualitative_bivariate(
+                st.session_state.merged_data, current_x, current_y, exclude_missing=True
             )
+            
+            # Affichage des taux de réponse
+            st.write("Taux de réponse :")
+            for var, rate in response_stats.items():
+                st.write(f"- {var} : {rate}")
+            
             st.write("Tableau croisé (Pourcentages en ligne et effectifs)")
             st.dataframe(combined_table)
             
-            # Configuration de la visualisation avec des clés uniques
+            # Configuration de la visualisation
             st.write("### Configuration de la visualisation")
             col1, col2 = st.columns(2)
             
@@ -875,13 +914,43 @@ def main():
                     key='color_scheme_qual'
                 )
             
+            # Options avancées
+            with st.expander("Options avancées"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    title = st.text_input("Titre du graphique", 
+                                        f"Distribution de {current_x} par {current_y}",
+                                        key='title_qual')
+                    x_label = st.text_input("Titre de l'axe X", current_x,
+                                          key='x_label_qual')
+                    y_label = st.text_input("Titre de l'axe Y", "Valeur",
+                                          key='y_label_qual')
+                with col2:
+                    source = st.text_input("Source des données", "",
+                                         key='source_qual')
+                    note = st.text_input("Note de lecture", "",
+                                       key='note_qual')
+                    show_values = st.checkbox("Afficher les valeurs", True,
+                                            key='show_values_qual')
+            
+            # Options du graphique
+            plot_options = {
+                'title': title,
+                'x_label': x_label,
+                'y_label': y_label,
+                'source': source,
+                'note': note,
+                'show_values': show_values
+            }
+            
             # Création et affichage du graphique
             fig = plot_qualitative_bivariate(
                 st.session_state.merged_data,
                 current_x,
                 current_y,
                 plot_type,
-                COLOR_PALETTES[color_scheme]
+                COLOR_PALETTES[color_scheme],
+                plot_options
             )
             st.pyplot(fig)
             plt.close()
