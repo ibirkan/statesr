@@ -894,7 +894,7 @@ def main():
 
     # Analyse bivariée
     elif analysis_type == "Analyse bivariée":
-        try:
+       try:
             # Sélection des variables
             var_x = st.selectbox("Variable X", st.session_state.merged_data.columns, key='var_x_select')
             var_y = st.selectbox("Variable Y", 
@@ -1037,8 +1037,8 @@ def main():
         plt.close()
 
             
-    except Exception as e:
-        st.error(f"Une erreur s'est produite : {str(e)}")
+        except Exception as e:
+            st.error(f"Une erreur s'est produite : {str(e)}")
 
 # Exécution de l'application
 if __name__ == "__main__":
