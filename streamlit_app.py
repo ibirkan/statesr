@@ -92,6 +92,7 @@ def get_grist_data(table_id):
     except Exception as e:
         st.error(f"Erreur lors de la récupération des données : {str(e)}")
         return None
+        
 def merge_multiple_tables(dataframes, merge_configs):
     """Merge multiple dataframes based on the provided configurations."""
     merged_df = dataframes[0]
@@ -112,6 +113,172 @@ def merge_multiple_tables(dataframes, merge_configs):
         # Print data types after merge for debugging
         print(f"Data types after merge: {merged_df[merge_config['left']].dtype}, {merged_df[merge_config['right']].dtype}")
     return merged_df
+
+def analyze_qualitative_bivariate(df, var_x, var_y):
+    """
+    Analyse bivariée pour deux variables qualitatives.
+    Retourne un tableau croisé et les visualisations appropriées.
+    """
+    # Création du tableau croisé avec effectifs et pourcentages
+    crosstab_n = pd.crosstab(df[var_x], df[var_y], margins=True)
+    crosstab_pct = pd.crosstab(df[var_x], df[var_y], margins=True, normalize='index') * 100
+    
+    # Combiner effectifs et pourcentages
+    combined_table = pd.DataFrame(index=crosstab_n.index, columns=crosstab_n.columns)
+    for i in combined_table.index:
+        for j in combined_table.columns:
+            n = crosstab_n.loc[i, j]
+            pct = crosstab_pct.loc[i, j]
+            combined_table.loc[i, j] = f"{pct:.1f}% ({n})"
+            
+    return combined_table
+
+def plot_qualitative_bivariate(df, var_x, var_y, plot_type, color_palette):
+    """
+    Création des visualisations pour l'analyse bivariée qualitative.
+    """
+    # Données de base pour les graphiques
+    crosstab_n = pd.crosstab(df[var_x], df[var_y])
+    
+    if plot_type == "Grouped Bar Chart":
+        fig, ax = plt.subplots(figsize=(12, 6))
+        crosstab_n.plot(kind='bar', ax=ax, color=color_palette)
+        plt.title(f"Graphique groupé : {var_x} par {var_y}")
+        plt.xlabel(var_x)
+        plt.ylabel("Effectifs")
+        plt.legend(title=var_y)
+        plt.xticks(rotation=45)
+        
+    elif plot_type == "Stacked Bar Chart":
+        fig, ax = plt.subplots(figsize=(12, 6))
+        crosstab_n.plot(kind='bar', stacked=True, ax=ax, color=color_palette)
+        plt.title(f"Graphique empilé : {var_x} par {var_y}")
+        plt.xlabel(var_x)
+        plt.ylabel("Effectifs")
+        plt.legend(title=var_y)
+        plt.xticks(rotation=45)
+        
+    elif plot_type == "Mosaic Plot":
+        fig, ax = plt.subplots(figsize=(12, 6))
+        # Normaliser les données pour le mosaic plot
+        data_norm = crosstab_n.div(crosstab_n.sum().sum())
+        # Créer le mosaic plot
+        widths = data_norm.sum(axis=1)
+        x = 0
+        for i, (idx, row) in enumerate(data_norm.iterrows()):
+            y = 0
+            width = widths[idx]
+            for j, val in enumerate(row):
+                height = val / widths[idx]
+                rect = plt.Rectangle((x, y), width, height, 
+                                   facecolor=color_palette[j % len(color_palette)],
+                                   edgecolor='white')
+                ax.add_patch(rect)
+                y += height
+            x += width
+        plt.title(f"Diagramme en mosaïque : {var_x} par {var_y}")
+        plt.xlabel(var_x)
+        plt.ylabel(var_y)
+    
+    plt.tight_layout()
+    return fig
+
+def analyze_mixed_bivariate(df, qual_var, quant_var):
+    """
+    Analyse bivariée pour une variable qualitative et une quantitative.
+    Retourne les statistiques descriptives par modalité.
+    """
+    stats_df = df.groupby(qual_var)[quant_var].agg([
+        ('Effectif', 'count'),
+        ('Moyenne', 'mean'),
+        ('Médiane', 'median'),
+        ('Écart-type', 'std'),
+        ('Minimum', 'min'),
+        ('Maximum', 'max')
+    ]).round(2)
+    
+    return stats_df
+
+def plot_mixed_bivariate(df, qual_var, quant_var, color_palette):
+    """
+    Création d'un box plot pour l'analyse mixte avec Plotly.
+    """
+    fig = go.Figure()
+    
+    for i, modalite in enumerate(df[qual_var].unique()):
+        subset = df[df[qual_var] == modalite][quant_var]
+        
+        fig.add_trace(go.Box(
+            y=subset,
+            name=str(modalite),
+            marker_color=color_palette[i % len(color_palette)]
+        ))
+    
+    fig.update_layout(
+        title=f'Distribution de {quant_var} par {qual_var}',
+        yaxis_title=quant_var,
+        xaxis_title=qual_var,
+        showlegend=False,
+        height=600
+    )
+    
+    return fig
+
+def check_normality(data):
+    """
+    Vérifie la normalité d'une distribution avec le test de Shapiro-Wilk.
+    Retourne True si la distribution est normale, False sinon.
+    """
+    from scipy import stats
+    _, p_value = stats.shapiro(data)
+    return p_value > 0.05
+
+def analyze_quantitative_bivariate(df, var_x, var_y):
+    """
+    Analyse bivariée pour deux variables quantitatives.
+    Retourne les statistiques de corrélation appropriées.
+    """
+    # Vérifier la normalité des deux variables
+    is_normal_x = check_normality(df[var_x])
+    is_normal_y = check_normality(df[var_y])
+    
+    # Calculer les corrélations
+    if is_normal_x and is_normal_y:
+        corr_method = "Pearson"
+        correlation, p_value = stats.pearsonr(df[var_x], df[var_y])
+    else:
+        corr_method = "Spearman"
+        correlation, p_value = stats.spearmanr(df[var_x], df[var_y])
+    
+    results = {
+        "Méthode": corr_method,
+        "Coefficient": round(correlation, 3),
+        "P-value": round(p_value, 3),
+        "Interprétation": "Significatif" if p_value < 0.05 else "Non significatif"
+    }
+    
+    return pd.DataFrame([results])
+
+def plot_quantitative_bivariate(df, var_x, var_y, color):
+    """
+    Création d'un scatter plot pour l'analyse quantitative avec régression.
+    """
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    # Scatter plot
+    ax.scatter(df[var_x], df[var_y], alpha=0.5, color=color)
+    
+    # Régression linéaire
+    z = np.polyfit(df[var_x], df[var_y], 1)
+    p = np.poly1d(z)
+    ax.plot(df[var_x], p(df[var_x]), "r--", alpha=0.8, color=color)
+    
+    plt.title(f'Relation entre {var_x} et {var_y}')
+    plt.xlabel(var_x)
+    plt.ylabel(var_y)
+    plt.grid(True, alpha=0.3)
+    
+    return fig
 
 # Fonctions pour les différentes pages
 def page_analyse():
@@ -631,233 +798,113 @@ def main():
             
                 except Exception as e:
                     st.error(f"Erreur lors de la génération du graphique : {str(e)}")
-    
+
     # Analyse bivariée
     elif analysis_type == "Analyse bivariée":
-        try:
-            # Sélection des variables
-            var_x = st.selectbox("Variable X (axe horizontal)", st.session_state.merged_data.columns)
-            var_y = st.selectbox("Variable Y (axe vertical)",
-                                 [col for col in st.session_state.merged_data.columns if col != var_x])
-    
-            # Configuration de la visualisation
-            st.write("### Configuration de la visualisation")
-            viz_col1, viz_col2 = st.columns([1, 2])
-    
-            plot_data = st.session_state.merged_data[[var_x, var_y]].copy()
-    
-            is_x_numeric = pd.api.types.is_numeric_dtype(plot_data[var_x])
-            is_y_numeric = pd.api.types.is_numeric_dtype(plot_data[var_y])
-    
-            with viz_col1:
-                # Déterminer les types de graphiques appropriés
-                if is_x_numeric and is_y_numeric:
-                    graph_type = st.selectbox(
-                        "Type de graphique",
-                        ["Nuage de points", "Ligne"],
-                        key="bivariate_graph",
-                        help="Pour deux variables numériques, le nuage de points montre la relation et la ligne montre l'évolution"
-                    )
-                elif is_x_numeric and not is_y_numeric:
-                    graph_type = st.selectbox(
-                        "Type de graphique",
-                        ["Boîte à moustaches", "Barres"],
-                        key="bivariate_graph",
-                        help="Pour une variable numérique et une catégorielle, la boîte à moustaches montre la distribution par catégorie"
-                    )
-                elif not is_x_numeric and is_y_numeric:
-                    graph_type = st.selectbox(
-                        "Type de graphique",
-                        ["Barres", "Barres groupées"],
-                        key="bivariate_graph",
-                        help="Pour une variable catégorielle et une numérique, les barres montrent les moyennes par catégorie"
-                    )
-                else:  # Les deux sont catégorielles
-                    graph_type = st.selectbox(
-                        "Type de graphique",
-                        ["Heatmap", "Barres groupées"],
-                        key="bivariate_graph",
-                        help="Pour deux variables catégorielles, la heatmap montre les fréquences croisées"
-                    )
-    
-            with viz_col2:
-                color_scheme = st.selectbox(
-                    "Palette de couleurs",
-                    list(COLOR_PALETTES.keys()),
-                    key="bivariate_color"
+        # Sélection des variables
+        var_x = st.selectbox("Variable X", st.session_state.merged_data.columns)
+        var_y = st.selectbox("Variable Y", 
+                            [col for col in st.session_state.merged_data.columns if col != var_x])
+        
+        # Détection des types de variables
+        is_x_numeric = pd.api.types.is_numeric_dtype(st.session_state.merged_data[var_x])
+        is_y_numeric = pd.api.types.is_numeric_dtype(st.session_state.merged_data[var_y])
+        
+        # Sélection de la palette de couleurs
+        color_scheme = st.selectbox(
+            "Palette de couleurs",
+            list(COLOR_PALETTES.keys())
+        )
+        
+        # Analyse pour deux variables qualitatives
+        if not is_x_numeric and not is_y_numeric:
+            st.write("### Analyse Bivariée - Variables Qualitatives")
+            
+            # Affichage du tableau croisé
+            combined_table = analyze_qualitative_bivariate(
+                st.session_state.merged_data, var_x, var_y
+            )
+            st.write("Tableau croisé (Pourcentages en ligne et effectifs)")
+            st.dataframe(combined_table)
+            
+            # Option pour inverser les variables
+            if st.checkbox("Inverser les variables X et Y"):
+                combined_table = analyze_qualitative_bivariate(
+                    st.session_state.merged_data, var_y, var_x
                 )
-    
-            # Options avancées
-            with st.expander("Options avancées"):
-                col1, col2 = st.columns(2)
-    
-                with col1:
-                    title = st.text_input(
-                        "Titre du graphique", 
-                        f"Relation entre {var_x} et {var_y}",
-                        key="title_bivariate"
-                    )
-                    show_values = st.checkbox("Afficher les valeurs", True, key="show_values_bivariate")
-    
-                with col2:
-                    sort_order = st.radio(
-                        "Tri des données",
-                        ["Pas de tri", "Croissant", "Décroissant"],
-                        key="sort_order"
-                    )
-                    sort_by = st.selectbox(
-                        "Trier selon",
-                        ["Valeurs", "Fréquences/Moyennes"] if graph_type != "Nuage de points" else ["Valeurs"],
-                        key="sort_by"
-                    )
-    
-            if st.button("Générer la visualisation", key="generate_bivariate"):
-                try:
-                    plot_data = st.session_state.merged_data[[var_x, var_y]].copy()
-    
-                    # Cross-tabulation
-                    crosstab = pd.crosstab(plot_data[var_x], plot_data[var_y], margins=True, margins_name="Total")
-                    crosstab_percentage = crosstab.div(crosstab["Total"], axis=0) * 100
-                    
-                    st.write("### Tableau croisé des effectifs")
-                    st.write(crosstab)
-                    st.write("### Tableau croisé des taux (%)")
-                    st.write(crosstab_percentage)
-    
-                    # Création du graphique selon le type et application du tri
-                    if sort_order != "Pas de tri":
-                        ascending = sort_order == "Croissant"
-    
-                    if graph_type == "Nuage de points":
-                        if sort_order != "Pas de tri":
-                            if sort_by == "Valeurs":
-                                plot_data = plot_data.sort_values(var_x, ascending=ascending)
-                            else:
-                                plot_data = plot_data.sort_values(var_y, ascending=ascending)
-    
-                        fig = px.scatter(
-                            plot_data,
-                            x=var_x,
-                            y=var_y,
-                            title=title,
-                            color_discrete_sequence=COLOR_PALETTES[color_scheme]
-                        )
-    
-                        # Ajout de la ligne de tendance
-                        fig.add_traces(
-                            px.scatter(
-                                plot_data,
-                                x=var_x,
-                                y=var_y,
-                                trendline="ols"
-                            ).data
-                        )
-    
-                    elif graph_type == "Ligne":
-                        if sort_order != "Pas de tri":
-                            if sort_by == "Valeurs":
-                                plot_data = plot_data.sort_values(var_x, ascending=ascending)
-                            else:
-                                plot_data = plot_data.sort_values(var_y, ascending=ascending)
-    
-                        fig = px.line(
-                            plot_data,
-                            x=var_x,
-                            y=var_y,
-                            title=title,
-                            color_discrete_sequence=COLOR_PALETTES[color_scheme]
-                        )
-    
-                    elif graph_type in ["Barres", "Barres groupées"]:
-                        if graph_type == "Barres":
-                            agg_data = plot_data.groupby(var_x)[var_y].mean().reset_index()
-                            if sort_order != "Pas de tri":
-                                if sort_by == "Valeurs":
-                                    agg_data = agg_data.sort_values(var_x, ascending=ascending)
-                                else:
-                                    agg_data = agg_data.sort_values(var_y, ascending=ascending)
-    
-                            fig = px.bar(
-                                agg_data,
-                                x=var_x,
-                                y=var_y,
-                                title=title,
-                                color_discrete_sequence=COLOR_PALETTES[color_scheme]
-                            )
-                        else:  # Barres groupées
-                            if sort_order != "Pas de tri":
-                                if sort_by == "Valeurs":
-                                    plot_data = plot_data.sort_values(var_x, ascending=ascending)
-                                else:
-                                    plot_data = plot_data.sort_values(var_y, ascending=ascending)
-    
-                            fig = px.bar(
-                                plot_data,
-                                x=var_x,
-                                y=var_y,
-                                title=title,
-                                color=var_y,
-                                barmode='group',
-                                color_discrete_sequence=COLOR_PALETTES[color_scheme]
-                            )
-    
-                    elif graph_type == "Heatmap":
-                        pivot_table = pd.pivot_table(
-                            plot_data,
-                            values=var_y,
-                            index=var_x,
-                            columns=var_y,
-                            aggfunc='count'
-                        ).fillna(0)
-    
-                        if sort_order != "Pas de tri":
-                            if sort_by == "Valeurs":
-                                pivot_table = pivot_table.sort_index(ascending=ascending)
-                            else:
-                                pivot_table = pivot_table.sort_values(var_y, axis=1, ascending=ascending)
-    
-                        fig = px.imshow(
-                            pivot_table,
-                            title=title,
-                            color_continuous_scale=COLOR_PALETTES[color_scheme]
-                        )
-    
-                    # Mise à jour du layout pour tous les graphiques
-                    if fig is not None:
-                        fig.update_layout(
-                            height=600,
-                            margin=dict(t=100, b=100),
-                            showlegend=True,
-                            plot_bgcolor='white',
-                            paper_bgcolor='white',
-                            xaxis_title=var_x,
-                            yaxis_title=var_y
-                        )
-    
-                        # Ajout de la source si spécifiée
-                        if source:
-                            fig.add_annotation(
-                                text=f"Source: {source}",
-                                xref="paper",
-                                yref="paper",
-                                x=0,
-                                y=-0.15,
-                                showarrow=False,
-                                font=dict(size=10),
-                                align="left"
-                            )
-    
-                        # Affichage des valeurs si demandé
-                        if show_values and hasattr(fig.data[0], "text"):
-                            fig.update_traces(texttemplate='%{y:.2f}', textposition='top center')
-    
-                    # Affichage du graphique avec clé unique
-                    st.plotly_chart(fig, use_container_width=True, key=f"plot_bi_{var_x}_{var_y}_{graph_type}")
-    
-                except Exception as e:
-                    st.error(f"Erreur lors de la visualisation : {str(e)}")
-        except Exception as e:
-            st.error(f"Erreur lors de la configuration de l'analyse bivariée : {str(e)}")
+                st.write("Tableau croisé inversé (Pourcentages en ligne et effectifs)")
+                st.dataframe(combined_table)
+            
+            # Sélection du type de graphique
+            plot_type = st.selectbox(
+                "Type de graphique",
+                ["Grouped Bar Chart", "Stacked Bar Chart", "Mosaic Plot"]
+            )
+            
+            # Sélection de la palette de couleurs
+            color_scheme = st.selectbox(
+                "Palette de couleurs",
+                list(COLOR_PALETTES.keys())
+            )
+            
+            # Création et affichage du graphique
+            fig = plot_qualitative_bivariate(
+                st.session_state.merged_data,
+                var_x,
+                var_y,
+                plot_type,
+                COLOR_PALETTES[color_scheme]
+            )
+            st.pyplot(fig)
+            plt.close()
+
+    # Analyse pour une variable qualitative et une quantitative
+    elif (is_x_numeric and not is_y_numeric) or (not is_x_numeric and is_y_numeric):
+        st.write("### Analyse Bivariée - Variable Qualitative et Quantitative")
+        
+        # Réorganisation des variables (qualitative en X, quantitative en Y)
+        qual_var = var_y if is_x_numeric else var_x
+        quant_var = var_x if is_x_numeric else var_y
+        
+        if qual_var != var_x:
+            st.info("Les variables ont été réorganisées : variable qualitative en X et quantitative en Y")
+        
+        # Affichage des statistiques descriptives
+        stats_df = analyze_mixed_bivariate(st.session_state.merged_data, qual_var, quant_var)
+        st.write("Statistiques descriptives par modalité")
+        st.dataframe(stats_df)
+        
+        # Création et affichage du box plot
+        fig = plot_mixed_bivariate(
+            st.session_state.merged_data,
+            qual_var,
+            quant_var,
+            COLOR_PALETTES[color_scheme]
+        )
+        st.plotly_chart(fig)
+        
+    # Analyse pour deux variables quantitatives
+    else:
+        st.write("### Analyse Bivariée - Variables Quantitatives")
+        
+        # Affichage des statistiques de corrélation
+        corr_stats = analyze_quantitative_bivariate(
+            st.session_state.merged_data,
+            var_x,
+            var_y
+        )
+        st.write("Statistiques de corrélation")
+        st.dataframe(corr_stats)
+        
+        # Création et affichage du scatter plot
+        fig = plot_quantitative_bivariate(
+            st.session_state.merged_data,
+            var_x,
+            var_y,
+            COLOR_PALETTES[color_scheme][0]
+        )
+        st.pyplot(fig)
+        plt.close()
 
 
 # Exécution de l'application
