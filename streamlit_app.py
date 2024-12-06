@@ -588,6 +588,159 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
     
     return fig
 
+def calculate_regression(x, y):
+    """
+    Calcule la régression linéaire de manière robuste.
+    Retourne les coefficients et un booléen indiquant si la régression a réussi.
+    """
+    try:
+        # Première tentative avec numpy polyfit
+        z = np.polyfit(x, y, 1)
+        return z, True
+    except np.linalg.LinAlgError:
+        try:
+            # Deuxième tentative avec statsmodels (plus robuste)
+            import statsmodels.api as sm
+            X = sm.add_constant(x)
+            model = sm.OLS(y, X)
+            results = model.fit()
+            return [results.params[1], results.params[0]], True
+        except:
+            # Si les deux méthodes échouent
+            return None, False
+
+def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot_options, groupby_col=None, agg_method=None):
+    """
+    Création d'un scatter plot interactif avec Plotly pour l'analyse quantitative.
+    Inclut des info-bulles et une ligne de régression robuste.
+    """
+    # Nettoyage des données pour la régression
+    df_clean = df.dropna(subset=[var_x, var_y])
+    x = df_clean[var_x].values
+    y = df_clean[var_y].values
+    
+    # Calcul de la régression de manière robuste
+    regression_coeffs, regression_success = calculate_regression(x, y)
+    
+    # Création du scatter plot
+    fig = go.Figure()
+    
+    # Ajout du nuage de points avec info-bulles personnalisées
+    hover_text = []
+    for idx, row in df.iterrows():
+        if pd.isna(row[var_x]) or pd.isna(row[var_y]):
+            continue
+            
+        text_parts = []
+        if groupby_col:
+            text_parts.append(f"<b>{groupby_col}</b>: {row[groupby_col]}")
+        text_parts.extend([
+            f"<b>{var_x}</b>: {row[var_x]:,.2f}",
+            f"<b>{var_y}</b>: {row[var_y]:,.2f}"
+        ])
+        hover_text.append("<br>".join(text_parts))
+    
+    # Ajout du nuage de points
+    fig.add_trace(go.Scatter(
+        x=df[var_x],
+        y=df[var_y],
+        mode='markers',
+        name='Observations',
+        marker=dict(
+            color=color_scheme[0],
+            size=10,
+            opacity=0.7
+        ),
+        hovertext=hover_text,
+        hoverinfo='text',
+        hoverlabel=dict(
+            bgcolor='white',
+            font_size=12,
+            font_family="Arial"
+        )
+    ))
+    
+    # Ajout de la ligne de régression si le calcul a réussi
+    if regression_success:
+        x_range = np.linspace(df[var_x].min(), df[var_x].max(), 100)
+        y_range = regression_coeffs[0] * x_range + regression_coeffs[1]
+        
+        fig.add_trace(go.Scatter(
+            x=x_range,
+            y=y_range,
+            mode='lines',
+            name=f'Régression (y = {regression_coeffs[0]:.2f}x + {regression_coeffs[1]:.2f})',
+            line=dict(
+                color=color_scheme[0],
+                dash='dash'
+            )
+        ))
+    else:
+        st.warning("La ligne de régression n'a pas pu être calculée en raison de la distribution des données.")
+    
+    # Configuration du layout
+    title = plot_options['title']
+    if groupby_col and agg_method:
+        title += f"<br><sup>Données agrégées par {groupby_col} ({agg_method})</sup>"
+    
+    fig.update_layout(
+        title=dict(
+            text=title,
+            x=0.5,
+            xanchor='center'
+        ),
+        xaxis_title=plot_options['x_label'],
+        yaxis_title=plot_options['y_label'],
+        hovermode='closest',
+        plot_bgcolor='white',
+        width=900,
+        height=600,
+        margin=dict(t=100, b=100),
+        showlegend=True,
+        legend=dict(
+            yanchor="top",
+            y=0.99,
+            xanchor="left",
+            x=0.01
+        )
+    )
+    
+    # Ajout de la grille
+    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
+    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
+    
+    # Ajout de la source et de la note si spécifiées
+    annotations = []
+    
+    current_y = -0.15
+    if plot_options['source']:
+        annotations.append(dict(
+            text=f"Source : {plot_options['source']}",
+            x=0,
+            y=current_y,
+            xref="paper",
+            yref="paper",
+            showarrow=False,
+            font=dict(size=10)
+        ))
+        current_y -= 0.05
+    
+    if plot_options['note']:
+        annotations.append(dict(
+            text=f"Note : {plot_options['note']}",
+            x=0,
+            y=current_y,
+            xref="paper",
+            yref="paper",
+            showarrow=False,
+            font=dict(size=10)
+        ))
+    
+    if annotations:
+        fig.update_layout(annotations=annotations)
+    
+    return fig
+
 # Fonctions pour les différentes pages
 def page_analyse():
     st.title("Analyse des données ESR")
