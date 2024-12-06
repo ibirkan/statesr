@@ -120,27 +120,30 @@ def analyze_qualitative_bivariate(df, var_x, var_y):
     Retourne un tableau croisé avec effectifs et pourcentages en ligne.
     """
     # Création du tableau croisé avec effectifs
-    crosstab_n = pd.crosstab(df[var_x], df[var_y], margins=True)
+    crosstab_n = pd.crosstab(df[var_x], df[var_y])
     
-    # Calcul des pourcentages en ligne (sans le total)
+    # Calcul des pourcentages en ligne
     crosstab_pct = pd.crosstab(df[var_x], df[var_y], normalize='index') * 100
-    
-    # Ajout de la ligne des totaux pour les pourcentages
-    total_pct = pd.crosstab(df[var_x], df[var_y], normalize='columns').iloc[0] * 100
-    crosstab_pct.loc['Total'] = total_pct
     
     # Création du tableau combiné
     combined_table = pd.DataFrame(index=crosstab_n.index, columns=crosstab_n.columns)
     
-    # Remplissage du tableau combiné
+    # Ajout des totaux en ligne
+    row_totals = crosstab_n.sum(axis=1)
+    
+    # Ajout des totaux en colonne
+    col_totals = crosstab_n.sum(axis=0)
+    
+    # Remplissage du tableau principal
     for idx in crosstab_n.index:
         for col in crosstab_n.columns:
             n = crosstab_n.loc[idx, col]
-            if idx == 'Total' or col == 'All':
-                combined_table.loc[idx, col] = f"({n})"
-            else:
-                pct = crosstab_pct.loc[idx, col]
-                combined_table.loc[idx, col] = f"{pct:.1f}% ({n})"
+            pct = crosstab_pct.loc[idx, col]
+            combined_table.loc[idx, col] = f"{pct:.1f}% ({n})"
+    
+    # Ajout des totaux
+    combined_table.loc['Total'] = [f"100% ({n})" for n in col_totals]
+    combined_table['Total'] = [f"100% ({n})" for n in row_totals] + [f"100% ({crosstab_n.values.sum()})"]
     
     return combined_table
 
@@ -162,7 +165,6 @@ def plot_qualitative_bivariate(df, var_x, var_y, plot_type, color_palette):
         
     elif plot_type == "Stacked Bar Chart":
         fig, ax = plt.subplots(figsize=(12, 6))
-        # Calcul des pourcentages pour le graphique empilé
         crosstab_pct = pd.crosstab(df[var_x], df[var_y], normalize='index') * 100
         crosstab_pct.plot(kind='bar', stacked=True, ax=ax, color=color_palette)
         plt.title(f"Graphique empilé : {var_x} par {var_y}")
@@ -173,10 +175,8 @@ def plot_qualitative_bivariate(df, var_x, var_y, plot_type, color_palette):
         
     elif plot_type == "Mosaic Plot":
         fig, ax = plt.subplots(figsize=(12, 6))
-        # Normaliser les données pour le mosaic plot
         data_norm = crosstab_n.div(crosstab_n.sum().sum())
         
-        # Calcul des positions pour le mosaic plot
         widths = data_norm.sum(axis=1)
         x = 0
         for i, (idx, row) in enumerate(data_norm.iterrows()):
@@ -189,8 +189,7 @@ def plot_qualitative_bivariate(df, var_x, var_y, plot_type, color_palette):
                                    edgecolor='white')
                 ax.add_patch(rect)
                 
-                # Ajout des labels si assez d'espace
-                if width * height > 0.02:  # Seuil arbitraire pour la lisibilité
+                if width * height > 0.02:
                     plt.text(x + width/2, y + height/2, 
                             f'{val*100:.1f}%',
                             ha='center', va='center')
@@ -201,7 +200,6 @@ def plot_qualitative_bivariate(df, var_x, var_y, plot_type, color_palette):
         ax.set_ylim(0, 1)
         plt.title(f"Diagramme en mosaïque : {var_x} par {var_y}")
         
-        # Légende
         legend_elements = [plt.Rectangle((0,0),1,1, facecolor=color_palette[i % len(color_palette)])
                          for i in range(len(crosstab_n.columns))]
         ax.legend(legend_elements, crosstab_n.columns, 
