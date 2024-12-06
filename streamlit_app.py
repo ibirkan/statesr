@@ -471,29 +471,49 @@ def analyze_quantitative_bivariate(df, var_x, var_y, groupby_col=None, agg_metho
 def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot_options, groupby_col=None, agg_method=None):
     """
     Création d'un scatter plot interactif avec Plotly pour l'analyse quantitative.
-    Inclut des info-bulles et une ligne de régression.
     """
-    # Calcul de la régression
-    z = np.polyfit(df[var_x], df[var_y], 1)
-    p = np.poly1d(z)
+    # Nettoyage des données pour la régression
+    df_clean = df.dropna(subset=[var_x, var_y])
+    x = df_clean[var_x].values
+    y = df_clean[var_y].values
+    
+    # Calcul de la régression de manière robuste
+    regression_coeffs, regression_success = calculate_regression(x, y)
     
     # Création du scatter plot
     fig = go.Figure()
     
-    # Ajout du nuage de points avec info-bulles personnalisées
+    # Préparation des info-bulles
     hover_text = []
     for idx, row in df.iterrows():
+        if pd.isna(row[var_x]) or pd.isna(row[var_y]):
+            continue
+            
+        text_parts = []
         if groupby_col:
-            hover_text.append(
-                f"<b>{groupby_col}</b>: {row[groupby_col]}<br>" +
-                f"<b>{var_x}</b>: {row[var_x]:,.2f}<br>" +
-                f"<b>{var_y}</b>: {row[var_y]:,.2f}"
-            )
+            text_parts.append(f"<b>{groupby_col}</b>: {row[groupby_col]}")
+            
+            # Formatter les valeurs en fonction de leur type
+            x_val = row[var_x]
+            y_val = row[var_y]
+            
+            # Si les valeurs sont des entiers ou des sommes, ne pas mettre de décimales
+            if agg_method == 'sum' or x_val.is_integer():
+                text_parts.append(f"<b>{var_x}</b>: {int(x_val):,}")
+            else:
+                text_parts.append(f"<b>{var_x}</b>: {x_val:,.2f}")
+                
+            if agg_method == 'sum' or y_val.is_integer():
+                text_parts.append(f"<b>{var_y}</b>: {int(y_val):,}")
+            else:
+                text_parts.append(f"<b>{var_y}</b>: {y_val:,.2f}")
         else:
-            hover_text.append(
-                f"<b>{var_x}</b>: {row[var_x]:,.2f}<br>" +
+            # Pour les données non agrégées
+            text_parts.extend([
+                f"<b>{var_x}</b>: {row[var_x]:,.2f}",
                 f"<b>{var_y}</b>: {row[var_y]:,.2f}"
-            )
+            ])
+        hover_text.append("<br>".join(text_parts))
     
     # Ajout du nuage de points
     fig.add_trace(go.Scatter(
@@ -506,8 +526,8 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
             size=10,
             opacity=0.7
         ),
-        hovertext=hover_text,
-        hoverinfo='text',
+        text=hover_text,  # Utiliser text au lieu de hovertext
+        hovertemplate="%{text}<extra></extra>",  # Format personnalisé de l'info-bulle
         hoverlabel=dict(
             bgcolor='white',
             font_size=12,
@@ -515,23 +535,29 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
         )
     ))
     
-    # Ajout de la ligne de régression
-    x_range = np.linspace(df[var_x].min(), df[var_x].max(), 100)
-    fig.add_trace(go.Scatter(
-        x=x_range,
-        y=p(x_range),
-        mode='lines',
-        name=f'Régression (y = {z[0]:.2f}x + {z[1]:.2f})',
-        line=dict(
-            color=color_scheme[0],
-            dash='dash'
-        )
-    ))
+    # Ajout de la ligne de régression si le calcul a réussi
+    if regression_success:
+        x_range = np.linspace(df[var_x].min(), df[var_x].max(), 100)
+        y_range = regression_coeffs[0] * x_range + regression_coeffs[1]
+        
+        fig.add_trace(go.Scatter(
+            x=x_range,
+            y=y_range,
+            mode='lines',
+            name=f'Régression (y = {regression_coeffs[0]:.2f}x + {regression_coeffs[1]:.2f})',
+            line=dict(
+                color=color_scheme[0],
+                dash='dash'
+            ),
+            hovertemplate='<extra></extra>',  # Désactiver l'info-bulle pour la ligne de régression
+            showlegend=True
+        ))
     
     # Configuration du layout
     title = plot_options['title']
     if groupby_col and agg_method:
-        title += f"<br><sup>Données agrégées par {groupby_col} ({agg_method})</sup>"
+        method_name = "Somme" if agg_method == 'sum' else "Moyenne" if agg_method == 'mean' else "Médiane"
+        title += f"<br><sup>Données agrégées par {groupby_col} ({method_name})</sup>"
     
     fig.update_layout(
         title=dict(
@@ -554,6 +580,7 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
             x=0.01
         )
     )
+    
     
     # Ajout de la grille
     fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
