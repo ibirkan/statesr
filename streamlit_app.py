@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import squarify
 import seaborn as sns
 import numpy as np
+from scipy import stats
 sns.set_theme()
 sns.set_style("whitegrid")
 
@@ -408,46 +409,80 @@ def analyze_quantitative_bivariate(df, var_x, var_y):
     Analyse bivariée pour deux variables quantitatives.
     Retourne les statistiques de corrélation appropriées.
     """
-    # Vérifier la normalité des deux variables
-    is_normal_x = check_normality(df[var_x])
-    is_normal_y = check_normality(df[var_y])
+    # Filtrage des non-réponses
+    data = df.copy()
+    missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr', 'NR', 'Non-réponse']
+    data[var_x] = data[var_x].replace(missing_values, np.nan)
+    data[var_y] = data[var_y].replace(missing_values, np.nan)
+    data = data.dropna(subset=[var_x, var_y])
     
-    # Calculer les corrélations
-    if is_normal_x and is_normal_y:
-        corr_method = "Pearson"
-        correlation, p_value = stats.pearsonr(df[var_x], df[var_y])
+    # Test de normalité pour les deux variables
+    _, p_value_x = stats.shapiro(data[var_x])
+    _, p_value_y = stats.shapiro(data[var_y])
+    
+    # Détermination du test de corrélation approprié
+    is_normal = p_value_x > 0.05 and p_value_y > 0.05
+    
+    if is_normal:
+        correlation_method = "Pearson"
+        correlation, p_value = stats.pearsonr(data[var_x], data[var_y])
     else:
-        corr_method = "Spearman"
-        correlation, p_value = stats.spearmanr(df[var_x], df[var_y])
+        correlation_method = "Spearman"
+        correlation, p_value = stats.spearmanr(data[var_x], data[var_y])
     
-    results = {
-        "Méthode": corr_method,
-        "Coefficient": round(correlation, 3),
-        "P-value": round(p_value, 3),
-        "Interprétation": "Significatif" if p_value < 0.05 else "Non significatif"
+    # Création du DataFrame des résultats
+    results_dict = {
+        "Test de corrélation": [correlation_method],
+        "Coefficient": [round(correlation, 3)],
+        "P-value": [round(p_value, 3)],
+        "Interprétation": ["Significatif" if p_value < 0.05 else "Non significatif"]
     }
+    results_df = pd.DataFrame(results_dict)
     
-    return pd.DataFrame([results])
+    # Calcul des taux de réponse
+    response_rate_x = (data[var_x].count() / len(df)) * 100
+    response_rate_y = (data[var_y].count() / len(df)) * 100
+    
+    return results_df, response_rate_x, response_rate_y
 
-def plot_quantitative_bivariate(df, var_x, var_y, color):
+def plot_quantitative_bivariate(df, var_x, var_y, color, plot_options):
     """
     Création d'un scatter plot pour l'analyse quantitative avec régression.
     """
+    # Filtrage des non-réponses
+    data = df.copy()
+    missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr', 'NR', 'Non-réponse']
+    data[var_x] = data[var_x].replace(missing_values, np.nan)
+    data[var_y] = data[var_y].replace(missing_values, np.nan)
+    data = data.dropna(subset=[var_x, var_y])
+    
     fig, ax = plt.subplots(figsize=(10, 6))
     
     # Scatter plot
-    ax.scatter(df[var_x], df[var_y], alpha=0.5, color=color)
+    ax.scatter(data[var_x], data[var_y], alpha=0.5, color=color)
     
     # Régression linéaire
-    z = np.polyfit(df[var_x], df[var_y], 1)
+    z = np.polyfit(data[var_x], data[var_y], 1)
     p = np.poly1d(z)
-    ax.plot(df[var_x], p(df[var_x]), "r--", alpha=0.8, color=color)
+    ax.plot(data[var_x], p(data[var_x]), "r--", alpha=0.8, color=color)
     
-    plt.title(f'Relation entre {var_x} et {var_y}')
-    plt.xlabel(var_x)
-    plt.ylabel(var_y)
+    # Configuration du graphique
+    plt.title(plot_options['title'])
+    plt.xlabel(plot_options['x_label'])
+    plt.ylabel(plot_options['y_label'])
     plt.grid(True, alpha=0.3)
     
+    # Ajout de la source si spécifiée
+    if plot_options['source']:
+        plt.figtext(0.01, -0.1, f"Source : {plot_options['source']}", 
+                   ha='left', fontsize=8)
+    
+    # Ajout de la note si spécifiée
+    if plot_options['note']:
+        plt.figtext(0.01, -0.15, f"Note : {plot_options['note']}", 
+                   ha='left', fontsize=8)
+    
+    plt.tight_layout()
     return fig
 
 # Fonctions pour les différentes pages
@@ -1155,22 +1190,81 @@ def main():
             else:
                 st.write("### Analyse Bivariée - Variables Quantitatives")
                 
-                # Affichage des statistiques de corrélation
-                corr_stats = analyze_quantitative_bivariate(
+                # Calcul et affichage des statistiques de corrélation
+                results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
                     st.session_state.merged_data,
                     var_x,
                     var_y
                 )
-                st.write("Statistiques de corrélation")
-                st.dataframe(corr_stats)
                 
-                # Création et affichage du scatter plot
+                # Affichage des taux de réponse
+                st.write("Taux de réponse :")
+                st.write(f"- {var_x} : {response_rate_x:.1f}%")
+                st.write(f"- {var_y} : {response_rate_y:.1f}%")
+                
+                st.write("Statistiques de corrélation")
+                st.dataframe(results_df)
+                
+                # Configuration de la visualisation
+                st.write("### Configuration de la visualisation")
+                
+                # Sélection de la palette de couleurs
+                color_scheme = st.selectbox(
+                    "Palette de couleurs",
+                    list(COLOR_PALETTES.keys()),
+                    key='color_scheme_quant'
+                )
+                
+                # Options avancées
+                with st.expander("Options avancées"):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        title = st.text_input(
+                            "Titre du graphique", 
+                            f"Relation entre {var_x} et {var_y}",
+                            key='title_quant'
+                        )
+                        x_label = st.text_input(
+                            "Titre de l'axe X", 
+                            var_x,
+                            key='x_label_quant'
+                        )
+                        y_label = st.text_input(
+                            "Titre de l'axe Y", 
+                            var_y,
+                            key='y_label_quant'
+                        )
+                    with col2:
+                        source = st.text_input(
+                            "Source des données", 
+                            "",
+                            key='source_quant'
+                        )
+                        note = st.text_input(
+                            "Note de lecture", 
+                            "",
+                            key='note_quant'
+                        )
+                
+                # Options du graphique
+                plot_options = {
+                    'title': title,
+                    'x_label': x_label,
+                    'y_label': y_label,
+                    'source': source,
+                    'note': note,
+                    'show_values': True
+                }
+                
+                # Création et affichage du graphique
                 fig = plot_quantitative_bivariate(
                     st.session_state.merged_data,
                     var_x,
                     var_y,
-                    COLOR_PALETTES[color_scheme][0]
+                    COLOR_PALETTES[color_scheme][0],
+                    plot_options
                 )
+                
                 st.pyplot(fig)
                 plt.close()
     
