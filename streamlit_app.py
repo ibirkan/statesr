@@ -10,6 +10,7 @@ import json
 import matplotlib.pyplot as plt
 import squarify
 import seaborn as sns
+import numpy as np
 sns.set_theme()
 sns.set_style("whitegrid")
 
@@ -113,6 +114,10 @@ def merge_multiple_tables(dataframes, merge_configs):
         # Print data types after merge for debugging
         print(f"Data types after merge: {merged_df[merge_config['left']].dtype}, {merged_df[merge_config['right']].dtype}")
     return merged_df
+    
+def is_numeric_column(df, column):
+    """Vérifie si une colonne est numérique."""
+    return pd.api.types.is_numeric_dtype(df[column])
 
 def analyze_qualitative_bivariate(df, var_x, var_y, exclude_missing=True):
     """
@@ -889,87 +894,99 @@ def main():
 
     # Analyse bivariée
     elif analysis_type == "Analyse bivariée":
-        if not is_x_numeric and not is_y_numeric:
-            st.write("### Analyse Bivariée - Variables Qualitatives")
+        try:
+            # Sélection des variables
+            var_x = st.selectbox("Variable X", st.session_state.merged_data.columns, key='var_x_select')
+            var_y = st.selectbox("Variable Y", 
+                                [col for col in st.session_state.merged_data.columns if col != var_x],
+                                key='var_y_select')
             
-            # Option d'inversion des variables
-            invert_vars = st.checkbox("Inverser les variables X et Y", key='invert_vars_qual')
+            # Détection des types de variables avec gestion d'erreur
+            is_x_numeric = is_numeric_column(st.session_state.merged_data, var_x)
+            is_y_numeric = is_numeric_column(st.session_state.merged_data, var_y)
             
-            # Variables actuelles
-            current_x = var_y if invert_vars else var_x
-            current_y = var_x if invert_vars else var_y
-            
-            # Affichage du tableau croisé avec les taux de réponse
-            combined_table, response_stats = analyze_qualitative_bivariate(
-                st.session_state.merged_data, current_x, current_y, exclude_missing=True
-            )
-            
-            # Affichage des taux de réponse
-            st.write("Taux de réponse :")
-            for var, rate in response_stats.items():
-                st.write(f"- {var} : {rate}")
-            
-            st.write("Tableau croisé (Pourcentages en ligne et effectifs)")
-            st.dataframe(combined_table)
-            
-            # Configuration de la visualisation
-            st.write("### Configuration de la visualisation")
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                plot_type = st.selectbox(
-                    "Type de graphique",
-                    ["Grouped Bar Chart", "Stacked Bar Chart", "Mosaic Plot"],
-                    key='plot_type_qual'
+            # Analyse pour deux variables qualitatives
+            if not is_x_numeric and not is_y_numeric:
+                st.write("### Analyse Bivariée - Variables Qualitatives")
+                
+                # Option d'inversion des variables
+                invert_vars = st.checkbox("Inverser les variables X et Y", key='invert_vars_qual')
+                
+                # Variables actuelles
+                current_x = var_y if invert_vars else var_x
+                current_y = var_x if invert_vars else var_y
+                
+                # Affichage du tableau croisé avec les taux de réponse
+                combined_table, response_stats = analyze_qualitative_bivariate(
+                    st.session_state.merged_data, current_x, current_y, exclude_missing=True
                 )
-            
-            with col2:
-                color_scheme = st.selectbox(
-                    "Palette de couleurs",
-                    list(COLOR_PALETTES.keys()),
-                    key='color_scheme_qual'
-                )
-            
-            # Options avancées
-            with st.expander("Options avancées"):
+                
+                # Affichage des taux de réponse
+                st.write("Taux de réponse :")
+                for var, rate in response_stats.items():
+                    st.write(f"- {var} : {rate}")
+                
+                st.write("Tableau croisé (Pourcentages en ligne et effectifs)")
+                st.dataframe(combined_table)
+                
+                # Configuration de la visualisation
+                st.write("### Configuration de la visualisation")
                 col1, col2 = st.columns(2)
+                
                 with col1:
-                    title = st.text_input("Titre du graphique", 
-                                        f"Distribution de {current_x} par {current_y}",
-                                        key='title_qual')
-                    x_label = st.text_input("Titre de l'axe X", current_x,
-                                          key='x_label_qual')
-                    y_label = st.text_input("Titre de l'axe Y", "Valeur",
-                                          key='y_label_qual')
+                    plot_type = st.selectbox(
+                        "Type de graphique",
+                        ["Grouped Bar Chart", "Stacked Bar Chart", "Mosaic Plot"],
+                        key='plot_type_qual'
+                    )
+                
                 with col2:
-                    source = st.text_input("Source des données", "",
-                                         key='source_qual')
-                    note = st.text_input("Note de lecture", "",
-                                       key='note_qual')
-                    show_values = st.checkbox("Afficher les valeurs", True,
-                                            key='show_values_qual')
-            
-            # Options du graphique
-            plot_options = {
-                'title': title,
-                'x_label': x_label,
-                'y_label': y_label,
-                'source': source,
-                'note': note,
-                'show_values': show_values
-            }
-            
-            # Création et affichage du graphique
-            fig = plot_qualitative_bivariate(
-                st.session_state.merged_data,
-                current_x,
-                current_y,
-                plot_type,
-                COLOR_PALETTES[color_scheme],
-                plot_options
-            )
-            st.pyplot(fig)
-            plt.close()
+                    color_scheme = st.selectbox(
+                        "Palette de couleurs",
+                        list(COLOR_PALETTES.keys()),
+                        key='color_scheme_qual'
+                    )
+                
+                # Options avancées
+                with st.expander("Options avancées"):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        title = st.text_input("Titre du graphique", 
+                                            f"Distribution de {current_x} par {current_y}",
+                                            key='title_qual')
+                        x_label = st.text_input("Titre de l'axe X", current_x,
+                                              key='x_label_qual')
+                        y_label = st.text_input("Titre de l'axe Y", "Valeur",
+                                              key='y_label_qual')
+                    with col2:
+                        source = st.text_input("Source des données", "",
+                                             key='source_qual')
+                        note = st.text_input("Note de lecture", "",
+                                           key='note_qual')
+                        show_values = st.checkbox("Afficher les valeurs", True,
+                                                key='show_values_qual')
+                
+                # Options du graphique
+                plot_options = {
+                    'title': title,
+                    'x_label': x_label,
+                    'y_label': y_label,
+                    'source': source,
+                    'note': note,
+                    'show_values': show_values
+                }
+                
+                # Création et affichage du graphique
+                fig = plot_qualitative_bivariate(
+                    st.session_state.merged_data,
+                    current_x,
+                    current_y,
+                    plot_type,
+                    COLOR_PALETTES[color_scheme],
+                    plot_options
+                )
+                st.pyplot(fig)
+                plt.close()
 
     # Analyse pour une variable qualitative et une quantitative
     elif (is_x_numeric and not is_y_numeric) or (not is_x_numeric and is_y_numeric):
@@ -1019,6 +1036,9 @@ def main():
         st.pyplot(fig)
         plt.close()
 
+            
+    except Exception as e:
+        st.error(f"Une erreur s'est produite : {str(e)}")
 
 # Exécution de l'application
 if __name__ == "__main__":
