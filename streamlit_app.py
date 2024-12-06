@@ -299,8 +299,17 @@ def analyze_mixed_bivariate(df, qual_var, quant_var):
     Analyse bivariée pour une variable qualitative et une quantitative.
     Retourne les statistiques descriptives par modalité.
     """
-    stats_df = df.groupby(qual_var)[quant_var].agg([
+    # Filtrage des non-réponses
+    data = df.copy()
+    missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr', 'NR', 'Non-réponse']
+    data[qual_var] = data[qual_var].replace(missing_values, np.nan)
+    data[quant_var] = data[quant_var].replace(missing_values, np.nan)
+    data = data.dropna(subset=[qual_var, quant_var])
+    
+    # Calcul des statistiques par modalité
+    stats_df = data.groupby(qual_var)[quant_var].agg([
         ('Effectif', 'count'),
+        ('Total', lambda x: x.sum()),
         ('Moyenne', 'mean'),
         ('Médiane', 'median'),
         ('Écart-type', 'std'),
@@ -308,16 +317,39 @@ def analyze_mixed_bivariate(df, qual_var, quant_var):
         ('Maximum', 'max')
     ]).round(2)
     
-    return stats_df
+    # Ajout du total général
+    total_stats = pd.DataFrame({
+        'Effectif': data[quant_var].count(),
+        'Total': data[quant_var].sum(),
+        'Moyenne': data[quant_var].mean(),
+        'Médiane': data[quant_var].median(),
+        'Écart-type': data[quant_var].std(),
+        'Minimum': data[quant_var].min(),
+        'Maximum': data[quant_var].max()
+    }, index=['Total']).round(2)
+    
+    stats_df = pd.concat([stats_df, total_stats])
+    
+    # Calcul du taux de réponse
+    response_rate = (data[qual_var].count() / len(df)) * 100
+    
+    return stats_df, response_rate
 
-def plot_mixed_bivariate(df, qual_var, quant_var, color_palette):
+def plot_mixed_bivariate(df, qual_var, quant_var, color_palette, plot_options):
     """
     Création d'un box plot pour l'analyse mixte avec Plotly.
     """
+    # Filtrage des non-réponses
+    data = df.copy()
+    missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr', 'NR', 'Non-réponse']
+    data[qual_var] = data[qual_var].replace(missing_values, np.nan)
+    data[quant_var] = data[quant_var].replace(missing_values, np.nan)
+    data = data.dropna(subset=[qual_var, quant_var])
+    
     fig = go.Figure()
     
-    for i, modalite in enumerate(df[qual_var].unique()):
-        subset = df[df[qual_var] == modalite][quant_var]
+    for i, modalite in enumerate(sorted(data[qual_var].unique())):
+        subset = data[data[qual_var] == modalite][quant_var]
         
         fig.add_trace(go.Box(
             y=subset,
@@ -326,12 +358,39 @@ def plot_mixed_bivariate(df, qual_var, quant_var, color_palette):
         ))
     
     fig.update_layout(
-        title=f'Distribution de {quant_var} par {qual_var}',
-        yaxis_title=quant_var,
-        xaxis_title=qual_var,
+        title=plot_options['title'],
+        yaxis_title=plot_options['y_label'],
+        xaxis_title=plot_options['x_label'],
         showlegend=False,
-        height=600
+        height=600,
+        margin=dict(t=100, b=100),
+        plot_bgcolor='white'
     )
+    
+    # Ajout de la source et de la note si spécifiées
+    if plot_options['source']:
+        fig.add_annotation(
+            text=f"Source : {plot_options['source']}",
+            xref="paper",
+            yref="paper",
+            x=0,
+            y=-0.15,
+            showarrow=False,
+            font=dict(size=10),
+            align="left"
+        )
+    
+    if plot_options['note']:
+        fig.add_annotation(
+            text=f"Note : {plot_options['note']}",
+            xref="paper",
+            yref="paper",
+            x=0,
+            y=-0.2,
+            showarrow=False,
+            font=dict(size=10),
+            align="left"
+        )
     
     return fig
 
@@ -1011,25 +1070,86 @@ def main():
                 st.write("### Analyse Bivariée - Variable Qualitative et Quantitative")
                 
                 # Réorganisation des variables (qualitative en X, quantitative en Y)
-                qual_var = var_y if is_x_numeric else var_x
-                quant_var = var_x if is_x_numeric else var_y
-                
-                if qual_var != var_x:
+                if is_x_numeric:
+                    quant_var = var_x
+                    qual_var = var_y
                     st.info("Les variables ont été réorganisées : variable qualitative en X et quantitative en Y")
-        
-                # Affichage des statistiques descriptives
-                stats_df = analyze_mixed_bivariate(st.session_state.merged_data, qual_var, quant_var)
+                else:
+                    qual_var = var_x
+                    quant_var = var_y
+                
+                # Affichage des statistiques descriptives et du taux de réponse
+                stats_df, response_rate = analyze_mixed_bivariate(
+                    st.session_state.merged_data, 
+                    qual_var, 
+                    quant_var
+                )
+                
+                st.write(f"Taux de réponse : {response_rate:.1f}%")
                 st.write("Statistiques descriptives par modalité")
                 st.dataframe(stats_df)
-        
-                # Création et affichage du box plot
+                
+                # Configuration de la visualisation
+                st.write("### Configuration de la visualisation")
+                
+                # Sélection de la palette de couleurs
+                color_scheme = st.selectbox(
+                    "Palette de couleurs",
+                    list(COLOR_PALETTES.keys()),
+                    key='color_scheme_mixed'
+                )
+                
+                # Options avancées
+                with st.expander("Options avancées"):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        title = st.text_input(
+                            "Titre du graphique", 
+                            f"Distribution de {quant_var} par {qual_var}",
+                            key='title_mixed'
+                        )
+                        x_label = st.text_input(
+                            "Titre de l'axe X", 
+                            qual_var,
+                            key='x_label_mixed'
+                        )
+                        y_label = st.text_input(
+                            "Titre de l'axe Y", 
+                            quant_var,
+                            key='y_label_mixed'
+                        )
+                    with col2:
+                        source = st.text_input(
+                            "Source des données", 
+                            "",
+                            key='source_mixed'
+                        )
+                        note = st.text_input(
+                            "Note de lecture", 
+                            "",
+                            key='note_mixed'
+                        )
+                
+                # Options du graphique
+                plot_options = {
+                    'title': title,
+                    'x_label': x_label,
+                    'y_label': y_label,
+                    'source': source,
+                    'note': note,
+                    'show_values': True
+                }
+                
+                # Création et affichage du graphique
                 fig = plot_mixed_bivariate(
                     st.session_state.merged_data,
                     qual_var,
                     quant_var,
-                    COLOR_PALETTES[color_scheme]
+                    COLOR_PALETTES[color_scheme],
+                    plot_options
                 )
-                st.plotly_chart(fig)
+                
+                st.plotly_chart(fig, use_container_width=True)
         
             # Analyse pour deux variables quantitatives
             else:
