@@ -1037,8 +1037,8 @@ def main():
                 plt.close()
 
             
-        except Exception as e:
-            st.error(f"Une erreur s'est produite : {str(e)}")
+            except Exception as e:
+                st.error(f"Une erreur s'est produite : {str(e)}")
 
 # Exécution de l'application
 if __name__ == "__main__":
