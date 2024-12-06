@@ -404,23 +404,44 @@ def check_normality(data):
     _, p_value = stats.shapiro(data)
     return p_value > 0.05
 
-def analyze_quantitative_bivariate(df, var_x, var_y):
+def check_duplicates(df, var_x, var_y):
     """
-    Analyse bivariée pour deux variables quantitatives.
-    Retourne les statistiques de corrélation appropriées.
+    Vérifie si certaines valeurs de var_x ou var_y sont répétées
+    dans le jeu de données.
     """
-    # Filtrage des non-réponses
+    duplicates_x = df[var_x].duplicated().any()
+    duplicates_y = df[var_y].duplicated().any()
+    return duplicates_x or duplicates_y
+
+def analyze_quantitative_bivariate(df, var_x, var_y, groupby_col=None, agg_method='sum'):
+    """
+    Analyse bivariée pour deux variables quantitatives avec option d'agrégation.
+    
+    Parameters:
+        df: DataFrame source
+        var_x: Variable X
+        var_y: Variable Y
+        groupby_col: Colonne pour grouper les données (ex: ID établissement)
+        agg_method: Méthode d'agrégation ('sum' ou 'mean')
+    """
     data = df.copy()
     missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr', 'NR', 'Non-réponse']
     data[var_x] = data[var_x].replace(missing_values, np.nan)
     data[var_y] = data[var_y].replace(missing_values, np.nan)
+    
+    # Si une colonne de groupement est spécifiée, agrégeons d'abord les données
+    if groupby_col is not None:
+        data = data.groupby(groupby_col).agg({
+            var_x: agg_method,
+            var_y: agg_method
+        }).reset_index()
+    
+    # Suppression des valeurs manquantes
     data = data.dropna(subset=[var_x, var_y])
     
-    # Test de normalité pour les deux variables
+    # Test de normalité et corrélation
     _, p_value_x = stats.shapiro(data[var_x])
     _, p_value_y = stats.shapiro(data[var_y])
-    
-    # Détermination du test de corrélation approprié
     is_normal = p_value_x > 0.05 and p_value_y > 0.05
     
     if is_normal:
@@ -430,59 +451,82 @@ def analyze_quantitative_bivariate(df, var_x, var_y):
         correlation_method = "Spearman"
         correlation, p_value = stats.spearmanr(data[var_x], data[var_y])
     
-    # Création du DataFrame des résultats
     results_dict = {
         "Test de corrélation": [correlation_method],
         "Coefficient": [round(correlation, 3)],
         "P-value": [round(p_value, 3)],
-        "Interprétation": ["Significatif" if p_value < 0.05 else "Non significatif"]
+        "Interprétation": ["Significatif" if p_value < 0.05 else "Non significatif"],
+        "Nombre d'observations": [len(data)]
     }
+    
+    if groupby_col is not None:
+        results_dict["Note"] = [f"Données agrégées par {groupby_col} ({agg_method})"]
+    
     results_df = pd.DataFrame(results_dict)
     
-    # Calcul des taux de réponse
-    response_rate_x = (data[var_x].count() / len(df)) * 100
-    response_rate_y = (data[var_y].count() / len(df)) * 100
+    # Calcul des taux de réponse sur données originales
+    response_rate_x = (df[var_x].count() / len(df)) * 100
+    response_rate_y = (df[var_y].count() / len(df)) * 100
     
-    return results_df, response_rate_x, response_rate_y
-
-def plot_quantitative_bivariate(df, var_x, var_y, color, plot_options):
+    return results_df, response_rate_x, response_rate_y, data
+    
+def plot_quantitative_bivariate(df, var_x, var_y, color, plot_options, groupby_col=None, agg_method=None):
     """
     Création d'un scatter plot pour l'analyse quantitative avec régression.
-    """
-    # Filtrage des non-réponses
-    data = df.copy()
-    missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr', 'NR', 'Non-réponse']
-    data[var_x] = data[var_x].replace(missing_values, np.nan)
-    data[var_y] = data[var_y].replace(missing_values, np.nan)
-    data = data.dropna(subset=[var_x, var_y])
+    Gère les données agrégées si spécifiées.
     
-    fig, ax = plt.subplots(figsize=(10, 6))
+    Parameters:
+        df: DataFrame avec les données à visualiser
+        var_x, var_y: noms des variables à analyser
+        color: couleur du graphique
+        plot_options: dictionnaire des options de personnalisation
+        groupby_col: colonne utilisée pour l'agrégation (si applicable)
+        agg_method: méthode d'agrégation utilisée (si applicable)
+    """
+    fig, ax = plt.subplots(figsize=(12, 8))
     
     # Scatter plot
-    ax.scatter(data[var_x], data[var_y], alpha=0.5, color=color)
+    ax.scatter(df[var_x], df[var_y], alpha=0.5, color=color, s=50)
     
     # Régression linéaire
-    z = np.polyfit(data[var_x], data[var_y], 1)
+    z = np.polyfit(df[var_x], df[var_y], 1)
     p = np.poly1d(z)
-    ax.plot(data[var_x], p(data[var_x]), "r--", alpha=0.8, color=color)
+    x_range = np.linspace(df[var_x].min(), df[var_x].max(), 100)
+    ax.plot(x_range, p(x_range), "--", color=color, alpha=0.8, 
+            label=f'y = {z[0]:.2f}x + {z[1]:.2f}')
     
     # Configuration du graphique
-    plt.title(plot_options['title'])
+    plt.title(plot_options['title'], pad=20)
     plt.xlabel(plot_options['x_label'])
     plt.ylabel(plot_options['y_label'])
     plt.grid(True, alpha=0.3)
     
+    # Ajout de la légende avec l'équation de régression
+    plt.legend(loc='upper left', bbox_to_anchor=(1.05, 1))
+    
+    # Information sur l'agrégation si applicable
+    if groupby_col and agg_method:
+        agg_text = f"Données agrégées par {groupby_col}\nMéthode : {'Somme' if agg_method == 'sum' else 'Moyenne'}"
+        plt.figtext(1.05, 0.9, agg_text, fontsize=8, ha='left', va='top')
+        
+        # Ajout du nombre d'observations
+        n_obs = len(df)
+        plt.figtext(1.05, 0.85, f"n = {n_obs} observations", fontsize=8, ha='left', va='top')
+    
     # Ajout de la source si spécifiée
     if plot_options['source']:
-        plt.figtext(0.01, -0.1, f"Source : {plot_options['source']}", 
+        plt.figtext(1.05, 0.1, f"Source : {plot_options['source']}", 
                    ha='left', fontsize=8)
     
     # Ajout de la note si spécifiée
     if plot_options['note']:
-        plt.figtext(0.01, -0.15, f"Note : {plot_options['note']}", 
+        plt.figtext(1.05, 0.05, f"Note : {plot_options['note']}", 
                    ha='left', fontsize=8)
     
+    # Ajustement de la mise en page pour accommoder les annotations
     plt.tight_layout()
+    plt.subplots_adjust(right=0.85)
+    
     return fig
 
 # Fonctions pour les différentes pages
@@ -1190,6 +1234,46 @@ def main():
             else:
                 st.write("### Analyse Bivariée - Variables Quantitatives")
                 
+                # Détection des doublons potentiels
+                has_duplicates = check_duplicates(st.session_state.merged_data, var_x, var_y)
+                
+                if has_duplicates:
+                    st.warning("⚠️ Certaines observations sont répétées dans le jeu de données. "
+                              "Vous pouvez choisir d'agréger les données avant l'analyse.")
+                    
+                    # Option d'agrégation
+                    do_aggregate = st.checkbox("Agréger les données avant l'analyse")
+                    
+                    if do_aggregate:
+                        # Sélection de la colonne d'agrégation
+                        groupby_cols = st.session_state.merged_data.columns.tolist()
+                        groupby_col = st.selectbox("Sélectionner la colonne d'agrégation", groupby_cols)
+                        
+                        # Méthode d'agrégation
+                        agg_method = st.radio("Méthode d'agrégation", 
+                                            ['sum', 'mean'],
+                                            format_func=lambda x: "Somme" if x == "sum" else "Moyenne")
+                        
+                        results_df, response_rate_x, response_rate_y, agg_data = analyze_quantitative_bivariate(
+                            st.session_state.merged_data,
+                            var_x,
+                            var_y,
+                            groupby_col=groupby_col,
+                            agg_method=agg_method
+                        )
+                    else:
+                        results_df, response_rate_x, response_rate_y, agg_data = analyze_quantitative_bivariate(
+                            st.session_state.merged_data,
+                            var_x,
+                            var_y
+                        )
+                else:
+                    results_df, response_rate_x, response_rate_y, agg_data = analyze_quantitative_bivariate(
+                        st.session_state.merged_data,
+                        var_x,
+                        var_y
+                    )
+                
                 # Calcul et affichage des statistiques de corrélation
                 results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
                     st.session_state.merged_data,
@@ -1219,9 +1303,14 @@ def main():
                 with st.expander("Options avancées"):
                     col1, col2 = st.columns(2)
                     with col1:
+                        # Adaptation du titre selon l'agrégation
+                        default_title = f"Relation entre {var_x} et {var_y}"
+                        if has_duplicates and do_aggregate:
+                            default_title += f" (agrégés par {groupby_col})"
+                        
                         title = st.text_input(
                             "Titre du graphique", 
-                            f"Relation entre {var_x} et {var_y}",
+                            default_title,
                             key='title_quant'
                         )
                         x_label = st.text_input(
@@ -1256,20 +1345,19 @@ def main():
                     'show_values': True
                 }
                 
-                # Création et affichage du graphique
+                # Création et affichage du graphique avec les données agrégées si nécessaire
                 fig = plot_quantitative_bivariate(
-                    st.session_state.merged_data,
+                    agg_data,  # Utilisation des données potentiellement agrégées
                     var_x,
                     var_y,
                     COLOR_PALETTES[color_scheme][0],
-                    plot_options
+                    plot_options,
+                    groupby_col if (has_duplicates and do_aggregate) else None,
+                    agg_method if (has_duplicates and do_aggregate) else None
                 )
                 
                 st.pyplot(fig)
                 plt.close()
-    
-        except Exception as e:
-            st.error(f"Une erreur s'est produite : {str(e)}")
 
 # Exécution de l'application
 if __name__ == "__main__":
