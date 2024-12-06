@@ -395,13 +395,18 @@ def plot_mixed_bivariate(df, qual_var, quant_var, color_palette, plot_options):
     
     return fig
 
-def check_normality(data):
+def check_normality(data, var):
     """
-    Vérifie la normalité d'une distribution avec le test de Shapiro-Wilk.
-    Retourne True si la distribution est normale, False sinon.
+    Vérifie la normalité d'une variable avec adaptation pour les grands échantillons.
     """
-    from scipy import stats
-    _, p_value = stats.shapiro(data)
+    n = len(data)
+    if n > 5000:
+        # Pour les grands échantillons, utiliser le test d'Anderson-Darling
+        # qui est plus adapté aux grands échantillons
+        _, p_value = stats.normaltest(data[var])
+    else:
+        # Pour les petits échantillons, utiliser Shapiro-Wilk
+        _, p_value = stats.shapiro(data[var])
     return p_value > 0.05
 
 def check_duplicates(df, var_x, var_y):
@@ -416,13 +421,6 @@ def check_duplicates(df, var_x, var_y):
 def analyze_quantitative_bivariate(df, var_x, var_y, groupby_col=None, agg_method='sum'):
     """
     Analyse bivariée pour deux variables quantitatives avec option d'agrégation.
-    
-    Parameters:
-        df: DataFrame source
-        var_x: Variable X
-        var_y: Variable Y
-        groupby_col: Colonne pour grouper les données (ex: ID établissement)
-        agg_method: Méthode d'agrégation ('sum' ou 'mean')
     """
     data = df.copy()
     missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr', 'NR', 'Non-réponse']
@@ -439,10 +437,10 @@ def analyze_quantitative_bivariate(df, var_x, var_y, groupby_col=None, agg_metho
     # Suppression des valeurs manquantes
     data = data.dropna(subset=[var_x, var_y])
     
-    # Test de normalité et corrélation
-    _, p_value_x = stats.shapiro(data[var_x])
-    _, p_value_y = stats.shapiro(data[var_y])
-    is_normal = p_value_x > 0.05 and p_value_y > 0.05
+    # Test de normalité
+    is_normal_x = check_normality(data, var_x)
+    is_normal_y = check_normality(data, var_y)
+    is_normal = is_normal_x and is_normal_y
     
     if is_normal:
         correlation_method = "Pearson"
@@ -468,7 +466,7 @@ def analyze_quantitative_bivariate(df, var_x, var_y, groupby_col=None, agg_metho
     response_rate_x = (df[var_x].count() / len(df)) * 100
     response_rate_y = (df[var_y].count() / len(df)) * 100
     
-    return results_df, response_rate_x, response_rate_y, data
+    return results_df, response_rate_x, response_rate_y
     
 def plot_quantitative_bivariate(df, var_x, var_y, color, plot_options, groupby_col=None, agg_method=None):
     """
@@ -1246,7 +1244,8 @@ def main():
                     
                     if do_aggregate:
                         # Sélection de la colonne d'agrégation
-                        groupby_cols = st.session_state.merged_data.columns.tolist()
+                        groupby_cols = [col for col in st.session_state.merged_data.columns 
+                                      if col not in [var_x, var_y]]
                         groupby_col = st.selectbox("Sélectionner la colonne d'agrégation", groupby_cols)
                         
                         # Méthode d'agrégation
@@ -1254,25 +1253,33 @@ def main():
                                             ['sum', 'mean'],
                                             format_func=lambda x: "Somme" if x == "sum" else "Moyenne")
                         
-                        results_df, response_rate_x, response_rate_y, agg_data = analyze_quantitative_bivariate(
+                        results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
                             st.session_state.merged_data,
                             var_x,
                             var_y,
                             groupby_col=groupby_col,
                             agg_method=agg_method
                         )
+                        
+                        # Données agrégées pour le graphique
+                        agg_data = st.session_state.merged_data.groupby(groupby_col).agg({
+                            var_x: agg_method,
+                            var_y: agg_method
+                        }).reset_index()
                     else:
-                        results_df, response_rate_x, response_rate_y, agg_data = analyze_quantitative_bivariate(
+                        results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
                             st.session_state.merged_data,
                             var_x,
                             var_y
                         )
+                        agg_data = st.session_state.merged_data
                 else:
-                    results_df, response_rate_x, response_rate_y, agg_data = analyze_quantitative_bivariate(
+                    results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
                         st.session_state.merged_data,
                         var_x,
                         var_y
                     )
+                    agg_data = st.session_state.merged_data
                 
                 # Calcul et affichage des statistiques de corrélation
                 results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
