@@ -894,7 +894,7 @@ def main():
 
     # Analyse bivariée
     elif analysis_type == "Analyse bivariée":
-       try:
+        try:
             # Sélection des variables
             var_x = st.selectbox("Variable X", st.session_state.merged_data.columns, key='var_x_select')
             var_y = st.selectbox("Variable Y", 
@@ -987,7 +987,7 @@ def main():
                 )
                 st.pyplot(fig)
                 plt.close()
-
+    
             # Analyse pour une variable qualitative et une quantitative
             elif (is_x_numeric and not is_y_numeric) or (not is_x_numeric and is_y_numeric):
                 st.write("### Analyse Bivariée - Variable Qualitative et Quantitative")
@@ -1035,9 +1035,8 @@ def main():
                 )
                 st.pyplot(fig)
                 plt.close()
-
-            
-            except Exception as e:
+    
+        except Exception as e:
             st.error(f"Une erreur s'est produite : {str(e)}")
 
 # Exécution de l'application
