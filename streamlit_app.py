@@ -228,52 +228,70 @@ def plot_qualitative_bivariate(df, var_x, var_y, plot_type, color_palette, plot_
         plt.xticks(rotation=45, ha='right')
         
     elif plot_type == "Mosaic Plot":
-        fig, ax = plt.subplots(figsize=(12, 6))
+        # Création d'une figure plus grande pour accommoder les labels
+        fig, ax = plt.subplots(figsize=(14, 8))
         data_norm = crosstab_n.div(crosstab_n.sum().sum())
         
+        # Calcul des positions pour les rectangles
         widths = data_norm.sum(axis=1)
         x = 0
+        x_centers = []  # Pour stocker les centres des rectangles en x
+        
+        # Premier passage pour créer les rectangles
         for i, (idx, row) in enumerate(data_norm.iterrows()):
             y = 0
             width = widths[idx]
+            x_centers.append(x + width/2)  # Stocker le centre pour le label
+            
             for j, val in enumerate(row):
                 height = val / widths[idx]
                 rect = plt.Rectangle((x, y), width, height, 
                                    facecolor=color_palette[j % len(color_palette)],
-                                   edgecolor='white')
+                                   edgecolor='white',
+                                   linewidth=1)
                 ax.add_patch(rect)
                 
-                # Affichage des valeurs si demandé
+                # Ajout des pourcentages si assez d'espace
                 if plot_options['show_values'] and width * height > 0.02:
                     plt.text(x + width/2, y + height/2, 
                             f'{val*100:.1f}%',
-                            ha='center', va='center')
+                            ha='center', va='center',
+                            fontsize=9)
                 y += height
             x += width
-            
-        ax.set_xlim(0, 1)
-        ax.set_ylim(0, 1)
-        plt.title(plot_options['title'])
         
-        legend_elements = [plt.Rectangle((0,0),1,1, facecolor=color_palette[i % len(color_palette)])
+        # Ajout des labels pour var_x sous les rectangles
+        ax.set_xticks(x_centers)
+        ax.set_xticklabels(crosstab_n.index, rotation=45, ha='right')
+        
+        # Ajout d'une légende pour var_y
+        legend_elements = [plt.Rectangle((0,0), 1, 1, 
+                                       facecolor=color_palette[i % len(color_palette)])
                          for i in range(len(crosstab_n.columns))]
         ax.legend(legend_elements, crosstab_n.columns, 
-                 title=var_y, bbox_to_anchor=(1.05, 1), loc='upper left')
+                 title=var_y, bbox_to_anchor=(1.05, 1), 
+                 loc='upper left')
         
-        ax.set_xticks([])
+        # Ajustement des limites et des titres
+        ax.set_xlim(-0.05, 1.05)
+        ax.set_ylim(0, 1)
+        plt.title(plot_options['title'])
+        plt.xlabel(plot_options['x_label'])
+        
+        # Suppression des graduations de l'axe y mais conservation de l'axe
         ax.set_yticks([])
+        
+        # Ajout de la source et de la note si spécifiées
+        if plot_options['source']:
+            plt.figtext(0.01, -0.1, f"Source : {plot_options['source']}", 
+                       ha='left', fontsize=8)
+        
+        if plot_options['note']:
+            plt.figtext(0.01, -0.15, f"Note : {plot_options['note']}", 
+                       ha='left', fontsize=8)
+        
+        plt.tight_layout()
     
-    # Ajout de la source si spécifiée
-    if plot_options['source']:
-        plt.figtext(0.01, -0.1, f"Source : {plot_options['source']}", 
-                   ha='left', fontsize=8)
-    
-    # Ajout des notes de lecture si spécifiées
-    if plot_options['note']:
-        plt.figtext(0.01, -0.15, f"Note : {plot_options['note']}", 
-                   ha='left', fontsize=8)
-    
-    plt.tight_layout()
     return fig
 
 def analyze_mixed_bivariate(df, qual_var, quant_var):
