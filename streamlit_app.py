@@ -126,19 +126,20 @@ def analyze_qualitative_bivariate(df, var_x, var_y, exclude_missing=True):
     # Copie du DataFrame pour éviter les modifications sur l'original
     data = df.copy()
     
-    # Gestion des non-réponses
+    # Liste des valeurs considérées comme non-réponses
+    missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr', 'NR', 'Non-réponse']
+    
+    # Remplacement des non-réponses par np.nan pour faciliter le filtrage
+    data[var_x] = data[var_x].replace(missing_values, np.nan)
+    data[var_y] = data[var_y].replace(missing_values, np.nan)
+    
+    # Filtrage des non-réponses
     if exclude_missing:
-        # Liste des valeurs considérées comme non-réponses
-        missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr']
-        
-        # Filtrage des non-réponses pour les deux variables
-        mask_x = ~data[var_x].isin(missing_values)
-        mask_y = ~data[var_y].isin(missing_values)
-        data = data[mask_x & mask_y]
+        data = data.dropna(subset=[var_x, var_y])
         
         # Calcul du taux de réponse
-        response_rate_x = (mask_x.sum() / len(df)) * 100
-        response_rate_y = (mask_y.sum() / len(df)) * 100
+        response_rate_x = (df[var_x].notna().sum() / len(df)) * 100
+        response_rate_y = (df[var_y].notna().sum() / len(df)) * 100
         
         response_stats = {
             f"{var_x}": f"{response_rate_x:.1f}%",
@@ -151,12 +152,11 @@ def analyze_qualitative_bivariate(df, var_x, var_y, exclude_missing=True):
     # Calcul des pourcentages en ligne
     crosstab_pct = pd.crosstab(data[var_x], data[var_y], normalize='index') * 100
     
+    # Calcul des moyennes par colonne (pour le total)
+    col_means = crosstab_pct.mean()
+    
     # Création du tableau combiné
     combined_table = pd.DataFrame(index=crosstab_n.index, columns=crosstab_n.columns)
-    
-    # Ajout des totaux en ligne et en colonne
-    row_totals = crosstab_n.sum(axis=1)
-    col_totals = crosstab_n.sum(axis=0)
     
     # Remplissage du tableau principal
     for idx in crosstab_n.index:
@@ -166,8 +166,18 @@ def analyze_qualitative_bivariate(df, var_x, var_y, exclude_missing=True):
             combined_table.loc[idx, col] = f"{pct:.1f}% ({n})"
     
     # Ajout des totaux
-    combined_table.loc['Total'] = [f"100% ({n})" for n in col_totals]
-    combined_table['Total'] = [f"100% ({n})" for n in row_totals] + [f"100% ({crosstab_n.values.sum()})"]
+    row_totals = crosstab_n.sum(axis=1)
+    combined_table['Total'] = [f"100% ({n})" for n in row_totals]
+    
+    # Ajout de la ligne des moyennes
+    mean_row = []
+    for col in crosstab_n.columns:
+        mean_val = col_means[col]
+        total_n = crosstab_n[col].sum()
+        mean_row.append(f"{mean_val:.1f}% ({total_n})")
+    mean_row.append(f"100% ({crosstab_n.values.sum()})")
+    
+    combined_table.loc['Moyenne'] = mean_row
     
     if exclude_missing:
         return combined_table, response_stats
@@ -177,12 +187,18 @@ def plot_qualitative_bivariate(df, var_x, var_y, plot_type, color_palette, plot_
     """
     Création des visualisations pour l'analyse bivariée qualitative.
     """
-    # Filtrage des non-réponses
+    # Copie du DataFrame pour éviter les modifications sur l'original
     data = df.copy()
-    missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr']
-    mask_x = ~data[var_x].isin(missing_values)
-    mask_y = ~data[var_y].isin(missing_values)
-    data = data[mask_x & mask_y]
+    
+    # Liste des valeurs considérées comme non-réponses
+    missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr', 'NR', 'Non-réponse']
+    
+    # Remplacement des non-réponses par np.nan
+    data[var_x] = data[var_x].replace(missing_values, np.nan)
+    data[var_y] = data[var_y].replace(missing_values, np.nan)
+    
+    # Filtrage des non-réponses
+    data = data.dropna(subset=[var_x, var_y])
     
     # Données de base pour les graphiques
     crosstab_n = pd.crosstab(data[var_x], data[var_y])
