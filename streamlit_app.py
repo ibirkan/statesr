@@ -830,56 +830,56 @@ def main():
     # Analyse bivariée
     elif analysis_type == "Analyse bivariée":
         # Sélection des variables
-        var_x = st.selectbox("Variable X", st.session_state.merged_data.columns)
+        var_x = st.selectbox("Variable X", st.session_state.merged_data.columns, key='var_x_select')
         var_y = st.selectbox("Variable Y", 
-                            [col for col in st.session_state.merged_data.columns if col != var_x])
+                            [col for col in st.session_state.merged_data.columns if col != var_x],
+                            key='var_y_select')
         
         # Détection des types de variables
         is_x_numeric = pd.api.types.is_numeric_dtype(st.session_state.merged_data[var_x])
         is_y_numeric = pd.api.types.is_numeric_dtype(st.session_state.merged_data[var_y])
         
-        # Sélection de la palette de couleurs
-        color_scheme = st.selectbox(
-            "Palette de couleurs",
-            list(COLOR_PALETTES.keys())
-        )
-        
         # Analyse pour deux variables qualitatives
         if not is_x_numeric and not is_y_numeric:
             st.write("### Analyse Bivariée - Variables Qualitatives")
             
+            # Option d'inversion des variables avec une clé unique
+            invert_vars = st.checkbox("Inverser les variables X et Y", key='invert_vars_qual')
+            
+            # Variables actuelles en tenant compte de l'inversion
+            current_x = var_y if invert_vars else var_x
+            current_y = var_x if invert_vars else var_y
+            
             # Affichage du tableau croisé
             combined_table = analyze_qualitative_bivariate(
-                st.session_state.merged_data, var_x, var_y
+                st.session_state.merged_data, current_x, current_y
             )
             st.write("Tableau croisé (Pourcentages en ligne et effectifs)")
             st.dataframe(combined_table)
             
-            # Option pour inverser les variables
-            if st.checkbox("Inverser les variables X et Y"):
-                combined_table = analyze_qualitative_bivariate(
-                    st.session_state.merged_data, var_y, var_x
+            # Configuration de la visualisation avec des clés uniques
+            st.write("### Configuration de la visualisation")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                plot_type = st.selectbox(
+                    "Type de graphique",
+                    ["Grouped Bar Chart", "Stacked Bar Chart", "Mosaic Plot"],
+                    key='plot_type_qual'
                 )
-                st.write("Tableau croisé inversé (Pourcentages en ligne et effectifs)")
-                st.dataframe(combined_table)
             
-            # Sélection du type de graphique
-            plot_type = st.selectbox(
-                "Type de graphique",
-                ["Grouped Bar Chart", "Stacked Bar Chart", "Mosaic Plot"]
-            )
-            
-            # Sélection de la palette de couleurs
-            color_scheme = st.selectbox(
-                "Palette de couleurs",
-                list(COLOR_PALETTES.keys())
-            )
+            with col2:
+                color_scheme = st.selectbox(
+                    "Palette de couleurs",
+                    list(COLOR_PALETTES.keys()),
+                    key='color_scheme_qual'
+                )
             
             # Création et affichage du graphique
             fig = plot_qualitative_bivariate(
                 st.session_state.merged_data,
-                var_x,
-                var_y,
+                current_x,
+                current_y,
                 plot_type,
                 COLOR_PALETTES[color_scheme]
             )
