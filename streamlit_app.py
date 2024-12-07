@@ -1215,14 +1215,6 @@ def main():
                                         elif graph_type == "Density plot":
                                             fig = plot_density(plot_data, var, title, x_axis, y_axis)
                                             st.plotly_chart(fig, use_container_width=True)
-                                        else:  # Density plot with Seaborn
-                                            fig, ax = plt.subplots(figsize=(12, 6))
-                                            sns.kdeplot(plot_data.dropna(), ax=ax, fill=True, color=COLOR_PALETTES[color_scheme][0])
-                                            ax.set_title(title)
-                                            ax.set_xlabel(x_axis)
-                                            ax.set_ylabel(y_axis)
-                                            st.pyplot(fig)
-                                            plt.close()
                                   
                                     else:
                                         data = value_counts
