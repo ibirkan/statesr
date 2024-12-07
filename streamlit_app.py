@@ -1526,16 +1526,16 @@ def main():
                     # Analyse pour deux variables quantitatives
                     else:
                         st.write("### Analyse Bivariée - Variables Quantitatives")
-                    
+    
                         # Option d'agrégation avec variable de référence d'abord
                         st.write("Si certaines observations sont répétées dans votre jeu de données, vous pouvez choisir une variable de référence pour l'agrégation.")
-                    
+    
                         do_aggregate = st.checkbox("Vérifier les observations répétées avec une variable de référence", key="do_aggregate_quant")
-                    
+    
                         has_duplicates = False
                         agg_method = None
                         reference_var = None
-                    
+    
                         if do_aggregate:
                             # Sélection de la variable de référence parmi toutes les variables
                             reference_var = st.selectbox(
@@ -1558,21 +1558,21 @@ def main():
                                 )
                             else:
                                 st.info(f"La variable {reference_var} ne contient pas d'observations répétées. L'agrégation n'est pas nécessaire.")
-                    
+    
                         # Sélection des variables X et Y après la configuration de l'agrégation
                         numeric_cols = [col for col in st.session_state.merged_data.columns 
                                        if is_numeric_column(st.session_state.merged_data, col)]
-                    
+    
                         var_x = st.selectbox("Variable X", numeric_cols, key='var_x_quant')
                         var_y = st.selectbox(
                             "Variable Y", 
                             [col for col in numeric_cols if col != var_x],
                             key='var_y_quant'
                         )
-                    
+    
                         # Traitement des données selon la configuration d'agrégation
                         if do_aggregate and has_duplicates and reference_var and agg_method:
-                            # Aggrégation des deux variables avec la même méthode
+                            # Agrégation des deux variables avec la même méthode
                             agg_data = st.session_state.merged_data.groupby(reference_var).agg({
                                 var_x: agg_method,
                                 var_y: agg_method
@@ -1592,7 +1592,7 @@ def main():
                                 var_x,
                                 var_y
                             )
-       
+    
                         # Affichage des taux de réponse
                         st.write("Taux de réponse :")
                         st.write(f"- {var_x} : {response_rate_x:.1f}%")
