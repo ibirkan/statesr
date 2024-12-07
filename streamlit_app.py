@@ -1588,34 +1588,7 @@ def main():
                             agg_data = st.session_state.merged_data
                             reference_var = None
                             agg_method = None
-    
-                                # Calcul et affichage des statistiques
-                                results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
-                                    st.session_state.merged_data,
-                                    var_x,
-                                    var_y,
-                                    groupby_col=groupby_col,
-                                    agg_method=agg_method
-                                )
-                            else:
-                                results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
-                                    st.session_state.merged_data,
-                                    var_x,
-                                    var_y
-                                )
-                                agg_data = st.session_state.merged_data
-                                groupby_col = None
-                                agg_method = None
-                        else:
-                            results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
-                                st.session_state.merged_data,
-                                var_x,
-                                var_y
-                            )
-                            agg_data = st.session_state.merged_data
-                            groupby_col = None
-                            agg_method = None
-    
+       
                         # Affichage des taux de réponse
                         st.write("Taux de réponse :")
                         st.write(f"- {var_x} : {response_rate_x:.1f}%")
