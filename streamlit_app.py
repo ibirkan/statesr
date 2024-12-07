@@ -513,10 +513,35 @@ def detect_repeated_variable(df, var_x, var_y, groupby_col):
 def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot_options, groupby_col=None, agg_method=None):
     """
     Création d'un scatter plot interactif avec Plotly pour l'analyse quantitative.
+    Inclut des info-bulles et une ligne de régression robuste.
     """
+    # Nettoyage des données pour la régression
+    df_clean = df.dropna(subset=[var_x, var_y])
+    x = df_clean[var_x].values
+    y = df_clean[var_y].values
+    
+    # Calcul de la régression de manière robuste
+    regression_coeffs, regression_success = calculate_regression(x, y)
+    
+    # Création du scatter plot
     fig = go.Figure()
     
-    # Ajout du nuage de points avec info-bulles reliables
+    # Ajout du nuage de points avec info-bulles personnalisées
+    hover_text = []
+    for idx, row in df.iterrows():
+        if pd.isna(row[var_x]) or pd.isna(row[var_y]):
+            continue
+            
+        text_parts = []
+        if groupby_col:
+            text_parts.append(f"<b>{groupby_col}</b>: {row[groupby_col]}")
+        text_parts.extend([
+            f"<b>{var_x}</b>: {row[var_x]:,.2f}",
+            f"<b>{var_y}</b>: {row[var_y]:,.2f}"
+        ])
+        hover_text.append("<br>".join(text_parts))
+    
+    # Ajout du nuage de points
     fig.add_trace(go.Scatter(
         x=df[var_x],
         y=df[var_y],
@@ -527,55 +552,47 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
             size=10,
             opacity=0.7
         ),
-        # Données pour les info-bulles
-        hovertemplate=(
-            f"<b>{groupby_col}</b>: %{{customdata}}<br>" +
-            f"<b>{var_x}</b>: %{{x:,.0f}}<br>" +
-            f"<b>{var_y}</b>" + (f" ({agg_method})" if agg_method else "") + ": %{{y:,.0f}}" +
-            "<extra></extra>"  # Supprime la légende secondaire
-        ) if groupby_col else (
-            f"<b>{var_x}</b>: %{{x:,.0f}}<br>" +
-            f"<b>{var_y}</b>: %{{y:,.0f}}" +
-            "<extra></extra>"
-        ),
-        customdata=df[groupby_col] if groupby_col else None,
+        hovertemplate=hover_text,
+        hoverinfo='text',
         hoverlabel=dict(
             bgcolor='white',
-            font=dict(size=12, family="Arial")
+            font_size=12,
+            font_family="Arial"
         )
     ))
     
-    # Calcul et ajout de la ligne de régression
-    try:
-        z = np.polyfit(df[var_x], df[var_y], 1)
-        p = np.poly1d(z)
-        
+    # Ajout de la ligne de régression si le calcul a réussi
+    if regression_success:
         x_range = np.linspace(df[var_x].min(), df[var_x].max(), 100)
+        y_range = regression_coeffs[0] * x_range + regression_coeffs[1]
         
         fig.add_trace(go.Scatter(
             x=x_range,
-            y=p(x_range),
+            y=y_range,
             mode='lines',
-            name=f'Régression (y = {z[0]:.2f}x + {z[1]:.2f})',
+            name=f'Régression (y = {regression_coeffs[0]:.2f}x + {regression_coeffs[1]:.2f})',
             line=dict(
                 color=color_scheme[0],
                 dash='dash'
-            ),
-            hoverinfo='none'  # Désactive complètement les info-bulles pour la ligne
+            )
         ))
-    except Exception as e:
-        st.warning("La ligne de régression n'a pas pu être calculée.")
+    else:
+        st.warning("La ligne de régression n'a pas pu être calculée en raison de la distribution des données.")
     
     # Configuration du layout
+    title = plot_options['title']
+    if groupby_col and agg_method:
+        title += f"<br><sup>Données agrégées par {groupby_col} ({agg_method})</sup>"
+    
     fig.update_layout(
         title=dict(
-            text=plot_options['title'] + (f"<br><sup>Données agrégées par {groupby_col} ({agg_method})</sup>" if groupby_col and agg_method else ""),
+            text=title,
             x=0.5,
             xanchor='center'
         ),
         xaxis_title=plot_options['x_label'],
         yaxis_title=plot_options['y_label'],
-        hovermode='closest',  # Force le survol sur le point le plus proche
+        hovermode='closest',
         plot_bgcolor='white',
         width=900,
         height=600,
@@ -586,37 +603,40 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
             y=0.99,
             xanchor="left",
             x=0.01
-        ),
-        # Configuration des interactions
-        modebar_remove=['lasso_select', 'select2d'],  # Simplifie la barre d'outils
-        hoverlabel=dict(
-            font_size=12,
-            font_family="Arial"
         )
     )
     
-    # Configuration des axes avec grille
+    # Ajout de la grille
     fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
     fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
     
-    # Ajout des annotations si spécifiées
+    # Ajout de la source et de la note si spécifiées
     annotations = []
+    
+    current_y = -0.15
     if plot_options['source']:
         annotations.append(dict(
             text=f"Source : {plot_options['source']}",
-            x=0, y=-0.15,
-            xref="paper", yref="paper",
+            x=0,
+            y=current_y,
+            xref="paper",
+            yref="paper",
             showarrow=False,
             font=dict(size=10)
         ))
+        current_y -= 0.05
+    
     if plot_options['note']:
         annotations.append(dict(
             text=f"Note : {plot_options['note']}",
-            x=0, y=-0.2,
-            xref="paper", yref="paper",
+            x=0,
+            y=current_y,
+            xref="paper",
+            yref="paper",
             showarrow=False,
             font=dict(size=10)
         ))
+    
     if annotations:
         fig.update_layout(annotations=annotations)
     
