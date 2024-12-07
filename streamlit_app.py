@@ -1614,7 +1614,7 @@ def main():
                 
                 # Création et affichage du graphique
                 fig = plot_quantitative_bivariate_interactive(
-                    agg_data if do_aggregate else st.session_state.merged_data,
+                    agg_data,
                     var_x,
                     var_y,
                     COLOR_PALETTES[color_scheme],
