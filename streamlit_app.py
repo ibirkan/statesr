@@ -1571,19 +1571,19 @@ def main():
                         if repeated_var:
                             # Création du dictionnaire d'agrégation
                             agg_dict = {
-                                var_x: agg_method if repeated_var == var_x else 'first',
-                                var_y: agg_method if repeated_var == var_y else 'first'
+                                var_x: 'first',  # On prend toujours la première valeur
+                                var_y: agg_method  # On agrège toujours Y
                             }
                             
                             # Données agrégées pour le graphique
                             agg_data = st.session_state.merged_data.groupby(groupby_col).agg(agg_dict).reset_index()
                             
                             # Affichage d'une info sur la variable agrégée
-                            st.info(f"Variable agrégée : {repeated_var}")
+                            st.info(f"La variable {var_y} a été agrégée")
                         else:
-                            # Si on ne peut pas détecter automatiquement, agréger les deux variables
+                            # Si on ne peut pas détecter automatiquement, agréger Y par défaut
                             agg_data = st.session_state.merged_data.groupby(groupby_col).agg({
-                                var_x: agg_method,
+                                var_x: 'first',
                                 var_y: agg_method
                             }).reset_index()
                         
@@ -1673,14 +1673,13 @@ def main():
                 
                 # Création et affichage du graphique
                 fig = plot_quantitative_bivariate_interactive(
-                    agg_data,
+                    agg_data if do_aggregate else st.session_state.merged_data,
                     var_x,
                     var_y,
                     COLOR_PALETTES[color_scheme],
                     plot_options,
-                    groupby_col,
-                    agg_method,
-                    original_df=st.session_state.merged_data
+                    groupby_col if do_aggregate else None,
+                    agg_method if do_aggregate else None
                 )
                 
                 st.plotly_chart(fig, use_container_width=True)
