@@ -1560,6 +1560,10 @@ def main():
                     else:
                         st.write("### Analyse Bivariée - Variables Quantitatives")
                         
+                        # Définition des colonnes numériques
+                        numeric_cols = [col for col in st.session_state.merged_data.columns 
+                                       if is_numeric_column(st.session_state.merged_data, col)]
+                        
                         var_x = st.selectbox("Variable X", 
                                             numeric_cols, 
                                             key='quant_var_x')
