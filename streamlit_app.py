@@ -131,7 +131,7 @@ def analyze_qualitative_bivariate(df, var_x, var_y, exclude_missing=True):
     """
     # Copie du DataFrame pour éviter les modifications sur l'original
     data = df.copy()
-    
+
     # Liste des valeurs considérées comme non-réponses
     missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr', 'NR', 'Non-réponse']
     
@@ -142,11 +142,10 @@ def analyze_qualitative_bivariate(df, var_x, var_y, exclude_missing=True):
     # Filtrage des non-réponses
     if exclude_missing:
         data = data.dropna(subset=[var_x, var_y])
-        
+
         # Calcul du taux de réponse
         response_rate_x = (df[var_x].notna().sum() / len(df)) * 100
         response_rate_y = (df[var_y].notna().sum() / len(df)) * 100
-        
         response_stats = {
             f"{var_x}": f"{response_rate_x:.1f}%",
             f"{var_y}": f"{response_rate_y:.1f}%"
@@ -154,10 +153,10 @@ def analyze_qualitative_bivariate(df, var_x, var_y, exclude_missing=True):
     
     # Création du tableau croisé avec effectifs
     crosstab_n = pd.crosstab(data[var_x], data[var_y])
-    
+
     # Calcul des pourcentages en ligne
     crosstab_pct = pd.crosstab(data[var_x], data[var_y], normalize='index') * 100
-    
+
     # Calcul des moyennes par colonne (pour le total)
     col_means = crosstab_pct.mean()
     
@@ -330,7 +329,7 @@ def analyze_mixed_bivariate(df, qual_var, quant_var):
     }, index=['Total']).round(2)
     
     stats_df = pd.concat([stats_df, total_stats])
-    
+
     # Calcul du taux de réponse
     response_rate = (data[qual_var].count() / len(df)) * 100
     
@@ -421,7 +420,7 @@ def check_duplicates(df, var_x, var_y):
 def analyze_quantitative_bivariate(df, var_x, var_y, groupby_col=None, agg_method='sum'):
     """
     Analyse bivariée pour deux variables quantitatives avec option d'agrégation.
-    """
+    """    
     data = df.copy()
     missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr', 'NR', 'Non-réponse']
     data[var_x] = data[var_x].replace(missing_values, np.nan)
@@ -436,7 +435,7 @@ def analyze_quantitative_bivariate(df, var_x, var_y, groupby_col=None, agg_metho
     
     # Suppression des valeurs manquantes
     data = data.dropna(subset=[var_x, var_y])
-    
+
     # Test de normalité
     is_normal_x = check_normality(data, var_x)
     is_normal_y = check_normality(data, var_y)
@@ -461,7 +460,7 @@ def analyze_quantitative_bivariate(df, var_x, var_y, groupby_col=None, agg_metho
         results_dict["Note"] = [f"Données agrégées par {groupby_col} ({agg_method})"]
     
     results_df = pd.DataFrame(results_dict)
-    
+
     # Calcul des taux de réponse sur données originales
     response_rate_x = (df[var_x].count() / len(df)) * 100
     response_rate_y = (df[var_y].count() / len(df)) * 100
