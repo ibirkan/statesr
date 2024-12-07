@@ -1527,7 +1527,39 @@ def main():
                     else:
                         st.write("### Analyse Bivariée - Variables Quantitatives")
                     
-                        # Sélection des variables X et Y d'abord
+                        # Option d'agrégation avec variable de référence d'abord
+                        st.write("Si certaines observations sont répétées dans votre jeu de données, vous pouvez choisir une variable de référence pour l'agrégation.")
+                    
+                        do_aggregate = st.checkbox("Vérifier les observations répétées avec une variable de référence", key="do_aggregate_quant")
+                    
+                        has_duplicates = False
+                        agg_method = None
+                        reference_var = None
+                    
+                        if do_aggregate:
+                            # Sélection de la variable de référence parmi toutes les variables
+                            reference_var = st.selectbox(
+                                "Sélectionner la variable de référence", 
+                                st.session_state.merged_data.columns,
+                                key="ref_var_quant"
+                            )
+                            
+                            # Vérification des répétitions
+                            has_duplicates = st.session_state.merged_data[reference_var].duplicated().any()
+                            
+                            if has_duplicates:
+                                st.warning(f"⚠️ La variable {reference_var} contient des observations répétées. Une agrégation sera effectuée.")
+                                # Méthode d'agrégation qui sera appliquée aux deux variables
+                                agg_method = st.radio(
+                                    "Méthode d'agrégation", 
+                                    ['sum', 'mean', 'median'],
+                                    format_func=lambda x: {'sum': 'Somme', 'mean': 'Moyenne', 'median': 'Médiane'}[x],
+                                    key="agg_method_quant"
+                                )
+                            else:
+                                st.info(f"La variable {reference_var} ne contient pas d'observations répétées. L'agrégation n'est pas nécessaire.")
+                    
+                        # Sélection des variables X et Y après la configuration de l'agrégation
                         numeric_cols = [col for col in st.session_state.merged_data.columns 
                                        if is_numeric_column(st.session_state.merged_data, col)]
                     
@@ -1538,44 +1570,9 @@ def main():
                             key='var_y_quant'
                         )
                     
-                        # Option d'agrégation avec variable de référence APRÈS la sélection des variables
-                        st.write("Si certaines observations sont répétées dans votre jeu de données, vous pouvez choisir une variable de référence pour l'agrégation.")
-                    
-                        # Liste des colonnes disponibles pour la référence (exclure X et Y)
-                        reference_cols = [col for col in st.session_state.merged_data.columns 
-                                         if col not in [var_x, var_y]]
-                    
-                        do_aggregate = st.checkbox("Vérifier les observations répétées avec une variable de référence", key="do_aggregate_quant")
-                    
-                        has_duplicates = False  # Par défaut
-                        agg_method = None
-                        reference_var = None
-                    
-                        if do_aggregate:
-                            # Sélection de la variable de référence
-                            reference_var = st.selectbox(
-                                "Sélectionner la variable de référence", 
-                                reference_cols,
-                                key="ref_var_quant"
-                            )
-                            
-                            # Vérification des répétitions
-                            has_duplicates = st.session_state.merged_data[reference_var].duplicated().any()
-                            
-                            if has_duplicates:
-                                st.warning(f"⚠️ La variable {reference_var} contient des observations répétées. Une agrégation sera effectuée.")
-                                # Méthode d'agrégation
-                                agg_method = st.radio(
-                                    "Méthode d'agrégation", 
-                                    ['sum', 'mean', 'median'],
-                                    format_func=lambda x: {'sum': 'Somme', 'mean': 'Moyenne', 'median': 'Médiane'}[x],
-                                    key="agg_method_quant"
-                                )
-                            else:
-                                st.info(f"La variable {reference_var} ne contient pas d'observations répétées. L'agrégation n'est pas nécessaire.")
-                    
                         # Traitement des données selon la configuration d'agrégation
                         if do_aggregate and has_duplicates and reference_var and agg_method:
+                            # Aggrégation des deux variables avec la même méthode
                             agg_data = st.session_state.merged_data.groupby(reference_var).agg({
                                 var_x: agg_method,
                                 var_y: agg_method
