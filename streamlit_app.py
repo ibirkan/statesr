@@ -1533,7 +1533,7 @@ def main():
                 )
                 
                 st.plotly_chart(fig, use_container_width=True)
-        
+                        
             # Analyse pour deux variables quantitatives
             else:
                 st.write("### Analyse Bivariée - Variables Quantitatives")
@@ -1563,37 +1563,14 @@ def main():
                                                 'median': 'Médiane'
                                             }[x])
                         
-                        # Vérification des doublons par modalité de manière plus précise
-                        x_counts = (st.session_state.merged_data.groupby(groupby_col)
-                                   .agg({var_x: 'count'})
-                                   .reset_index())
-                        y_counts = (st.session_state.merged_data.groupby(groupby_col)
-                                   .agg({var_y: 'count'})
-                                   .reset_index())
-                        
-                        # Vérification si une variable a plus d'observations que l'autre
-                        x_has_duplicates = (x_counts[var_x] > 1).any()
-                        y_has_duplicates = (y_counts[var_y] > 1).any()
-                        
-                        # Création du dictionnaire d'agrégation
-                        agg_dict = {}
-                        if y_has_duplicates:
-                            agg_dict[var_x] = 'first'
-                            agg_dict[var_y] = agg_method
-                            st.info(f"La variable {var_y} sera agrégée car elle contient des observations répétées")
-                        elif x_has_duplicates:
-                            agg_dict[var_x] = agg_method
-                            agg_dict[var_y] = 'first'
-                            st.info(f"La variable {var_x} sera agrégée car elle contient des observations répétées")
-                        else:
-                            # Si on ne peut pas détecter clairement, alerter l'utilisateur
-                            st.warning("Aucune variable ne semble nécessiter d'agrégation")
-                            agg_dict[var_x] = 'first'
-                            agg_dict[var_y] = 'first'
-                        
+                        # Détection des variables à agréger
+                        vars_to_aggregate, vars_to_keep_raw = detect_variable_to_aggregate(st.session_state.merged_data, var_x, var_y, groupby_col)
+                        agg_dict = {var: agg_method for var in vars_to_aggregate}
+                        agg_dict.update({var: 'first' for var in vars_to_keep_raw})
+            
                         # Création des données agrégées
                         agg_data = st.session_state.merged_data.groupby(groupby_col).agg(agg_dict).reset_index()
-                        
+            
                         # Calcul et affichage des statistiques
                         results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
                             st.session_state.merged_data,
