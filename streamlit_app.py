@@ -890,6 +890,15 @@ def main():
         # Ne continuer que si une variable réelle est sélectionnée
         if var != "---":
             plot_data = st.session_state.merged_data[var]
+        
+            # Liste des valeurs considérées comme non-réponses
+            missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr', 'NR', 'Non-réponse']
+        
+            # Remplacement des non-réponses par np.nan
+            plot_data = plot_data.replace(missing_values, np.nan)
+        
+            # Suppression des non-réponses
+            plot_data = plot_data.dropna()
             
             # Vérification des données non nulles
             if plot_data is not None and not plot_data.empty:
@@ -1357,6 +1366,16 @@ def main():
             var_y = st.selectbox("Variable Y", 
                                 [col for col in st.session_state.merged_data.columns if col != var_x],
                                 key='var_y_select')
+
+            # Liste des valeurs considérées comme non-réponses
+            missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr', 'NR', 'Non-réponse']
+
+            # Remplacement des non-réponses par np.nan
+            st.session_state.merged_data[var_x] = st.session_state.merged_data[var_x].replace(missing_values, np.nan)
+            st.session_state.merged_data[var_y] = st.session_state.merged_data[var_y].replace(missing_values, np.nan)
+
+            # Suppression des non-réponses
+            st.session_state.merged_data = st.session_state.merged_data.dropna(subset=[var_x, var_y])
             
             # Détection des types de variables avec gestion d'erreur
             is_x_numeric = is_numeric_column(st.session_state.merged_data, var_x)
