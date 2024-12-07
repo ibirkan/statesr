@@ -470,32 +470,32 @@ def analyze_quantitative_bivariate(df, var_x, var_y, groupby_col=None, agg_metho
     
 def detect_variable_to_aggregate(df, var_x, var_y, groupby_col):
     """
-    Détecte automatiquement quelle variable doit être agrégée en comptant
+    Détecte automatiquement quelles variables doivent être agrégées en comptant
     le nombre de valeurs uniques pour chaque modalité du groupby_col.
     
     Returns:
-        tuple: (var_to_aggregate, var_to_keep_raw)
+        tuple: (vars_to_aggregate, vars_to_keep_raw)
     """
     # Pour chaque variable, on compte le nombre de valeurs différentes par groupby_col
     x_values_per_group = df.groupby(groupby_col)[var_x].nunique()
     y_values_per_group = df.groupby(groupby_col)[var_y].nunique()
     
-    # Si une variable a plusieurs valeurs pour certains groupes, elle doit être agrégée
-    x_has_duplicates = (x_values_per_group > 1).any()
-    y_has_duplicates = (y_values_per_group > 1).any()
+    # Initialisation des variables à agréger et à garder
+    vars_to_aggregate = []
+    vars_to_keep_raw = []
     
-    if x_has_duplicates and not y_has_duplicates:
-        return var_x, var_y
-    elif y_has_duplicates and not x_has_duplicates:
-        return var_y, var_x
-    elif x_has_duplicates and y_has_duplicates:
-        # Si les deux variables ont des doublons, on regarde laquelle en a le plus
-        x_total_duplicates = x_values_per_group.sum()
-        y_total_duplicates = y_values_per_group.sum()
-        return (var_x, var_y) if x_total_duplicates > y_total_duplicates else (var_y, var_x)
+    # Si une variable a plusieurs valeurs pour certains groupes, elle doit être agrégée
+    if (x_values_per_group > 1).any():
+        vars_to_aggregate.append(var_x)
     else:
-        # Si aucune variable n'a de doublons, on peut garder l'ordre original
-        return None, None
+        vars_to_keep_raw.append(var_x)
+    
+    if (y_values_per_group > 1).any():
+        vars_to_aggregate.append(var_y)
+    else:
+        vars_to_keep_raw.append(var_y)
+    
+    return vars_to_aggregate, vars_to_keep_raw
 
 def detect_repeated_variable(df, var_x, var_y, groupby_col):
     """
