@@ -552,8 +552,8 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
             size=10,
             opacity=0.7
         ),
-        hovertemplate=hover_text,
-        hoverinfo='text',
+        hovertemplate='%{hovertext}<extra></extra>',
+        hovertext=hover_text,
         hoverlabel=dict(
             bgcolor='white',
             font_size=12,
@@ -1525,24 +1525,33 @@ def main():
                                                 'median': 'Médiane'
                                             }[x])
                         
-                        # Vérification de quelle variable a des doublons par modalité
-                        x_has_duplicates = st.session_state.merged_data.groupby(groupby_col)[var_x].nunique() > 1
-                        y_has_duplicates = st.session_state.merged_data.groupby(groupby_col)[var_y].nunique() > 1
+                        # Vérification des doublons par modalité de manière plus précise
+                        x_counts = (st.session_state.merged_data.groupby(groupby_col)
+                                   .agg({var_x: 'count'})
+                                   .reset_index())
+                        y_counts = (st.session_state.merged_data.groupby(groupby_col)
+                                   .agg({var_y: 'count'})
+                                   .reset_index())
+                        
+                        # Vérification si une variable a plus d'observations que l'autre
+                        x_has_duplicates = (x_counts[var_x] > 1).any()
+                        y_has_duplicates = (y_counts[var_y] > 1).any()
                         
                         # Création du dictionnaire d'agrégation
                         agg_dict = {}
-                        if x_has_duplicates.any():
+                        if y_has_duplicates:
+                            agg_dict[var_x] = 'first'
+                            agg_dict[var_y] = agg_method
+                            st.info(f"La variable {var_y} sera agrégée car elle contient des observations répétées")
+                        elif x_has_duplicates:
                             agg_dict[var_x] = agg_method
                             agg_dict[var_y] = 'first'
-                            st.info(f"La variable {var_x} sera agrégée")
-                        elif y_has_duplicates.any():
-                            agg_dict[var_x] = 'first'
-                            agg_dict[var_y] = agg_method
-                            st.info(f"La variable {var_y} sera agrégée")
+                            st.info(f"La variable {var_x} sera agrégée car elle contient des observations répétées")
                         else:
-                            # Si on ne peut pas détecter clairement, on agrège la variable Y par défaut
+                            # Si on ne peut pas détecter clairement, alerter l'utilisateur
+                            st.warning("Aucune variable ne semble nécessiter d'agrégation")
                             agg_dict[var_x] = 'first'
-                            agg_dict[var_y] = agg_method
+                            agg_dict[var_y] = 'first'
                         
                         # Création des données agrégées
                         agg_data = st.session_state.merged_data.groupby(groupby_col).agg(agg_dict).reset_index()
