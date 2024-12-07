@@ -468,7 +468,49 @@ def analyze_quantitative_bivariate(df, var_x, var_y, groupby_col=None, agg_metho
     
     return results_df, response_rate_x, response_rate_y
     
-def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot_options, groupby_col=None, agg_method=None):
+def detect_variable_to_aggregate(df, var_x, var_y, groupby_col):
+    """
+    Détecte automatiquement quelle variable doit être agrégée en comptant
+    le nombre de valeurs uniques pour chaque modalité du groupby_col.
+    
+    Returns:
+        tuple: (var_to_aggregate, var_to_keep_raw)
+    """
+    # Pour chaque variable, on compte le nombre de valeurs différentes par groupby_col
+    x_values_per_group = df.groupby(groupby_col)[var_x].nunique()
+    y_values_per_group = df.groupby(groupby_col)[var_y].nunique()
+    
+    # Si une variable a plusieurs valeurs pour certains groupes, elle doit être agrégée
+    x_has_duplicates = (x_values_per_group > 1).any()
+    y_has_duplicates = (y_values_per_group > 1).any()
+    
+    if x_has_duplicates and not y_has_duplicates:
+        return var_x, var_y
+    elif y_has_duplicates and not x_has_duplicates:
+        return var_y, var_x
+    elif x_has_duplicates and y_has_duplicates:
+        # Si les deux variables ont des doublons, on regarde laquelle en a le plus
+        x_total_duplicates = x_values_per_group.sum()
+        y_total_duplicates = y_values_per_group.sum()
+        return (var_x, var_y) if x_total_duplicates > y_total_duplicates else (var_y, var_x)
+    else:
+        # Si aucune variable n'a de doublons, on peut garder l'ordre original
+        return None, None
+
+def detect_repeated_variable(df, var_x, var_y, groupby_col):
+    """
+    Détecte quelle variable contient des observations répétées pour chaque modalité du groupby_col.
+    """
+    x_duplicates = df.groupby(groupby_col)[var_x].nunique() > 1
+    y_duplicates = df.groupby(groupby_col)[var_y].nunique() > 1
+    
+    if x_duplicates.any() and not y_duplicates.any():
+        return var_x
+    elif y_duplicates.any() and not x_duplicates.any():
+        return var_y
+    return None
+
+def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot_options, groupby_col=None, agg_method=None, original_df=None):
     """
     Création d'un scatter plot interactif avec Plotly pour l'analyse quantitative.
     """
@@ -483,6 +525,11 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
     # Création du scatter plot
     fig = go.Figure()
     
+    # Détection de la variable répétée si on a les données originales
+    repeated_var = None
+    if groupby_col and original_df is not None:
+        repeated_var = detect_repeated_variable(original_df, var_x, var_y, groupby_col)
+    
     # Préparation des info-bulles
     hover_text = []
     for idx, row in df.iterrows():
@@ -491,28 +538,42 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
             
         text_parts = []
         if groupby_col:
-            text_parts.append(f"<b>{groupby_col}</b>: {row[groupby_col]}")
+            modalite = str(row[groupby_col])
+            text_parts.append(f"<b>{groupby_col}</b>: {modalite}")
             
-            # Formatter les valeurs en fonction de leur type
-            x_val = row[var_x]
-            y_val = row[var_y]
-            
-            # Si les valeurs sont des entiers ou des sommes, ne pas mettre de décimales
-            if agg_method == 'sum' or x_val.is_integer():
-                text_parts.append(f"<b>{var_x}</b>: {int(x_val):,}")
-            else:
-                text_parts.append(f"<b>{var_x}</b>: {x_val:,.2f}")
+            if repeated_var:
+                # Calcul de l'effectif pour cette modalité
+                effectif = len(original_df[original_df[groupby_col] == row[groupby_col]])
+                text_parts.append(f"<b>Effectif</b>: {effectif}")
                 
-            if agg_method == 'sum' or y_val.is_integer():
-                text_parts.append(f"<b>{var_y}</b>: {int(y_val):,}")
+                # Affichage des valeurs en fonction de la variable répétée
+                if repeated_var == var_x:
+                    # x est la variable agrégée
+                    if agg_method == 'sum':
+                        text_parts.append(f"<b>{var_x}</b> (somme): {int(row[var_x]):,}")
+                    else:
+                        text_parts.append(f"<b>{var_x}</b> ({agg_method}): {row[var_x]:.2f}")
+                    text_parts.append(f"<b>{var_y}</b>: {row[var_y]:,}")
+                else:
+                    # y est la variable agrégée
+                    text_parts.append(f"<b>{var_x}</b>: {row[var_x]:,}")
+                    if agg_method == 'sum':
+                        text_parts.append(f"<b>{var_y}</b> (somme): {int(row[var_y]):,}")
+                    else:
+                        text_parts.append(f"<b>{var_y}</b> ({agg_method}): {row[var_y]:.2f}")
             else:
-                text_parts.append(f"<b>{var_y}</b>: {y_val:,.2f}")
+                # Si on ne peut pas détecter la variable répétée, comportement par défaut
+                text_parts.extend([
+                    f"<b>{var_x}</b>: {row[var_x]:,}",
+                    f"<b>{var_y}</b>: {row[var_y]:,}"
+                ])
         else:
             # Pour les données non agrégées
             text_parts.extend([
                 f"<b>{var_x}</b>: {row[var_x]:,.2f}",
                 f"<b>{var_y}</b>: {row[var_y]:,.2f}"
             ])
+            
         hover_text.append("<br>".join(text_parts))
     
     # Ajout du nuage de points
@@ -526,8 +587,8 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
             size=10,
             opacity=0.7
         ),
-        text=hover_text,  # Utiliser text au lieu de hovertext
-        hovertemplate="%{text}<extra></extra>",  # Format personnalisé de l'info-bulle
+        text=hover_text,
+        hovertemplate="%{text}<extra></extra>",
         hoverlabel=dict(
             bgcolor='white',
             font_size=12,
@@ -549,7 +610,7 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
                 color=color_scheme[0],
                 dash='dash'
             ),
-            hovertemplate='<extra></extra>',  # Désactiver l'info-bulle pour la ligne de régression
+            hovertemplate='<extra></extra>',
             showlegend=True
         ))
     
@@ -558,6 +619,8 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
     if groupby_col and agg_method:
         method_name = "Somme" if agg_method == 'sum' else "Moyenne" if agg_method == 'mean' else "Médiane"
         title += f"<br><sup>Données agrégées par {groupby_col} ({method_name})</sup>"
+        if repeated_var:
+            title += f" pour {repeated_var}"
     
     fig.update_layout(
         title=dict(
@@ -580,7 +643,6 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
             x=0.01
         )
     )
-    
     
     # Ajout de la grille
     fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
@@ -614,7 +676,7 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
         fig.update_layout(annotations=annotations)
     
     return fig
-
+    
 def calculate_regression(x, y):
     """
     Calcule la régression linéaire de manière robuste.
@@ -1491,8 +1553,39 @@ def main():
                         
                         # Méthode d'agrégation
                         agg_method = st.radio("Méthode d'agrégation", 
-                                            ['sum', 'mean'],
-                                            format_func=lambda x: "Somme" if x == "sum" else "Moyenne")
+                                            ['sum', 'mean', 'median'],
+                                            format_func=lambda x: {
+                                                'sum': 'Somme',
+                                                'mean': 'Moyenne',
+                                                'median': 'Médiane'
+                                            }[x])
+                        
+                        # Détection de la variable à agréger
+                        repeated_var = detect_repeated_variable(
+                            st.session_state.merged_data, 
+                            var_x, 
+                            var_y, 
+                            groupby_col
+                        )
+                        
+                        if repeated_var:
+                            # Création du dictionnaire d'agrégation
+                            agg_dict = {
+                                var_x: agg_method if repeated_var == var_x else 'first',
+                                var_y: agg_method if repeated_var == var_y else 'first'
+                            }
+                            
+                            # Données agrégées pour le graphique
+                            agg_data = st.session_state.merged_data.groupby(groupby_col).agg(agg_dict).reset_index()
+                            
+                            # Affichage d'une info sur la variable agrégée
+                            st.info(f"Variable agrégée : {repeated_var}")
+                        else:
+                            # Si on ne peut pas détecter automatiquement, agréger les deux variables
+                            agg_data = st.session_state.merged_data.groupby(groupby_col).agg({
+                                var_x: agg_method,
+                                var_y: agg_method
+                            }).reset_index()
                         
                         results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
                             st.session_state.merged_data,
@@ -1501,12 +1594,6 @@ def main():
                             groupby_col=groupby_col,
                             agg_method=agg_method
                         )
-                        
-                        # Données agrégées pour le graphique
-                        agg_data = st.session_state.merged_data.groupby(groupby_col).agg({
-                            var_x: agg_method,
-                            var_y: agg_method
-                        }).reset_index()
                     else:
                         results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
                             st.session_state.merged_data,
@@ -1514,6 +1601,8 @@ def main():
                             var_y
                         )
                         agg_data = st.session_state.merged_data
+                        groupby_col = None
+                        agg_method = None
                 else:
                     results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
                         st.session_state.merged_data,
@@ -1521,13 +1610,8 @@ def main():
                         var_y
                     )
                     agg_data = st.session_state.merged_data
-                
-                # Calcul et affichage des statistiques de corrélation
-                results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
-                    st.session_state.merged_data,
-                    var_x,
-                    var_y
-                )
+                    groupby_col = None
+                    agg_method = None
                 
                 # Affichage des taux de réponse
                 st.write("Taux de réponse :")
@@ -1551,14 +1635,9 @@ def main():
                 with st.expander("Options avancées"):
                     col1, col2 = st.columns(2)
                     with col1:
-                        # Adaptation du titre selon l'agrégation
-                        default_title = f"Relation entre {var_x} et {var_y}"
-                        if has_duplicates and do_aggregate:
-                            default_title += f" (agrégés par {groupby_col})"
-                        
                         title = st.text_input(
                             "Titre du graphique", 
-                            default_title,
+                            f"Relation entre {var_x} et {var_y}",
                             key='title_quant'
                         )
                         x_label = st.text_input(
@@ -1589,19 +1668,19 @@ def main():
                     'x_label': x_label,
                     'y_label': y_label,
                     'source': source,
-                    'note': note,
-                    'show_values': True
+                    'note': note
                 }
                 
-                # Création et affichage du graphique avec Plotly
+                # Création et affichage du graphique
                 fig = plot_quantitative_bivariate_interactive(
                     agg_data,
                     var_x,
                     var_y,
                     COLOR_PALETTES[color_scheme],
                     plot_options,
-                    groupby_col if (has_duplicates and do_aggregate) else None,
-                    agg_method if (has_duplicates and do_aggregate) else None
+                    groupby_col,
+                    agg_method,
+                    original_df=st.session_state.merged_data
                 )
                 
                 st.plotly_chart(fig, use_container_width=True)
