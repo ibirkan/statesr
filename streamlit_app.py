@@ -1345,7 +1345,6 @@ def main():
                                        plt.close()
                                        return
                         
-                        
                             # Mise à jour du layout pour les graphiques Plotly
                             if fig is not None and isinstance(fig, go.Figure):
                                 fig.update_layout(
@@ -1371,13 +1370,13 @@ def main():
                                     )
                             
                                 if show_values and hasattr(fig.data[0], "text"):
-                                    if isinstance(fig.data[0], go.Bar):
+                                    if isinstance(fig.data[0], go.Histogram):
                                         fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
-                                    else:
+                                    elif isinstance(fig.data[0], go.Scatter):
                                         fig.update_traces(texttemplate='%{y:.2f}', textposition='top center')
-                                
+                            
                                 st.plotly_chart(fig, use_container_width=True)
-                                            
+                                           
                         except Exception as e:
                             st.error(f"Erreur lors de la génération du graphique : {str(e)}")
 
