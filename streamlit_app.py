@@ -1560,57 +1560,41 @@ def main():
                     else:
                         st.write("### Analyse Bivariée - Variables Quantitatives")
                         
-                        # Définition des colonnes numériques
-                        numeric_cols = [col for col in st.session_state.merged_data.columns 
-                                       if is_numeric_column(st.session_state.merged_data, col)]
-                        
-                        var_x = st.selectbox("Variable X", 
-                                            numeric_cols, 
-                                            key='quant_var_x')
-                        
-                        remaining_numeric_cols = [col for col in numeric_cols if col != var_x]
-                        var_y = st.selectbox(
-                            "Variable Y", 
-                            remaining_numeric_cols,
-                            key='quant_var_y'
-                        )
-                        
-                        # Offrir l'opportunité de changer l'échelle d'analyse
                         st.write("Vous pouvez choisir une échelle d'analyse différente pour ces variables.")
                         
-                        do_aggregate = st.checkbox("Analyser à une échelle différente", key="do_agg_quant_biv")
+                        # Option d'agrégation
+                        do_aggregate = st.checkbox("Analyser à une échelle différente")
                         
                         if do_aggregate:
-                            # Sélection de la variable de référence (unité d'analyse)
-                            potential_ref_cols = [col for col in st.session_state.merged_data.columns 
-                                              if col not in [var_x, var_y] and not is_numeric_column(st.session_state.merged_data, col)]
+                            # Sélection de la colonne d'agrégation uniquement parmi les variables non numériques
+                            groupby_cols = [col for col in st.session_state.merged_data.columns 
+                                           if col not in [var_x, var_y] and not is_numeric_column(st.session_state.merged_data, col)]
                             
-                            if potential_ref_cols:
+                            if groupby_cols:
                                 groupby_col = st.selectbox(
                                     "Sélectionner l'unité d'analyse", 
-                                    potential_ref_cols,
-                                    help="Par exemple : établissement, académie, région...",
-                                    key="ref_col_quant_biv"
+                                    groupby_cols,
+                                    help="Par exemple : établissement, académie, région..."
                                 )
                                 
                                 # Méthode d'agrégation
                                 agg_method = st.radio(
-                                    "Méthode d'agrégation des variables", 
+                                    "Méthode d'agrégation", 
                                     ['sum', 'mean', 'median'],
                                     format_func=lambda x: {
                                         'sum': 'Somme',
                                         'mean': 'Moyenne',
                                         'median': 'Médiane'
-                                    }[x],
-                                    key="agg_method_quant_biv"
+                                    }[x]
                                 )
                                 
-                                # Création des données agrégées
+                                # Création du dictionnaire d'agrégation
                                 agg_dict = {
                                     var_x: agg_method,
                                     var_y: agg_method
                                 }
                                 
+                                # Création des données agrégées
                                 agg_data = st.session_state.merged_data.groupby(groupby_col).agg(agg_dict).reset_index()
                                 
                                 # Calcul et affichage des statistiques
