@@ -1681,10 +1681,10 @@ def main():
                 
                 st.plotly_chart(fig, use_container_width=True)
                 
-            else:
+                else:
                 st.info("Veuillez sélectionner une variable Y")
-        else:
-            st.info("Veuillez sélectionner une variable X")
+                else:
+                st.info("Veuillez sélectionner une variable X")
                 
         except Exception as e:
             st.error(f"Une erreur s'est produite : {str(e)}")
