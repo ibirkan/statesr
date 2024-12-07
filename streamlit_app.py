@@ -525,37 +525,8 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
     # Création du scatter plot
     fig = go.Figure()
     
-    # Préparation des info-bulles
-    hover_text = []
-    for idx, row in df.iterrows():
-        if pd.isna(row[var_x]) or pd.isna(row[var_y]):
-            continue
-            
-        if groupby_col:
-            # Format de l'info-bulle pour les données agrégées
-            text = (
-                f"<b>{groupby_col}</b>: {row[groupby_col]}<br>"
-                f"<b>{var_x}</b>: {row[var_x]:,}<br>"
-            )
-            
-            # Ajout de la valeur agrégée avec son type
-            if agg_method == 'sum':
-                text += f"<b>{var_y}</b> (somme): {int(row[var_y]):,}"
-            elif agg_method == 'mean':
-                text += f"<b>{var_y}</b> (moyenne): {row[var_y]:.2f}"
-            else:  # median
-                text += f"<b>{var_y}</b> (médiane): {row[var_y]:.2f}"
-            
-            hover_text.append(text)
-        else:
-            # Pour les données non agrégées
-            hover_text.append(
-                f"<b>{var_x}</b>: {row[var_x]:,.2f}<br>"
-                f"<b>{var_y}</b>: {row[var_y]:,.2f}"
-            )
-    
     # Ajout du nuage de points
-    scatter = go.Scatter(
+    fig.add_trace(go.Scatter(
         x=df[var_x],
         y=df[var_y],
         mode='markers',
@@ -565,25 +536,30 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
             size=10,
             opacity=0.7
         ),
-        text=hover_text,
-        hoverinfo='text',
+        customdata=np.stack((
+            df[groupby_col] if groupby_col else np.full(len(df), ''),
+            df[var_x],
+            df[var_y]
+        ), axis=-1),
+        hovertemplate=(
+            f"<b>{groupby_col if groupby_col else ''}</b>: %{{customdata[0]}}<br>" +
+            f"<b>{var_x}</b>: %{{customdata[1]:,.0f}}<br>" +
+            f"<b>{var_y}</b> {f'({agg_method})' if agg_method else ''}: %{{customdata[2]:,.0f}}" +
+            "<extra></extra>"
+        ),
         hoverlabel=dict(
             bgcolor='white',
             font_size=12,
-            font_family="Arial",
-            namelength=-1  # Pour afficher le nom complet
-        ),
-        hoverlabel_font_size=12
-    )
-    
-    fig.add_trace(scatter)
+            font_family="Arial"
+        )
+    ))
     
     # Ajout de la ligne de régression si le calcul a réussi
     if regression_success:
         x_range = np.linspace(df[var_x].min(), df[var_x].max(), 100)
         y_range = regression_coeffs[0] * x_range + regression_coeffs[1]
         
-        regression_line = go.Scatter(
+        fig.add_trace(go.Scatter(
             x=x_range,
             y=y_range,
             mode='lines',
@@ -592,10 +568,8 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
                 color=color_scheme[0],
                 dash='dash'
             ),
-            hoverinfo='skip'  # Désactive complètement l'info-bulle pour la ligne
-        )
-        
-        fig.add_trace(regression_line)
+            hoverinfo='none'  # Désactive complètement les info-bulles pour la ligne
+        ))
     
     # Configuration du layout
     title = plot_options['title']
@@ -612,7 +586,7 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
         xaxis_title=plot_options['x_label'],
         yaxis_title=plot_options['y_label'],
         hovermode='closest',
-        hoverdistance=100,  # Augmente la distance de détection du survol
+        hoverdistance=100,
         plot_bgcolor='white',
         width=900,
         height=600,
