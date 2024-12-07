@@ -423,19 +423,25 @@ def analyze_quantitative_bivariate(df, var_x, var_y, groupby_col=None, agg_metho
     """    
     data = df.copy()
     missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr', 'NR', 'Non-réponse']
+    
+    # Remplacement des non-réponses par np.nan pour les colonnes sélectionnées
     data[var_x] = data[var_x].replace(missing_values, np.nan)
     data[var_y] = data[var_y].replace(missing_values, np.nan)
+    if groupby_col:
+        data[groupby_col] = data[groupby_col].replace(missing_values, np.nan)
     
     # Si une colonne de groupement est spécifiée, agrégeons d'abord les données
     if groupby_col is not None:
+        # Suppression des non-réponses pour les variables quantitatives et la variable d'agrégation
+        data = data.dropna(subset=[var_x, var_y, groupby_col])
         data = data.groupby(groupby_col).agg({
             var_x: agg_method,
             var_y: agg_method
         }).reset_index()
+    else:
+        # Suppression des non-réponses pour les variables quantitatives seulement
+        data = data.dropna(subset=[var_x, var_y])
     
-    # Suppression des valeurs manquantes
-    data = data.dropna(subset=[var_x, var_y])
-
     # Test de normalité
     is_normal_x = check_normality(data, var_x)
     is_normal_y = check_normality(data, var_y)
@@ -883,64 +889,67 @@ def main():
     
     # Analyse univariée
     if analysis_type == "Analyse univariée":
-        # Sélection de la variable avec une option vide
-        var = st.selectbox("Sélectionnez la variable:", 
-                          options=["---"] + list(st.session_state.merged_data.columns))
+    # Sélection de la variable avec une option vide
+    var = st.selectbox("Sélectionnez la variable:", 
+                      options=["---"] + list(st.session_state.merged_data.columns))
+    
+    # Ne continuer que si une variable réelle est sélectionnée
+    if var != "---":
+        plot_data = st.session_state.merged_data[var]
+    
+        # Liste des valeurs considérées comme non-réponses
+        missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr', 'NR', 'Non-réponse']
+    
+        # Remplacement des non-réponses par np.nan uniquement dans la variable sélectionnée
+        plot_data = plot_data.replace(missing_values, np.nan)
+    
+        # Suppression des non-réponses uniquement dans la variable sélectionnée
+        plot_data = plot_data.dropna()
         
-        # Ne continuer que si une variable réelle est sélectionnée
-        if var != "---":
-            plot_data = st.session_state.merged_data[var]
+        # Vérification des données non nulles
+        if plot_data is not None and not plot_data.empty:
+            # Détecter le type de variable
+            is_numeric = pd.api.types.is_numeric_dtype(plot_data)
         
-            # Liste des valeurs considérées comme non-réponses
-            missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr', 'NR', 'Non-réponse']
-        
-            # Remplacement des non-réponses par np.nan
-            plot_data = plot_data.replace(missing_values, np.nan)
-        
-            # Suppression des non-réponses
-            plot_data = plot_data.dropna()
+            # Affichage des statistiques de base
+            st.write(f"### Statistiques principales de la variable {var}")
             
-            # Vérification des données non nulles
-            if plot_data is not None and not plot_data.empty:
-                # Détecter le type de variable
-                is_numeric = pd.api.types.is_numeric_dtype(plot_data)
-            
-                # Affichage des statistiques de base
-                st.write(f"### Statistiques principales de la variable {var}")
+            if is_numeric:
+                # Détection des doublons potentiels
+                has_duplicates = st.session_state.merged_data.duplicated(subset=[var]).any()
                 
-                if is_numeric:
-                    # Détection des doublons potentiels
-                    has_duplicates = st.session_state.merged_data.duplicated(subset=[var]).any()
+                if has_duplicates:
+                    st.warning("⚠️ Certaines observations sont répétées dans le jeu de données. "
+                              "Vous pouvez choisir d'agréger les données avant l'analyse.")
                     
-                    if has_duplicates:
-                        st.warning("⚠️ Certaines observations sont répétées dans le jeu de données. "
-                                  "Vous pouvez choisir d'agréger les données avant l'analyse.")
+                    # Option d'agrégation
+                    do_aggregate = st.checkbox("Agréger les données avant l'analyse", key="agg_univ")
+                    
+                    if do_aggregate:
+                        # Sélection de la colonne d'agrégation
+                        groupby_cols = [col for col in st.session_state.merged_data.columns 
+                                      if col != var]
+                        groupby_col = st.selectbox("Sélectionner la colonne d'agrégation", groupby_cols, key="groupby_univ")
                         
-                        # Option d'agrégation
-                        do_aggregate = st.checkbox("Agréger les données avant l'analyse", key="agg_univ")
+                        # Méthode d'agrégation
+                        agg_method = st.radio("Méthode d'agrégation", 
+                                            ['sum', 'mean', 'median'],
+                                            format_func=lambda x: {
+                                                'sum': 'Somme',
+                                                'mean': 'Moyenne',
+                                                'median': 'Médiane'
+                                            }[x],
+                                            key="agg_method_univ")
                         
-                        if do_aggregate:
-                            # Sélection de la colonne d'agrégation
-                            groupby_cols = [col for col in st.session_state.merged_data.columns 
-                                          if col != var]
-                            groupby_col = st.selectbox("Sélectionner la colonne d'agrégation", groupby_cols, key="groupby_univ")
-                            
-                            # Méthode d'agrégation
-                            agg_method = st.radio("Méthode d'agrégation", 
-                                                ['sum', 'mean', 'median'],
-                                                format_func=lambda x: {
-                                                    'sum': 'Somme',
-                                                    'mean': 'Moyenne',
-                                                    'median': 'Médiane'
-                                                }[x],
-                                                key="agg_method_univ")
-                            
-                            # Création des données agrégées
-                            agg_data = st.session_state.merged_data.groupby(groupby_col).agg({
-                                var: agg_method
-                            }).reset_index()
-                            
-                            plot_data = agg_data[var]
+                        # Remplacement des non-réponses par np.nan uniquement dans la variable d'agrégation
+                        st.session_state.merged_data[groupby_col] = st.session_state.merged_data[groupby_col].replace(missing_values, np.nan)
+                        
+                        # Création des données agrégées
+                        agg_data = st.session_state.merged_data.dropna(subset=[var, groupby_col]).groupby(groupby_col).agg({
+                            var: agg_method
+                        }).reset_index()
+                        
+                        plot_data = agg_data[var]
                     
                     # Statistiques pour variable quantitative
                     stats_df = pd.DataFrame({
@@ -1366,17 +1375,14 @@ def main():
             var_y = st.selectbox("Variable Y", 
                                 [col for col in st.session_state.merged_data.columns if col != var_x],
                                 key='var_y_select')
-
+    
             # Liste des valeurs considérées comme non-réponses
             missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr', 'NR', 'Non-réponse']
-
+    
             # Remplacement des non-réponses par np.nan
             st.session_state.merged_data[var_x] = st.session_state.merged_data[var_x].replace(missing_values, np.nan)
             st.session_state.merged_data[var_y] = st.session_state.merged_data[var_y].replace(missing_values, np.nan)
-
-            # Suppression des non-réponses
-            st.session_state.merged_data = st.session_state.merged_data.dropna(subset=[var_x, var_y])
-            
+    
             # Détection des types de variables avec gestion d'erreur
             is_x_numeric = is_numeric_column(st.session_state.merged_data, var_x)
             is_y_numeric = is_numeric_column(st.session_state.merged_data, var_y)
