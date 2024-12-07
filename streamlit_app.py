@@ -956,7 +956,6 @@ def main():
                         'Statistique': ['Effectif total', 'Moyenne', 'Médiane', 'Écart-type', 'Minimum', 'Maximum'],
                         'Valeur': [
                             len(plot_data),
-                            plot_data.sum().round(2),
                             plot_data.mean().round(2),
                             plot_data.median().round(2),
                             plot_data.std().round(2),
@@ -1720,4 +1719,3 @@ def main():
 # Exécution de l'application
 if __name__ == "__main__":
     main()
-
