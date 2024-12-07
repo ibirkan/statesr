@@ -797,9 +797,8 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
 # Fonctions pour les différentes pages
 def page_analyse():
     st.title("Analyse des données ESR")
-
+    
 def main():
-    # App layout and navigation
     st.sidebar.title("Navigation")
     page = st.sidebar.radio("Aller à", ["Analyse des données ESR", "Page 1", "Page 2"])
 
@@ -874,7 +873,6 @@ def main():
     if st.session_state.merged_data is None:
         st.error("Erreur lors du chargement ou de la fusion des tables.")
         return
-
 
     # Sélection du type d'analyse
     analysis_type = st.selectbox(
