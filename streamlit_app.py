@@ -894,91 +894,92 @@ def main():
         if var != "---":
             plot_data = st.session_state.merged_data[var]
         
-        # Vérification des données non nulles
-        if plot_data is not None and not plot_data.empty:
-            # Détecter le type de variable
-            is_numeric = pd.api.types.is_numeric_dtype(plot_data)
-        
-            # Affichage des statistiques de base
-            st.write(f"### Statistiques principales de la variable {var}")
-        
-            if is_numeric:
-                # Statistiques pour variable quantitative
-                stats_df = pd.DataFrame({
-                    'Statistique': ['Effectif total', 'Moyenne', 'Médiane', 'Écart-type', 'Minimum', 'Maximum'],
-                    'Valeur': [
-                        len(plot_data),
-                        plot_data.mean().round(2),
-                        plot_data.median().round(2),
-                        plot_data.std().round(2),
-                        plot_data.min(),
-                        plot_data.max()
-                    ]
-                })
-                st.dataframe(stats_df)
-                
-                # Options de regroupement
-                st.write("### Options de regroupement")
-                grouping_method = st.selectbox(
-                    "Méthode de regroupement",
-                    ["Aucune", "Quantile", "Manuelle"],
-                    key="grouping_method"
-                )
-                
-                if grouping_method == "Quantile":
-                    quantile_type = st.selectbox(
-                        "Type de regroupement",
-                        ["Quartile (4 groupes)", "Quintile (5 groupes)", "Décile (10 groupes)"],
-                        key="quantile_type"
+            # Vérification des données non nulles
+            if plot_data is not None and not plot_data.empty:
+                # Détecter le type de variable
+                is_numeric = pd.api.types.is_numeric_dtype(plot_data)
+            
+                # Affichage des statistiques de base
+                st.write(f"### Statistiques principales de la variable {var}")
+            
+                if is_numeric:
+                    # Statistiques pour variable quantitative
+                    stats_df = pd.DataFrame({
+                        'Statistique': ['Effectif total', 'Moyenne', 'Médiane', 'Écart-type', 'Minimum', 'Maximum'],
+                        'Valeur': [
+                            len(plot_data),
+                            plot_data.mean().round(2),
+                            plot_data.median().round(2),
+                            plot_data.std().round(2),
+                            plot_data.min(),
+                            plot_data.max()
+                        ]
+                    })
+                    st.dataframe(stats_df)
+    
+                    # Options de regroupement
+                    st.write("### Options de regroupement")
+                    grouping_method = st.selectbox(
+                        "Méthode de regroupement",
+                        ["Aucune", "Quantile", "Manuelle"],
+                        key="grouping_method"
                     )
-                    
-                    n_groups = {"Quartile (4 groupes)": 4, 
-                               "Quintile (5 groupes)": 5, 
-                               "Décile (10 groupes)": 10}[quantile_type]
-                    
-                    grouped_data = pd.qcut(plot_data, q=n_groups)
-                    value_counts = grouped_data.value_counts().reset_index()
-                    value_counts.columns = ['Groupe', 'Effectif']
+    
+                    if grouping_method == "Quantile":
+                        quantile_type = st.selectbox(
+                            "Type de regroupement",
+                            ["Quartile (4 groupes)", "Quintile (5 groupes)", "Décile (10 groupes)"],
+                            key="quantile_type"
+                        )
+    
+                        n_groups = {"Quartile (4 groupes)": 4, 
+                                   "Quintile (5 groupes)": 5, 
+                                   "Décile (10 groupes)": 10}[quantile_type]
+    
+                        grouped_data = pd.qcut(plot_data, q=n_groups)
+                        value_counts = grouped_data.value_counts().reset_index()
+                        value_counts.columns = ['Groupe', 'Effectif']
+                        value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
+    
+                        # Statistiques par groupe
+                        group_stats = plot_data.groupby(grouped_data).agg(['mean', 'max']).round(2)
+                        group_stats.columns = ['Moyenne', 'Maximum']
+    
+                        st.write("### Statistiques par groupe")
+                        st.dataframe(pd.concat([value_counts.set_index('Groupe'), 
+                                              group_stats], axis=1))
+    
+                    elif grouping_method == "Manuelle":
+                        n_groups = st.number_input("Nombre de groupes", min_value=2, value=3)
+                        breaks = []
+                        for i in range(n_groups + 1):
+                            if i == 0:
+                                val = plot_data.min()
+                            elif i == n_groups:
+                                val = plot_data.max()
+                            else:
+                                val = st.number_input(f"Seuil {i}", 
+                                                    value=float(plot_data.min() + (i/n_groups)*(plot_data.max()-plot_data.min())))
+                            breaks.append(val)
+    
+                        grouped_data = pd.cut(plot_data, bins=breaks)
+                        value_counts = grouped_data.value_counts().reset_index()
+                        value_counts.columns = ['Groupe', 'Effectif']
+                        value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
+    
+                        st.write("### Répartition des groupes")
+                        st.dataframe(value_counts)
+    
+                else:
+                    # Statistiques pour variable qualitative
+                    value_counts = plot_data.value_counts().reset_index()
+                    value_counts.columns = ['Modalité', 'Effectif']
                     value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
-                    
-                    # Statistiques par groupe
-                    group_stats = plot_data.groupby(grouped_data).agg(['mean', 'max']).round(2)
-                    group_stats.columns = ['Moyenne', 'Maximum']
-                    
-                    st.write("### Statistiques par groupe")
-                    st.dataframe(pd.concat([value_counts.set_index('Groupe'), 
-                                          group_stats], axis=1))
-                    
-                elif grouping_method == "Manuelle":
-                    n_groups = st.number_input("Nombre de groupes", min_value=2, value=3)
-                    breaks = []
-                    for i in range(n_groups + 1):
-                        if i == 0:
-                            val = plot_data.min()
-                        elif i == n_groups:
-                            val = plot_data.max()
-                        else:
-                            val = st.number_input(f"Seuil {i}", 
-                                                value=float(plot_data.min() + (i/n_groups)*(plot_data.max()-plot_data.min())))
-                        breaks.append(val)
-                    
-                    grouped_data = pd.cut(plot_data, bins=breaks)
-                    value_counts = grouped_data.value_counts().reset_index()
-                    value_counts.columns = ['Groupe', 'Effectif']
-                    value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
-                    
-                    st.write("### Répartition des groupes")
                     st.dataframe(value_counts)
-                    
             else:
-                # Statistiques pour variable qualitative
-                value_counts = plot_data.value_counts().reset_index()
-                value_counts.columns = ['Modalité', 'Effectif']
-                value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
-                st.dataframe(value_counts)
-
+                st.info("Veuillez sélectionner une variable à analyser")
         else:
-            st.info("Veuillez sélectionner une variable à analyser")
+            st.warning("Veuillez sélectionner une variable pour l'analyse.")
             
             # Visualisation
             st.write("### Configuration de la visualisation")
