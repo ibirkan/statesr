@@ -800,6 +800,26 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
     
     return fig
 
+def plot_density(plot_data, var, title, x_axis, y_axis):
+    fig = ff.create_distplot(
+        [plot_data],
+        [var],
+        show_hist=False,
+        show_rug=False,
+        colors=[COLOR_PALETTES['Bleu'][0]]
+    )
+    fig.update_layout(
+        title=title,
+        xaxis_title=x_axis,
+        yaxis_title=y_axis,
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        hovermode='closest',
+        height=600,
+        margin=dict(t=100, b=100),
+    )
+    return fig
+
 # Fonctions pour les différentes pages
 def page_analyse():
     st.title("Analyse des données ESR")
