@@ -1372,9 +1372,9 @@ def main():
                             
                                 if show_values and hasattr(fig.data[0], "text"):
                                     if isinstance(fig.data[0], go.Bar):
-                                        fig.update_traces(texttemplate='%{y:.2f}', textposition='top center')
-                                    else:
                                         fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
+                                    else:
+                                        fig.update_traces(texttemplate='%{y:.2f}', textposition='top center')
                                 
                                 st.plotly_chart(fig, use_container_width=True)
                                             
