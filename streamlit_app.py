@@ -883,7 +883,7 @@ def main():
         ["Analyse univariée", "Analyse bivariée"],
         key="analysis_type_selector"
     )
-        
+    
     # Analyse univariée
     if analysis_type == "Analyse univariée":
         # Sélection de la variable avec une option vide
@@ -893,12 +893,17 @@ def main():
         # Ne continuer que si une variable réelle est sélectionnée
         if var != "---":
             plot_data = st.session_state.merged_data[var]
-            
+        
             # Vérification des données non nulles
             if plot_data is not None and not plot_data.empty:
-                # Détecter le type de variable
-                is_numeric = pd.api.types.is_numeric_dtype(plot_data)
-            
+                # Vérifiez que plot_data est une série
+                if isinstance(plot_data, pd.Series):
+                    # Détecter le type de variable
+                    is_numeric = pd.api.types.is_numeric_dtype(plot_data)
+                else:
+                    st.error("Les données sélectionnées ne sont pas valides.")
+                    return
+                
                 # Affichage des statistiques de base
                 st.write(f"### Statistiques principales de la variable {var}")
                 
@@ -916,7 +921,6 @@ def main():
                         ]
                     })
                     st.dataframe(stats_df)
-                    
                     # Options de regroupement
                     st.write("### Options de regroupement")
                     grouping_method = st.selectbox(
@@ -924,30 +928,31 @@ def main():
                         ["Aucune", "Quantile", "Manuelle"],
                         key="grouping_method"
                     )
-                    
+            
                     if grouping_method == "Quantile":
                         quantile_type = st.selectbox(
                             "Type de regroupement",
                             ["Quartile (4 groupes)", "Quintile (5 groupes)", "Décile (10 groupes)"],
                             key="quantile_type"
                         )
-                        
+            
                         n_groups = {"Quartile (4 groupes)": 4, 
-                                  "Quintile (5 groupes)": 5, 
-                                  "Décile (10 groupes)": 10}[quantile_type]
-                        
+                                   "Quintile (5 groupes)": 5, 
+                                   "Décile (10 groupes)": 10}[quantile_type]
+            
                         grouped_data = pd.qcut(plot_data, q=n_groups)
                         value_counts = grouped_data.value_counts().reset_index()
                         value_counts.columns = ['Groupe', 'Effectif']
                         value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
-                        
+            
                         # Statistiques par groupe
                         group_stats = plot_data.groupby(grouped_data).agg(['mean', 'max']).round(2)
                         group_stats.columns = ['Moyenne', 'Maximum']
-                        
+            
                         st.write("### Statistiques par groupe")
-                        st.dataframe(pd.concat([value_counts.set_index('Groupe'), group_stats], axis=1))
-                        
+                        st.dataframe(pd.concat([value_counts.set_index('Groupe'), 
+                                              group_stats], axis=1))
+            
                     elif grouping_method == "Manuelle":
                         n_groups = st.number_input("Nombre de groupes", min_value=2, value=3)
                         breaks = []
@@ -960,711 +965,707 @@ def main():
                                 val = st.number_input(f"Seuil {i}", 
                                                     value=float(plot_data.min() + (i/n_groups)*(plot_data.max()-plot_data.min())))
                             breaks.append(val)
-                        
+            
                         grouped_data = pd.cut(plot_data, bins=breaks)
                         value_counts = grouped_data.value_counts().reset_index()
                         value_counts.columns = ['Groupe', 'Effectif']
                         value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
-                        
+            
                         st.write("### Répartition des groupes")
                         st.dataframe(value_counts)
-                
+            
                 else:
                     # Statistiques pour variable qualitative
                     value_counts = plot_data.value_counts().reset_index()
                     value_counts.columns = ['Modalité', 'Effectif']
                     value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
                     st.dataframe(value_counts)
+            else:
+                st.info("Veuillez sélectionner une variable à analyser")
+        else:
+            st.warning("Veuillez sélectionner une variable pour l'analyse.")
+            
+            # Visualisation
+            st.write("### Configuration de la visualisation")
+            
+            # Option d'évolution temporelle
+            show_evolution = st.checkbox("Afficher l'évolution temporelle", key="show_evolution")
+            
+            if show_evolution:
+                # Détection des colonnes de type date
+                date_columns = st.session_state.merged_data.select_dtypes(include=['datetime64', 'datetime64[ns]']).columns
                 
-                # Visualisation
-                st.write("### Configuration de la visualisation")
-                
-                # Option d'évolution temporelle
-                show_evolution = st.checkbox("Afficher l'évolution temporelle", key="show_evolution")
-                
-                if show_evolution:
-                    # Détection des colonnes de type date
-                    date_columns = st.session_state.merged_data.select_dtypes(include=['datetime64', 'datetime64[ns]']).columns
+                if len(date_columns) > 0:
+                    time_var = st.selectbox(
+                        "Sélectionner la variable temporelle",
+                        date_columns,
+                        key="time_variable"
+                    )
                     
-                    if len(date_columns) > 0:
-                        time_var = st.selectbox(
-                            "Sélectionner la variable temporelle",
-                            date_columns,
-                            key="time_variable"
-                        )
-                        
-                        if pd.api.types.is_datetime64_any_dtype(st.session_state.merged_data[time_var]):
-                            # Configuration du graphique d'évolution
-                            viz_col1, viz_col2 = st.columns([1, 2])
-                            with viz_col1:
-                                if is_numeric:
-                                    evolution_type = st.selectbox(
-                                        "Valeur à afficher",
-                                        ["Somme globale", "Moyenne", "Maximum"],
-                                        key="evolution_value_type"
-                                    )
-                                else:
-                                    evolution_type = st.selectbox(
-                                        "Valeur à afficher",
-                                        ["Effectifs", "Taux (%)"],
-                                        key="evolution_value_type"
-                                    )
-                                
-                                graph_type = st.selectbox(
-                                    "Type de graphique",
-                                    ["Line plot", "Bar plot", "Lollipop plot"],
-                                    key="evolution_graph_type"
-                                )
-                            
-                            with viz_col2:
-                                color_scheme = st.selectbox(
-                                    "Palette de couleurs",
-                                    list(COLOR_PALETTES.keys()),
-                                    key="evolution_color"
-                                )
-                        else:
-                            st.warning("La colonne sélectionnée n'est pas de type datetime.")
-                            show_evolution = False
-                    else:
-                        st.warning("Aucune colonne de type date n'a été détectée dans les données.")
-                        show_evolution = False
-                
-                else:  # Visualisation standard (non temporelle)
-                    viz_col1, viz_col2 = st.columns([1, 2])
-                    with viz_col1:
-                        if is_numeric:
-                            if grouping_method == "Aucune":
-                                graph_type = st.selectbox(
-                                    "Type de graphique",
-                                    ["Histogramme", "Density plot"],
-                                    key="static_graph_type"
+                    if pd.api.types.is_datetime64_any_dtype(st.session_state.merged_data[time_var]):
+                        # Configuration du graphique d'évolution
+                        viz_col1, viz_col2 = st.columns([1, 2])
+                        with viz_col1:
+                            if is_numeric:
+                                evolution_type = st.selectbox(
+                                    "Valeur à afficher",
+                                    ["Somme globale", "Moyenne", "Maximum"],
+                                    key="evolution_value_type"
                                 )
                             else:
-                                graph_type = st.selectbox(
-                                    "Type de graphique",
-                                    ["Bar plot", "Lollipop plot", "Treemap"],
-                                    key="static_graph_type"
-                                )
-                                value_type = "Effectifs" if grouping_method == "Manuelle" else st.selectbox(
+                                evolution_type = st.selectbox(
                                     "Valeur à afficher",
-                                    ["Effectifs", "Moyenne", "Maximum"],
-                                    key="static_value_type"
+                                    ["Effectifs", "Taux (%)"],
+                                    key="evolution_value_type"
                                 )
+                            
+                            graph_type = st.selectbox(
+                                "Type de graphique",
+                                ["Line plot", "Bar plot", "Lollipop plot"],
+                                key="evolution_graph_type"
+                            )
+                        
+                        with viz_col2:
+                            color_scheme = st.selectbox(
+                                "Palette de couleurs",
+                                list(COLOR_PALETTES.keys()),
+                                key="evolution_color"
+                            )
+                    else:
+                        st.warning("La colonne sélectionnée n'est pas de type datetime.")
+                        show_evolution = False
+                else:
+                    st.warning("Aucune colonne de type date n'a été détectée dans les données.")
+                    show_evolution = False
+            
+            else:  # Visualisation standard (non temporelle)
+                viz_col1, viz_col2 = st.columns([1, 2])
+                with viz_col1:
+                    if is_numeric:
+                        if grouping_method == "Aucune":
+                            graph_type = st.selectbox(
+                                "Type de graphique",
+                                ["Histogramme", "Density plot"],
+                                key="static_graph_type"
+                            )
                         else:
                             graph_type = st.selectbox(
                                 "Type de graphique",
                                 ["Bar plot", "Lollipop plot", "Treemap"],
                                 key="static_graph_type"
                             )
-                    
-                    with viz_col2:
-                        color_scheme = st.selectbox(
-                            "Palette de couleurs",
-                            list(COLOR_PALETTES.keys()),
-                            key="static_color"
+                            value_type = "Effectifs" if grouping_method == "Manuelle" else st.selectbox(
+                                "Valeur à afficher",
+                                ["Effectifs", "Moyenne", "Maximum"],
+                                key="static_value_type"
+                            )
+                    else:
+                        graph_type = st.selectbox(
+                            "Type de graphique",
+                            ["Bar plot", "Lollipop plot", "Treemap"],
+                            key="static_graph_type"
                         )
                 
-                # Options avancées
-                with st.expander("Options avancées"):
-                    adv_col1, adv_col2 = st.columns(2)
-                    with adv_col1:
-                        title = st.text_input("Titre du graphique", f"Distribution de {var}")
-                        x_axis = st.text_input("Titre de l'axe X", var)
-                        y_axis = st.text_input("Titre de l'axe Y", "Valeur")
-                    with adv_col2:
-                        source = st.text_input("Source des données", "")
-                        show_values = st.checkbox("Afficher les valeurs", True)
-                           
-                # Génération du graphique
-                if st.button("Générer la visualisation"):
-                    try:
-                        if show_evolution:
-                            # Préparation des données temporelles
-                            evolution_data = plot_data.groupby(time_var)
+                with viz_col2:
+                    color_scheme = st.selectbox(
+                        "Palette de couleurs",
+                        list(COLOR_PALETTES.keys()),
+                        key="static_color"
+                    )
+        
+            # Options avancées
+            with st.expander("Options avancées"):
+                adv_col1, adv_col2 = st.columns(2)
+                with adv_col1:
+                    title = st.text_input("Titre du graphique", f"Distribution de {var}")
+                    x_axis = st.text_input("Titre de l'axe X", var)
+                    y_axis = st.text_input("Titre de l'axe Y", "Valeur")
+                with adv_col2:
+                    source = st.text_input("Source des données", "")
+                    show_values = st.checkbox("Afficher les valeurs", True)
+                                
+            # Génération du graphique
+            if st.button("Générer la visualisation"):
+                try:
+                    if show_evolution:
+                        # Préparation des données temporelles
+                        evolution_data = plot_data.groupby(time_var)
+                        
+                        if is_numeric:
+                            if evolution_type == "Somme globale":
+                                y_values = evolution_data.sum()
+                            elif evolution_type == "Moyenne":
+                                y_values = evolution_data.mean()
+                            else:  # Maximum
+                                y_values = evolution_data.max()
+                        else:
+                            if evolution_type == "Effectifs":
+                                y_values = evolution_data.count()
+                            else:  # Taux
+                                y_values = (evolution_data.count() / len(plot_data)) * 100
+                        
+                        evolution_data = pd.DataFrame({'date': y_values.index, 'value': y_values.values})
+                        
+                        # Création du graphique d'évolution
+                        if graph_type == "Line plot":
+                            fig = px.line(evolution_data, x='date', y='value',
+                                        title=title,
+                                        color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                        elif graph_type == "Bar plot":
+                            fig = px.bar(evolution_data, x='date', y='value',
+                                       title=title,
+                                       color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                        else:  # Lollipop plot avec matplotlib
+                            fig, ax = plt.subplots(figsize=(12, 6))
                             
-                            if is_numeric:
-                                if evolution_type == "Somme globale":
-                                    y_values = evolution_data.sum()
-                                elif evolution_type == "Moyenne":
-                                    y_values = evolution_data.mean()
-                                else:  # Maximum
-                                    y_values = evolution_data.max()
+                            markerline, stemlines, baseline = ax.stem(
+                                evolution_data['date'],
+                                evolution_data['value'],
+                                linefmt=COLOR_PALETTES[color_scheme][0],
+                                markerfmt=f'o{COLOR_PALETTES[color_scheme][0]}',
+                                basefmt=' '
+                            )
+                            
+                            plt.setp(markerline, markersize=10)
+                            plt.setp(stemlines, linewidth=2)
+                            
+                            if show_values:
+                                for x, y in zip(evolution_data['date'], evolution_data['value']):
+                                    ax.text(x, y, f'{y:.0f}', ha='center', va='bottom')
+                            
+                            ax.set_title(title, pad=20)
+                            ax.set_xlabel(x_axis)
+                            ax.set_ylabel(y_axis)
+                            ax.grid(True, linestyle='--', alpha=0.3)
+                            plt.xticks(rotation=45, ha='right')
+                            plt.tight_layout()
+                            
+                            st.pyplot(fig)
+                            plt.close()
+                            return
+            
+                    else:  # Visualisation standard
+                        if is_numeric:
+                            if grouping_method == "Aucune":
+                                if graph_type == "Histogramme":
+                                    fig = px.histogram(plot_data, title=title,
+                                                       color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                                    if show_values:
+                                        fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
+                                else:  # Density plot with Seaborn
+                                    fig, ax = plt.subplots(figsize=(12, 6))
+                                    sns.kdeplot(plot_data.dropna(), ax=ax, fill=True, color=COLOR_PALETTES[color_scheme][0])
+                                    ax.set_title(title)
+                                    ax.set_xlabel(x_axis)
+                                    ax.set_ylabel(y_axis)
+                                    st.pyplot(fig)
+                                    plt.close()
+                          
                             else:
-                                if evolution_type == "Effectifs":
-                                    y_values = evolution_data.count()
-                                else:  # Taux
-                                    y_values = (evolution_data.count() / len(plot_data)) * 100
-                            
-                            evolution_data = pd.DataFrame({'date': y_values.index, 'value': y_values.values})
-                            
-                            # Création du graphique d'évolution
-                            if graph_type == "Line plot":
-                                fig = px.line(evolution_data, x='date', y='value',
-                                            title=title,
-                                            color_discrete_sequence=COLOR_PALETTES[color_scheme])
-                            elif graph_type == "Bar plot":
-                                fig = px.bar(evolution_data, x='date', y='value',
+                                data = value_counts
+                                if value_type != "Effectifs":
+                                    y_col = 'Moyenne' if value_type == "Moyenne" else 'Maximum'
+                                    data = pd.concat([value_counts, group_stats[y_col]], axis=1)
+                                
+                            if graph_type == "Bar plot":
+                                fig = px.bar(value_counts, x='Modalité', y='Effectif',
                                            title=title,
                                            color_discrete_sequence=COLOR_PALETTES[color_scheme])
-                            else:  # Lollipop plot avec matplotlib
+
+                            elif graph_type == "Lollipop plot":
                                 fig, ax = plt.subplots(figsize=(12, 6))
-                                
+                                color = COLOR_PALETTES[color_scheme][0]
+                                x = value_counts['Modalité'].tolist()
+                                y = value_counts['Effectif'].tolist()
+                            
                                 markerline, stemlines, baseline = ax.stem(
-                                    evolution_data['date'],
-                                    evolution_data['value'],
-                                    linefmt=COLOR_PALETTES[color_scheme][0],
-                                    markerfmt=f'o{COLOR_PALETTES[color_scheme][0]}',
+                                    x, y,
+                                    linefmt='-',
+                                    markerfmt='o',
                                     basefmt=' '
                                 )
-                                
-                                plt.setp(markerline, markersize=10)
-                                plt.setp(stemlines, linewidth=2)
-                                
+                            
+                                markerline.set_color(color)
+                                markerline.set_markersize(10)
+                                plt.setp(stemlines, color=color, linewidth=2)
+                            
                                 if show_values:
-                                    for x, y in zip(evolution_data['date'], evolution_data['value']):
-                                        ax.text(x, y, f'{y:.0f}', ha='center', va='bottom')
-                                
-                                ax.set_title(title, pad=20)
+                                    for i, v in enumerate(y):
+                                        ax.text(x[i], v, f'{v:.0f}', ha='center', va='bottom')
+                            
+                                ax.set_title(title)
                                 ax.set_xlabel(x_axis)
                                 ax.set_ylabel(y_axis)
-                                ax.grid(True, linestyle='--', alpha=0.3)
                                 plt.xticks(rotation=45, ha='right')
                                 plt.tight_layout()
-                                
+                            
                                 st.pyplot(fig)
                                 plt.close()
                                 return
-                
-                        else:  # Visualisation standard
-                            if is_numeric:
-                                if grouping_method == "Aucune":
-                                    if graph_type == "Histogramme":
-                                        fig = px.histogram(plot_data, title=title,
-                                                           color_discrete_sequence=COLOR_PALETTES[color_scheme])
-                                        if show_values:
-                                            fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
-                                    else:  # Density plot with Seaborn
-                                        fig, ax = plt.subplots(figsize=(12, 6))
-                                        sns.kdeplot(plot_data.dropna(), ax=ax, fill=True, color=COLOR_PALETTES[color_scheme][0])
-                                        ax.set_title(title)
-                                        ax.set_xlabel(x_axis)
-                                        ax.set_ylabel(y_axis)
-                                        st.pyplot(fig)
-                                        plt.close()
-                              
-                                else:
-                                    data = value_counts
-                                    if value_type != "Effectifs":
-                                        y_col = 'Moyenne' if value_type == "Moyenne" else 'Maximum'
-                                        data = pd.concat([value_counts, group_stats[y_col]], axis=1)
-                                    
-                                if graph_type == "Bar plot":
-                                    fig = px.bar(value_counts, x='Modalité', y='Effectif',
-                                               title=title,
-                                               color_discrete_sequence=COLOR_PALETTES[color_scheme])
-    
-                                elif graph_type == "Lollipop plot":
-                                    fig, ax = plt.subplots(figsize=(12, 6))
-                                    color = COLOR_PALETTES[color_scheme][0]
-                                    x = value_counts['Modalité'].tolist()
-                                    y = value_counts['Effectif'].tolist()
-                                
-                                    markerline, stemlines, baseline = ax.stem(
-                                        x, y,
-                                        linefmt='-',
-                                        markerfmt='o',
-                                        basefmt=' '
-                                    )
-                                
-                                    markerline.set_color(color)
-                                    markerline.set_markersize(10)
-                                    plt.setp(stemlines, color=color, linewidth=2)
-                                
-                                    if show_values:
-                                        for i, v in enumerate(y):
-                                            ax.text(x[i], v, f'{v:.0f}', ha='center', va='bottom')
-                                
-                                    ax.set_title(title)
-                                    ax.set_xlabel(x_axis)
-                                    ax.set_ylabel(y_axis)
-                                    plt.xticks(rotation=45, ha='right')
-                                    plt.tight_layout()
-                                
-                                    st.pyplot(fig)
-                                    plt.close()
-                                    return
-                                
-                                elif graph_type == "Treemap":
-                                   fig, ax = plt.subplots(figsize=(12, 8))
-                                   values = value_counts['Effectif'].values
-                                   norm_values = (values - values.min()) / (values.max() - values.min())
-                                   colors = [COLOR_PALETTES[color_scheme][int(v * (len(COLOR_PALETTES[color_scheme])-1))] 
-                                             for v in norm_values]
-                                   
-                                   squarify.plot(
-                                       sizes=values,
-                                       label=value_counts['Modalité'],
-                                       color=colors,
-                                       alpha=0.8,
-                                       text_kwargs={'fontsize':10},
-                                       pad=True,
-                                       value=values if show_values else None
-                                   )
-                                   
-                                   plt.title(title, pad=20)
-                                   plt.axis('off')
-                                   plt.tight_layout()
-                                   
-                                   st.pyplot(fig)
-                                   plt.close()
-                                   return
-    
                             
-                            else:  # Pour les variables qualitatives
-                                if graph_type == "Bar plot":
-                                    fig = px.bar(value_counts, x='Modalité', y='Effectif',
-                                               title=title,
-                                               color_discrete_sequence=COLOR_PALETTES[color_scheme])
-    
-                                elif graph_type == "Lollipop plot":
-                                    fig, ax = plt.subplots(figsize=(12, 6))
-                                    color = COLOR_PALETTES[color_scheme][0]
-                                    x = value_counts['Modalité'].tolist()
-                                    y = value_counts['Effectif'].tolist()
-                                
-                                    markerline, stemlines, baseline = ax.stem(
-                                        x, y,
-                                        linefmt='-',
-                                        markerfmt='o',
-                                        basefmt=' '
-                                    )
-                                
-                                    markerline.set_color(color)
-                                    markerline.set_markersize(10)
-                                    plt.setp(stemlines, color=color, linewidth=2)
-                                
-                                    if show_values:
-                                        for i, v in enumerate(y):
-                                            ax.text(x[i], v, f'{v:.0f}', ha='center', va='bottom')
-                                
-                                    ax.set_title(title)
-                                    ax.set_xlabel(x_axis)
-                                    ax.set_ylabel(y_axis)
-                                    plt.xticks(rotation=45, ha='right')
-                                    plt.tight_layout()
-                                
-                                    st.pyplot(fig)
-                                    plt.close()
-                                    return
-                                
-                                elif graph_type == "Treemap":
-                                   fig, ax = plt.subplots(figsize=(12, 8))
-                                   values = value_counts['Effectif'].values
-                                   norm_values = (values - values.min()) / (values.max() - values.min())
-                                   colors = [COLOR_PALETTES[color_scheme][int(v * (len(COLOR_PALETTES[color_scheme])-1))] 
-                                             for v in norm_values]
-                                   
-                                   squarify.plot(
-                                       sizes=values,
-                                       label=value_counts['Modalité'],
-                                       color=colors,
-                                       alpha=0.8,
-                                       text_kwargs={'fontsize':10},
-                                       pad=True,
-                                       value=values if show_values else None
-                                   )
-                                   
-                                   plt.title(title, pad=20)
-                                   plt.axis('off')
-                                   plt.tight_layout()
-                                   
-                                   st.pyplot(fig)
-                                   plt.close()
-                                   return
-                            
-                            # Mise à jour du layout pour les graphiques Plotly
-                            if fig is not None and isinstance(fig, go.Figure):
-                                fig.update_layout(
-                                    height=600,
-                                    margin=dict(t=100, b=100),
-                                    showlegend=True,
-                                    plot_bgcolor='white',
-                                    paper_bgcolor='white',
-                                    xaxis_title=x_axis,
-                                    yaxis_title=y_axis
-                                )
-                                
-                                if source:
-                                    fig.add_annotation(
-                                        text=f"Source: {source}",
-                                        xref="paper",
-                                        yref="paper",
-                                        x=0,
-                                        y=-0.15,
-                                        showarrow=False,
-                                        font=dict(size=10),
-                                        align="left"
-                                    )
-                            
-                                if show_values and hasattr(fig.data[0], "text"):
-                                    if isinstance(fig.data[0], go.Bar):
-                                        fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
-                                    else:
-                                        fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
-                                
-                                st.plotly_chart(fig, use_container_width=True)
-                
-                    except Exception as e:
-                        st.error(f"Erreur lors de la génération du graphique : {str(e)}")
-        else:
-            st.info("Veuillez sélectionner une variable à analyser")
+                            elif graph_type == "Treemap":
+                               fig, ax = plt.subplots(figsize=(12, 8))
+                               values = value_counts['Effectif'].values
+                               norm_values = (values - values.min()) / (values.max() - values.min())
+                               colors = [COLOR_PALETTES[color_scheme][int(v * (len(COLOR_PALETTES[color_scheme])-1))] 
+                                         for v in norm_values]
+                               
+                               squarify.plot(
+                                   sizes=values,
+                                   label=value_counts['Modalité'],
+                                   color=colors,
+                                   alpha=0.8,
+                                   text_kwargs={'fontsize':10},
+                                   pad=True,
+                                   value=values if show_values else None
+                               )
+                               
+                               plt.title(title, pad=20)
+                               plt.axis('off')
+                               plt.tight_layout()
+                               
+                               st.pyplot(fig)
+                               plt.close()
+                               return
 
+                        
+                        else:  # Pour les variables qualitatives
+                            if graph_type == "Bar plot":
+                                fig = px.bar(value_counts, x='Modalité', y='Effectif',
+                                           title=title,
+                                           color_discrete_sequence=COLOR_PALETTES[color_scheme])
+
+                            elif graph_type == "Lollipop plot":
+                                fig, ax = plt.subplots(figsize=(12, 6))
+                                color = COLOR_PALETTES[color_scheme][0]
+                                x = value_counts['Modalité'].tolist()
+                                y = value_counts['Effectif'].tolist()
+                            
+                                markerline, stemlines, baseline = ax.stem(
+                                    x, y,
+                                    linefmt='-',
+                                    markerfmt='o',
+                                    basefmt=' '
+                                )
+                            
+                                markerline.set_color(color)
+                                markerline.set_markersize(10)
+                                plt.setp(stemlines, color=color, linewidth=2)
+                            
+                                if show_values:
+                                    for i, v in enumerate(y):
+                                        ax.text(x[i], v, f'{v:.0f}', ha='center', va='bottom')
+                            
+                                ax.set_title(title)
+                                ax.set_xlabel(x_axis)
+                                ax.set_ylabel(y_axis)
+                                plt.xticks(rotation=45, ha='right')
+                                plt.tight_layout()
+                            
+                                st.pyplot(fig)
+                                plt.close()
+                                return
+                            
+                            elif graph_type == "Treemap":
+                               fig, ax = plt.subplots(figsize=(12, 8))
+                               values = value_counts['Effectif'].values
+                               norm_values = (values - values.min()) / (values.max() - values.min())
+                               colors = [COLOR_PALETTES[color_scheme][int(v * (len(COLOR_PALETTES[color_scheme])-1))] 
+                                         for v in norm_values]
+                               
+                               squarify.plot(
+                                   sizes=values,
+                                   label=value_counts['Modalité'],
+                                   color=colors,
+                                   alpha=0.8,
+                                   text_kwargs={'fontsize':10},
+                                   pad=True,
+                                   value=values if show_values else None
+                               )
+                               
+                               plt.title(title, pad=20)
+                               plt.axis('off')
+                               plt.tight_layout()
+                               
+                               st.pyplot(fig)
+                               plt.close()
+                               return
+                        
+                        # Mise à jour du layout pour les graphiques Plotly
+                        if fig is not None and isinstance(fig, go.Figure):
+                            fig.update_layout(
+                                height=600,
+                                margin=dict(t=100, b=100),
+                                showlegend=True,
+                                plot_bgcolor='white',
+                                paper_bgcolor='white',
+                                xaxis_title=x_axis,
+                                yaxis_title=y_axis
+                            )
+                            
+                            if source:
+                                fig.add_annotation(
+                                    text=f"Source: {source}",
+                                    xref="paper",
+                                    yref="paper",
+                                    x=0,
+                                    y=-0.15,
+                                    showarrow=False,
+                                    font=dict(size=10),
+                                    align="left"
+                                )
+                        
+                            if show_values and hasattr(fig.data[0], "text"):
+                                if isinstance(fig.data[0], go.Bar):
+                                    fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
+                                else:
+                                    fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
+                            
+                            st.plotly_chart(fig, use_container_width=True)
+            
+                except Exception as e:
+                    st.error(f"Erreur lors de la génération du graphique : {str(e)}")
+    
     # Analyse bivariée
     elif analysis_type == "Analyse bivariée":
         try:
-            # Initialisation de var_y dans session_state s'il n'existe pas
-            if 'previous_var_y' not in st.session_state:
-                st.session_state.previous_var_y = None
+            # Sélection des variables
+            var_x = st.selectbox("Variable X", st.session_state.merged_data.columns, key='var_x_select')
+            var_y = st.selectbox("Variable Y", 
+                                [col for col in st.session_state.merged_data.columns if col != var_x],
+                                key='var_y_select')
+            
+            # Détection des types de variables avec gestion d'erreur
+            is_x_numeric = is_numeric_column(st.session_state.merged_data, var_x)
+            is_y_numeric = is_numeric_column(st.session_state.merged_data, var_y)
+            
+            # Analyse pour deux variables qualitatives
+            if not is_x_numeric and not is_y_numeric:
+                st.write("### Analyse Bivariée - Variables Qualitatives")
+                
+                # Option d'inversion des variables
+                invert_vars = st.checkbox("Inverser les variables X et Y", key='invert_vars_qual')
+                
+                # Variables actuelles
+                current_x = var_y if invert_vars else var_x
+                current_y = var_x if invert_vars else var_y
+                
+                # Affichage du tableau croisé avec les taux de réponse
+                combined_table, response_stats = analyze_qualitative_bivariate(
+                    st.session_state.merged_data, current_x, current_y, exclude_missing=True
+                )
+                
+                # Affichage des taux de réponse
+                st.write("Taux de réponse :")
+                for var, rate in response_stats.items():
+                    st.write(f"- {var} : {rate}")
+                
+                st.write("Tableau croisé (Pourcentages en ligne et effectifs)")
+                st.dataframe(combined_table)
+                
+                # Configuration de la visualisation
+                st.write("### Configuration de la visualisation")
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    plot_type = st.selectbox(
+                        "Type de graphique",
+                        ["Grouped Bar Chart", "Stacked Bar Chart", "Mosaic Plot"],
+                        key='plot_type_qual'
+                    )
+                
+                with col2:
+                    color_scheme = st.selectbox(
+                        "Palette de couleurs",
+                        list(COLOR_PALETTES.keys()),
+                        key='color_scheme_qual'
+                    )
+                
+                # Options avancées
+                with st.expander("Options avancées"):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        title = st.text_input("Titre du graphique", 
+                                            f"Distribution de {current_x} par {current_y}",
+                                            key='title_qual')
+                        x_label = st.text_input("Titre de l'axe X", current_x,
+                                              key='x_label_qual')
+                        y_label = st.text_input("Titre de l'axe Y", "Valeur",
+                                              key='y_label_qual')
+                    with col2:
+                        source = st.text_input("Source des données", "",
+                                             key='source_qual')
+                        note = st.text_input("Note de lecture", "",
+                                           key='note_qual')
+                        show_values = st.checkbox("Afficher les valeurs", True,
+                                                key='show_values_qual')
+                
+                # Options du graphique
+                plot_options = {
+                    'title': title,
+                    'x_label': x_label,
+                    'y_label': y_label,
+                    'source': source,
+                    'note': note,
+                    'show_values': show_values
+                }
+                
+                # Création et affichage du graphique
+                fig = plot_qualitative_bivariate(
+                    st.session_state.merged_data,
+                    current_x,
+                    current_y,
+                    plot_type,
+                    COLOR_PALETTES[color_scheme],
+                    plot_options
+                )
+                st.pyplot(fig)
+                plt.close()
     
-            # Ajout de l'option vide pour var_x
-            var_x = st.selectbox("Variable X", 
-                                 ["---"] + list(st.session_state.merged_data.columns), 
-                                 key='var_x_select')
-    
-            if var_x != "---":
-                # Filtrer les colonnes pour var_y en excluant var_x
-                available_columns_y = [col for col in st.session_state.merged_data.columns if col != var_x]
-    
-                # Si la valeur précédente de var_y est valide, la mettre en premier dans la liste
-                if st.session_state.previous_var_y in available_columns_y:
-                    available_columns_y.remove(st.session_state.previous_var_y)
-                    available_columns_y.insert(0, st.session_state.previous_var_y)
-    
-                # Ajout de l'option vide pour var_y
-                var_y = st.selectbox("Variable Y", 
-                                     ["---"] + available_columns_y, 
-                                     key='var_y_select')
-    
-                # Ne continuer que si les deux variables sont sélectionnées
-                if var_y != "---":
-                    # Sauvegarder la valeur de var_y pour la prochaine itération
-                    st.session_state.previous_var_y = var_y
-    
-                    # Détection des types de variables
-                    is_x_numeric = is_numeric_column(st.session_state.merged_data, var_x)
-                    is_y_numeric = is_numeric_column(st.session_state.merged_data, var_y)
-    
-                    # Analyse pour deux variables qualitatives
-                    if not is_x_numeric and not is_y_numeric:
-                        st.write("### Analyse Bivariée - Variables Qualitatives")
-    
-                        # Option d'inversion des variables
-                        invert_vars = st.checkbox("Inverser les variables X et Y", key='invert_vars_qual')
-    
-                        # Variables actuelles
-                        current_x = var_y if invert_vars else var_x
-                        current_y = var_x if invert_vars else var_y
-    
-                        # Affichage du tableau croisé avec les taux de réponse
-                        combined_table, response_stats = analyze_qualitative_bivariate(
-                            st.session_state.merged_data, current_x, current_y, exclude_missing=True
+            # Analyse pour une variable qualitative et une quantitative
+            elif (is_x_numeric and not is_y_numeric) or (not is_x_numeric and is_y_numeric):
+                st.write("### Analyse Bivariée - Variable Qualitative et Quantitative")
+                
+                # Réorganisation des variables (qualitative en X, quantitative en Y)
+                if is_x_numeric:
+                    quant_var = var_x
+                    qual_var = var_y
+                    st.info("Les variables ont été réorganisées : variable qualitative en X et quantitative en Y")
+                else:
+                    qual_var = var_x
+                    quant_var = var_y
+                
+                # Affichage des statistiques descriptives et du taux de réponse
+                stats_df, response_rate = analyze_mixed_bivariate(
+                    st.session_state.merged_data, 
+                    qual_var, 
+                    quant_var
+                )
+                
+                st.write(f"Taux de réponse : {response_rate:.1f}%")
+                st.write("Statistiques descriptives par modalité")
+                st.dataframe(stats_df)
+                
+                # Configuration de la visualisation
+                st.write("### Configuration de la visualisation")
+                
+                # Sélection de la palette de couleurs
+                color_scheme = st.selectbox(
+                    "Palette de couleurs",
+                    list(COLOR_PALETTES.keys()),
+                    key='color_scheme_mixed'
+                )
+                
+                # Options avancées
+                with st.expander("Options avancées"):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        title = st.text_input(
+                            "Titre du graphique", 
+                            f"Distribution de {quant_var} par {qual_var}",
+                            key='title_mixed'
                         )
-    
-                        # Affichage des taux de réponse
-                        st.write("Taux de réponse :")
-                        for var, rate in response_stats.items():
-                            st.write(f"- {var} : {rate}")
-    
-                        st.write("Tableau croisé (Pourcentages en ligne et effectifs)")
-                        st.dataframe(combined_table)
-    
-                        # Configuration de la visualisation
-                        st.write("### Configuration de la visualisation")
-                        col1, col2 = st.columns(2)
-    
-                        with col1:
-                            plot_type = st.selectbox(
-                                "Type de graphique",
-                                ["Grouped Bar Chart", "Stacked Bar Chart", "Mosaic Plot"],
-                                key='plot_type_qual'
-                            )
-    
-                        with col2:
-                            color_scheme = st.selectbox(
-                                "Palette de couleurs",
-                                list(COLOR_PALETTES.keys()),
-                                key='color_scheme_qual'
-                            )
-    
-                        # Options avancées
-                        with st.expander("Options avancées"):
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                title = st.text_input("Titre du graphique", 
-                                                      f"Distribution de {current_x} par {current_y}",
-                                                      key='title_qual')
-                                x_label = st.text_input("Titre de l'axe X", current_x,
-                                                        key='x_label_qual')
-                                y_label = st.text_input("Titre de l'axe Y", "Valeur",
-                                                        key='y_label_qual')
-                            with col2:
-                                source = st.text_input("Source des données", "",
-                                                       key='source_qual')
-                                note = st.text_input("Note de lecture", "",
-                                                     key='note_qual')
-                                show_values = st.checkbox("Afficher les valeurs", True,
-                                                        key='show_values_qual')
-    
-                        # Options du graphique
-                        plot_options = {
-                            'title': title,
-                            'x_label': x_label,
-                            'y_label': y_label,
-                            'source': source,
-                            'note': note,
-                            'show_values': show_values
-                        }
-    
-                        # Création et affichage du graphique
-                        fig = plot_qualitative_bivariate(
-                            st.session_state.merged_data,
-                            current_x,
-                            current_y,
-                            plot_type,
-                            COLOR_PALETTES[color_scheme],
-                            plot_options
-                        )
-                        st.pyplot(fig)
-                        plt.close()
-    
-                    # Analyse pour une variable qualitative et une quantitative
-                    elif (is_x_numeric and not is_y_numeric) or (not is_x_numeric and is_y_numeric):
-                        st.write("### Analyse Bivariée - Variable Qualitative et Quantitative")
-    
-                        # Réorganisation des variables (qualitative en X, quantitative en Y)
-                        if is_x_numeric:
-                            quant_var = var_x
-                            qual_var = var_y
-                            st.info("Les variables ont été réorganisées : variable qualitative en X et quantitative en Y")
-                        else:
-                            qual_var = var_x
-                            quant_var = var_y
-    
-                        # Affichage des statistiques descriptives et du taux de réponse
-                        stats_df, response_rate = analyze_mixed_bivariate(
-                            st.session_state.merged_data, 
-                            qual_var, 
-                            quant_var
-                        )
-    
-                        st.write(f"Taux de réponse : {response_rate:.1f}%")
-                        st.write("Statistiques descriptives par modalité")
-                        st.dataframe(stats_df)
-    
-                        # Configuration de la visualisation
-                        st.write("### Configuration de la visualisation")
-    
-                        # Sélection de la palette de couleurs
-                        color_scheme = st.selectbox(
-                            "Palette de couleurs",
-                            list(COLOR_PALETTES.keys()),
-                            key='color_scheme_mixed'
-                        )
-    
-                        # Options avancées
-                        with st.expander("Options avancées"):
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                title = st.text_input(
-                                    "Titre du graphique", 
-                                    f"Distribution de {quant_var} par {qual_var}",
-                                    key='title_mixed'
-                                )
-                                x_label = st.text_input(
-                                    "Titre de l'axe X", 
-                                    qual_var,
-                                    key='x_label_mixed'
-                                )
-                                y_label = st.text_input(
-                                    "Titre de l'axe Y", 
-                                    quant_var,
-                                    key='y_label_mixed'
-                                )
-                            with col2:
-                                source = st.text_input(
-                                    "Source des données", 
-                                    "",
-                                    key='source_mixed'
-                                )
-                                note = st.text_input(
-                                    "Note de lecture", 
-                                    "",
-                                    key='note_mixed'
-                                )
-    
-                        # Options du graphique
-                        plot_options = {
-                            'title': title,
-                            'x_label': x_label,
-                            'y_label': y_label,
-                            'source': source,
-                            'note': note,
-                            'show_values': True
-                        }
-    
-                        # Création et affichage du graphique
-                        fig = plot_mixed_bivariate(
-                            st.session_state.merged_data,
+                        x_label = st.text_input(
+                            "Titre de l'axe X", 
                             qual_var,
+                            key='x_label_mixed'
+                        )
+                        y_label = st.text_input(
+                            "Titre de l'axe Y", 
                             quant_var,
-                            COLOR_PALETTES[color_scheme],
-                            plot_options
+                            key='y_label_mixed'
                         )
-    
-                        st.plotly_chart(fig, use_container_width=True)
-    
-                    # Analyse pour deux variables quantitatives
-                    else:
-                        st.write("### Analyse Bivariée - Variables Quantitatives")
-                        
-                        # Option d'agrégation avec variable de référence AVANT la sélection des variables
-                        st.write("Si certaines observations sont répétées dans votre jeu de données, vous pouvez choisir une variable de référence pour l'agrégation.")
-                        
-                        do_aggregate = st.checkbox("Vérifier les observations répétées avec une variable de référence", key="do_aggregate_quant")
-                        
-                        if do_aggregate:
-                            # Sélection de la variable de référence
-                            reference_var = st.selectbox(
-                                "Sélectionner la variable de référence", 
-                                st.session_state.merged_data.columns,
-                                key="ref_var_quant"
-                            )
-                            
-                            # Vérification des répétitions
-                            has_duplicates = st.session_state.merged_data[reference_var].duplicated().any()
-                            
-                            if has_duplicates:
-                                st.warning(f"⚠️ La variable {reference_var} contient des observations répétées. Une agrégation sera effectuée.")
-                                # Méthode d'agrégation
-                                agg_method = st.radio(
-                                    "Méthode d'agrégation", 
-                                    ['sum', 'mean', 'median'],
-                                    format_func=lambda x: {'sum': 'Somme', 'mean': 'Moyenne', 'median': 'Médiane'}[x],
-                                    key="agg_method_quant"
-                                )
-                            else:
-                                st.info(f"La variable {reference_var} ne contient pas d'observations répétées. L'agrégation n'est pas nécessaire.")
-                                agg_method = None
-                        
-                        # Sélection des variables X et Y APRÈS la configuration de l'agrégation
-                        numeric_cols = [col for col in st.session_state.merged_data.columns 
-                                       if is_numeric_column(st.session_state.merged_data, col)]
-                        
-                        var_x = st.selectbox("Variable X", numeric_cols, key='var_x_quant')
-                        var_y = st.selectbox(
-                            "Variable Y", 
-                            [col for col in numeric_cols if col != var_x],
-                            key='var_y_quant'
+                    with col2:
+                        source = st.text_input(
+                            "Source des données", 
+                            "",
+                            key='source_mixed'
                         )
+                        note = st.text_input(
+                            "Note de lecture", 
+                            "",
+                            key='note_mixed'
+                        )
+                
+                # Options du graphique
+                plot_options = {
+                    'title': title,
+                    'x_label': x_label,
+                    'y_label': y_label,
+                    'source': source,
+                    'note': note,
+                    'show_values': True
+                }
+                
+                # Création et affichage du graphique
+                fig = plot_mixed_bivariate(
+                    st.session_state.merged_data,
+                    qual_var,
+                    quant_var,
+                    COLOR_PALETTES[color_scheme],
+                    plot_options
+                )
+                
+                st.plotly_chart(fig, use_container_width=True)
+        
+            # Analyse pour deux variables quantitatives
+            else:
+                st.write("### Analyse Bivariée - Variables Quantitatives")
+                
+                # Détection des doublons potentiels
+                has_duplicates = check_duplicates(st.session_state.merged_data, var_x, var_y)
+                
+                if has_duplicates:
+                    st.warning("⚠️ Certaines observations sont répétées dans le jeu de données. "
+                              "Vous pouvez choisir d'agréger les données avant l'analyse.")
+                    
+                    # Option d'agrégation
+                    do_aggregate = st.checkbox("Agréger les données avant l'analyse")
+                    
+                    if do_aggregate:
+                        # Sélection de la colonne d'agrégation
+                        groupby_cols = [col for col in st.session_state.merged_data.columns 
+                                      if col not in [var_x, var_y]]
+                        groupby_col = st.selectbox("Sélectionner la colonne d'agrégation", groupby_cols)
                         
-                        # Traitement des données selon la configuration d'agrégation
-                        if do_aggregate and has_duplicates:
-                            agg_data = st.session_state.merged_data.groupby(reference_var).agg({
-                                var_x: agg_method,
-                                var_y: agg_method
-                            }).reset_index()
-                            
-                            results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
-                                st.session_state.merged_data,
-                                var_x,
-                                var_y,
-                                groupby_col=reference_var,
-                                agg_method=agg_method
-                            )
+                        # Méthode d'agrégation
+                        agg_method = st.radio("Méthode d'agrégation", 
+                                            ['sum', 'mean', 'median'],
+                                            format_func=lambda x: {
+                                                'sum': 'Somme',
+                                                'mean': 'Moyenne',
+                                                'median': 'Médiane'
+                                            }[x])
+                        
+                        # Vérification des doublons par modalité de manière plus précise
+                        x_counts = (st.session_state.merged_data.groupby(groupby_col)
+                                   .agg({var_x: 'count'})
+                                   .reset_index())
+                        y_counts = (st.session_state.merged_data.groupby(groupby_col)
+                                   .agg({var_y: 'count'})
+                                   .reset_index())
+                        
+                        # Vérification si une variable a plus d'observations que l'autre
+                        x_has_duplicates = (x_counts[var_x] > 1).any()
+                        y_has_duplicates = (y_counts[var_y] > 1).any()
+                        
+                        # Création du dictionnaire d'agrégation
+                        agg_dict = {}
+                        if y_has_duplicates:
+                            agg_dict[var_x] = 'first'
+                            agg_dict[var_y] = agg_method
+                            st.info(f"La variable {var_y} sera agrégée car elle contient des observations répétées")
+                        elif x_has_duplicates:
+                            agg_dict[var_x] = agg_method
+                            agg_dict[var_y] = 'first'
+                            st.info(f"La variable {var_x} sera agrégée car elle contient des observations répétées")
                         else:
-                            agg_data = st.session_state.merged_data
-                            results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
-                                st.session_state.merged_data,
-                                var_x,
-                                var_y
-                            )
-       
-                        # Affichage des taux de réponse
-                        st.write("Taux de réponse :")
-                        st.write(f"- {var_x} : {response_rate_x:.1f}%")
-                        st.write(f"- {var_y} : {response_rate_y:.1f}%")
-    
-                        st.write("Statistiques de corrélation")
-                        st.dataframe(results_df)
-    
-                        # Configuration de la visualisation
-                        st.write("### Configuration de la visualisation")
-    
-                        # Sélection de la palette de couleurs
-                        color_scheme = st.selectbox(
-                            "Palette de couleurs",
-                            list(COLOR_PALETTES.keys()),
-                            key='color_scheme_quant'
-                        )
-    
-                        # Options avancées
-                        with st.expander("Options avancées"):
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                title = st.text_input(
-                                    "Titre du graphique", 
-                                    f"Relation entre {var_x} et {var_y}",
-                                    key='title_quant'
-                                )
-                                x_label = st.text_input(
-                                    "Titre de l'axe X", 
-                                    var_x,
-                                    key='x_label_quant'
-                                )
-                                y_label = st.text_input(
-                                    "Titre de l'axe Y", 
-                                    var_y,
-                                    key='y_label_quant'
-                                )
-                            with col2:
-                                source = st.text_input(
-                                    "Source des données", 
-                                    "",
-                                    key='source_quant'
-                                )
-                                note = st.text_input(
-                                    "Note de lecture", 
-                                    "",
-                                    key='note_quant'
-                                )
-    
-                        # Options du graphique
-                        plot_options = {
-                            'title': title,
-                            'x_label': x_label,
-                            'y_label': y_label,
-                            'source': source,
-                            'note': note
-                        }
-    
-                        # Création et affichage du graphique
-                        fig = plot_quantitative_bivariate_interactive(
-                            agg_data,
+                            # Si on ne peut pas détecter clairement, alerter l'utilisateur
+                            st.warning("Aucune variable ne semble nécessiter d'agrégation")
+                            agg_dict[var_x] = 'first'
+                            agg_dict[var_y] = 'first'
+                        
+                        # Création des données agrégées
+                        agg_data = st.session_state.merged_data.groupby(groupby_col).agg(agg_dict).reset_index()
+                        
+                        # Calcul et affichage des statistiques
+                        results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
+                            st.session_state.merged_data,
                             var_x,
                             var_y,
-                            COLOR_PALETTES[color_scheme],
-                            plot_options,
-                            groupby_col if do_aggregate else None,
-                            agg_method if do_aggregate else None
+                            groupby_col=groupby_col,
+                            agg_method=agg_method
                         )
-    
-                        st.plotly_chart(fig, use_container_width=True)
-    
+                    else:
+                        results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
+                            st.session_state.merged_data,
+                            var_x,
+                            var_y
+                        )
+                        agg_data = st.session_state.merged_data
+                        groupby_col = None
+                        agg_method = None
                 else:
-                    st.info("Veuillez sélectionner une variable Y")
-            else:
-                st.info("Veuillez sélectionner une variable X")
-                    
+                    results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
+                        st.session_state.merged_data,
+                        var_x,
+                        var_y
+                    )
+                    agg_data = st.session_state.merged_data
+                    groupby_col = None
+                    agg_method = None
+                
+                # Affichage des taux de réponse
+                st.write("Taux de réponse :")
+                st.write(f"- {var_x} : {response_rate_x:.1f}%")
+                st.write(f"- {var_y} : {response_rate_y:.1f}%")
+                
+                st.write("Statistiques de corrélation")
+                st.dataframe(results_df)
+                
+                # Configuration de la visualisation
+                st.write("### Configuration de la visualisation")
+                
+                # Sélection de la palette de couleurs
+                color_scheme = st.selectbox(
+                    "Palette de couleurs",
+                    list(COLOR_PALETTES.keys()),
+                    key='color_scheme_quant'
+                )
+                
+                # Options avancées
+                with st.expander("Options avancées"):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        title = st.text_input(
+                            "Titre du graphique", 
+                            f"Relation entre {var_x} et {var_y}",
+                            key='title_quant'
+                        )
+                        x_label = st.text_input(
+                            "Titre de l'axe X", 
+                            var_x,
+                            key='x_label_quant'
+                        )
+                        y_label = st.text_input(
+                            "Titre de l'axe Y", 
+                            var_y,
+                            key='y_label_quant'
+                        )
+                    with col2:
+                        source = st.text_input(
+                            "Source des données", 
+                            "",
+                            key='source_quant'
+                        )
+                        note = st.text_input(
+                            "Note de lecture", 
+                            "",
+                            key='note_quant'
+                        )
+                
+                # Options du graphique
+                plot_options = {
+                    'title': title,
+                    'x_label': x_label,
+                    'y_label': y_label,
+                    'source': source,
+                    'note': note
+                }
+                
+                # Création et affichage du graphique
+                fig = plot_quantitative_bivariate_interactive(
+                    agg_data,
+                    var_x,
+                    var_y,
+                    COLOR_PALETTES[color_scheme],
+                    plot_options,
+                    groupby_col if do_aggregate else None,
+                    agg_method if do_aggregate else None
+                )
+                
+                st.plotly_chart(fig, use_container_width=True)
+        
         except Exception as e:
             st.error(f"Une erreur s'est produite : {str(e)}")
 
