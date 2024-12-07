@@ -1534,10 +1534,14 @@ def main():
                         reference_cols = [col for col in st.session_state.merged_data.columns 
                                          if col not in [var_x, var_y]]
                         
-                        do_aggregate = st.checkbox("Vérifier les observations répétées avec une variable de référence")
+                        do_aggregate = st.checkbox("Vérifier les observations répétées avec une variable de référence", key="do_aggregate_check")
                         
                         if do_aggregate:
-                            reference_var = st.selectbox("Sélectionner la variable de référence", reference_cols)
+                            reference_var = st.selectbox(
+                                "Sélectionner la variable de référence", 
+                                reference_cols,
+                                key="reference_var_select"  # Ajout d'une clé unique
+                            )
                             
                             # Vérification des répétitions basée sur la variable de référence
                             has_duplicates = st.session_state.merged_data[reference_var].duplicated().any()
@@ -1546,13 +1550,16 @@ def main():
                                 st.warning(f"⚠️ La variable {reference_var} contient des observations répétées. Une agrégation est recommandée.")
                                 
                                 # Méthode d'agrégation
-                                agg_method = st.radio("Méthode d'agrégation", 
-                                                    ['sum', 'mean', 'median'],
-                                                    format_func=lambda x: {
-                                                        'sum': 'Somme',
-                                                        'mean': 'Moyenne',
-                                                        'median': 'Médiane'
-                                                    }[x])
+                                agg_method = st.radio(
+                                    "Méthode d'agrégation", 
+                                    ['sum', 'mean', 'median'],
+                                    format_func=lambda x: {
+                                        'sum': 'Somme',
+                                        'mean': 'Moyenne',
+                                        'median': 'Médiane'
+                                    }[x],
+                                    key="agg_method_radio"  # Ajout d'une clé unique
+                                )
                                 
                                 # Création des données agrégées
                                 agg_data = st.session_state.merged_data.groupby(reference_var).agg({
@@ -1576,7 +1583,6 @@ def main():
                                     var_y
                                 )
                                 agg_data = st.session_state.merged_data
-                                reference_var = None
                                 agg_method = None
                         else:
                             # Analyse sans agrégation
