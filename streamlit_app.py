@@ -1505,33 +1505,29 @@ def main():
                                                 'median': 'Médiane'
                                             }[x])
                         
-                        # Détection de la variable à agréger
-                        repeated_var = detect_repeated_variable(
-                            st.session_state.merged_data, 
-                            var_x, 
-                            var_y, 
-                            groupby_col
-                        )
+                        # Vérification de quelle variable a des doublons par modalité
+                        x_has_duplicates = st.session_state.merged_data.groupby(groupby_col)[var_x].nunique() > 1
+                        y_has_duplicates = st.session_state.merged_data.groupby(groupby_col)[var_y].nunique() > 1
                         
-                        if repeated_var:
-                            # Création du dictionnaire d'agrégation
-                            agg_dict = {
-                                var_x: 'first',  # On prend toujours la première valeur
-                                var_y: agg_method  # On agrège toujours Y
-                            }
-                            
-                            # Données agrégées pour le graphique
-                            agg_data = st.session_state.merged_data.groupby(groupby_col).agg(agg_dict).reset_index()
-                            
-                            # Affichage d'une info sur la variable agrégée
-                            st.info(f"La variable {var_y} a été agrégée")
+                        # Création du dictionnaire d'agrégation
+                        agg_dict = {}
+                        if x_has_duplicates.any():
+                            agg_dict[var_x] = agg_method
+                            agg_dict[var_y] = 'first'
+                            st.info(f"La variable {var_x} sera agrégée")
+                        elif y_has_duplicates.any():
+                            agg_dict[var_x] = 'first'
+                            agg_dict[var_y] = agg_method
+                            st.info(f"La variable {var_y} sera agrégée")
                         else:
-                            # Si on ne peut pas détecter automatiquement, agréger Y par défaut
-                            agg_data = st.session_state.merged_data.groupby(groupby_col).agg({
-                                var_x: 'first',
-                                var_y: agg_method
-                            }).reset_index()
+                            # Si on ne peut pas détecter clairement, on agrège la variable Y par défaut
+                            agg_dict[var_x] = 'first'
+                            agg_dict[var_y] = agg_method
                         
+                        # Création des données agrégées
+                        agg_data = st.session_state.merged_data.groupby(groupby_col).agg(agg_dict).reset_index()
+                        
+                        # Calcul et affichage des statistiques
                         results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
                             st.session_state.merged_data,
                             var_x,
