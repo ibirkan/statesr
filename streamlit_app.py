@@ -953,9 +953,10 @@ def main():
                     
                     # Statistiques pour variable quantitative
                     stats_df = pd.DataFrame({
-                        'Statistique': ['Effectif total', 'Moyenne', 'Médiane', 'Écart-type', 'Minimum', 'Maximum'],
+                        'Statistique': ['Effectif total', 'Somme', 'Moyenne', 'Médiane', 'Écart-type', 'Minimum', 'Maximum'],
                         'Valeur': [
                             len(plot_data),
+                            plot_data.sum().round(2),
                             plot_data.mean().round(2),
                             plot_data.median().round(2),
                             plot_data.std().round(2),
@@ -990,8 +991,8 @@ def main():
                         value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
                         
                         # Statistiques par groupe
-                        group_stats = plot_data.groupby(grouped_data).agg(['mean', 'max']).round(2)
-                        group_stats.columns = ['Moyenne', 'Maximum']
+                        group_stats = plot_data.groupby(grouped_data).agg(['sum', 'mean', 'max']).round(2)
+                        group_stats.columns = ['Somme', 'Moyenne', 'Maximum']
                         
                         st.write("### Statistiques par groupe")
                         st.dataframe(pd.concat([value_counts.set_index('Groupe'), group_stats], axis=1))
@@ -1095,7 +1096,7 @@ def main():
                                 )
                                 value_type = "Effectifs" if grouping_method == "Manuelle" else st.selectbox(
                                     "Valeur à afficher",
-                                    ["Effectifs", "Moyenne", "Maximum"],
+                                    ["Effectifs", "Somme", "Moyenne", "Maximum"],
                                     key="static_value_type"
                                 )
                         else:
@@ -1203,7 +1204,7 @@ def main():
                                 else:
                                     data = value_counts
                                     if value_type != "Effectifs":
-                                        y_col = 'Moyenne' if value_type == "Moyenne" else 'Maximum'
+                                        y_col = 'Somme' if value_type == "Somme" else 'Moyenne' if value_type == "Moyenne" else 'Maximum'
                                         data = pd.concat([value_counts, group_stats[y_col]], axis=1)
                                     
                                 if graph_type == "Bar plot":
@@ -1329,38 +1330,38 @@ def main():
                                    st.pyplot(fig)
                                    plt.close()
                                    return
+                        
+                        # Mise à jour du layout pour les graphiques Plotly
+                        if fig is not None and isinstance(fig, go.Figure):
+                            fig.update_layout(
+                                height=600,
+                                margin=dict(t=100, b=100),
+                                showlegend=True,
+                                plot_bgcolor='white',
+                                paper_bgcolor='white',
+                                xaxis_title=x_axis,
+                                yaxis_title=y_axis
+                            )
                             
-                            # Mise à jour du layout pour les graphiques Plotly
-                            if fig is not None and isinstance(fig, go.Figure):
-                                fig.update_layout(
-                                    height=600,
-                                    margin=dict(t=100, b=100),
-                                    showlegend=True,
-                                    plot_bgcolor='white',
-                                    paper_bgcolor='white',
-                                    xaxis_title=x_axis,
-                                    yaxis_title=y_axis
+                            if source:
+                                fig.add_annotation(
+                                    text=f"Source: {source}",
+                                    xref="paper",
+                                    yref="paper",
+                                    x=0,
+                                    y=-0.15,
+                                    showarrow=False,
+                                    font=dict(size=10),
+                                    align="left"
                                 )
-                                
-                                if source:
-                                    fig.add_annotation(
-                                        text=f"Source: {source}",
-                                        xref="paper",
-                                        yref="paper",
-                                        x=0,
-                                        y=-0.15,
-                                        showarrow=False,
-                                        font=dict(size=10),
-                                        align="left"
-                                    )
+                        
+                            if show_values and hasattr(fig.data[0], "text"):
+                                if isinstance(fig.data[0], go.Bar):
+                                    fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
+                                else:
+                                    fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
                             
-                                if show_values and hasattr(fig.data[0], "text"):
-                                    if isinstance(fig.data[0], go.Bar):
-                                        fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
-                                    else:
-                                        fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
-                                
-                                st.plotly_chart(fig, use_container_width=True)
+                            st.plotly_chart(fig, use_container_width=True)
                 
                     except Exception as e:
                         st.error(f"Erreur lors de la génération du graphique : {str(e)}")
