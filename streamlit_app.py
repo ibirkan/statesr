@@ -889,67 +889,67 @@ def main():
     
     # Analyse univariée
     if analysis_type == "Analyse univariée":
-    # Sélection de la variable avec une option vide
-    var = st.selectbox("Sélectionnez la variable:", 
-                      options=["---"] + list(st.session_state.merged_data.columns))
-    
-    # Ne continuer que si une variable réelle est sélectionnée
-    if var != "---":
-        plot_data = st.session_state.merged_data[var]
-    
-        # Liste des valeurs considérées comme non-réponses
-        missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr', 'NR', 'Non-réponse']
-    
-        # Remplacement des non-réponses par np.nan uniquement dans la variable sélectionnée
-        plot_data = plot_data.replace(missing_values, np.nan)
-    
-        # Suppression des non-réponses uniquement dans la variable sélectionnée
-        plot_data = plot_data.dropna()
+        # Sélection de la variable avec une option vide
+        var = st.selectbox("Sélectionnez la variable:", 
+                          options=["---"] + list(st.session_state.merged_data.columns))
         
-        # Vérification des données non nulles
-        if plot_data is not None and not plot_data.empty:
-            # Détecter le type de variable
-            is_numeric = pd.api.types.is_numeric_dtype(plot_data)
+        # Ne continuer que si une variable réelle est sélectionnée
+        if var != "---":
+            plot_data = st.session_state.merged_data[var]
         
-            # Affichage des statistiques de base
-            st.write(f"### Statistiques principales de la variable {var}")
+            # Liste des valeurs considérées comme non-réponses
+            missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr', 'NR', 'Non-réponse']
+        
+            # Remplacement des non-réponses par np.nan uniquement dans la variable sélectionnée
+            plot_data = plot_data.replace(missing_values, np.nan)
+        
+            # Suppression des non-réponses uniquement dans la variable sélectionnée
+            plot_data = plot_data.dropna()
             
-            if is_numeric:
-                # Détection des doublons potentiels
-                has_duplicates = st.session_state.merged_data.duplicated(subset=[var]).any()
+            # Vérification des données non nulles
+            if plot_data is not None and not plot_data.empty:
+                # Détecter le type de variable
+                is_numeric = pd.api.types.is_numeric_dtype(plot_data)
+            
+                # Affichage des statistiques de base
+                st.write(f"### Statistiques principales de la variable {var}")
                 
-                if has_duplicates:
-                    st.warning("⚠️ Certaines observations sont répétées dans le jeu de données. "
-                              "Vous pouvez choisir d'agréger les données avant l'analyse.")
+                if is_numeric:
+                    # Détection des doublons potentiels
+                    has_duplicates = st.session_state.merged_data.duplicated(subset=[var]).any()
                     
-                    # Option d'agrégation
-                    do_aggregate = st.checkbox("Agréger les données avant l'analyse", key="agg_univ")
-                    
-                    if do_aggregate:
-                        # Sélection de la colonne d'agrégation
-                        groupby_cols = [col for col in st.session_state.merged_data.columns 
-                                      if col != var]
-                        groupby_col = st.selectbox("Sélectionner la colonne d'agrégation", groupby_cols, key="groupby_univ")
+                    if has_duplicates:
+                        st.warning("⚠️ Certaines observations sont répétées dans le jeu de données. "
+                                  "Vous pouvez choisir d'agréger les données avant l'analyse.")
                         
-                        # Méthode d'agrégation
-                        agg_method = st.radio("Méthode d'agrégation", 
-                                            ['sum', 'mean', 'median'],
-                                            format_func=lambda x: {
-                                                'sum': 'Somme',
-                                                'mean': 'Moyenne',
-                                                'median': 'Médiane'
-                                            }[x],
-                                            key="agg_method_univ")
+                        # Option d'agrégation
+                        do_aggregate = st.checkbox("Agréger les données avant l'analyse", key="agg_univ")
                         
-                        # Remplacement des non-réponses par np.nan uniquement dans la variable d'agrégation
-                        st.session_state.merged_data[groupby_col] = st.session_state.merged_data[groupby_col].replace(missing_values, np.nan)
-                        
-                        # Création des données agrégées
-                        agg_data = st.session_state.merged_data.dropna(subset=[var, groupby_col]).groupby(groupby_col).agg({
-                            var: agg_method
-                        }).reset_index()
-                        
-                        plot_data = agg_data[var]
+                        if do_aggregate:
+                            # Sélection de la colonne d'agrégation
+                            groupby_cols = [col for col in st.session_state.merged_data.columns 
+                                          if col != var]
+                            groupby_col = st.selectbox("Sélectionner la colonne d'agrégation", groupby_cols, key="groupby_univ")
+                            
+                            # Méthode d'agrégation
+                            agg_method = st.radio("Méthode d'agrégation", 
+                                                ['sum', 'mean', 'median'],
+                                                format_func=lambda x: {
+                                                    'sum': 'Somme',
+                                                    'mean': 'Moyenne',
+                                                    'median': 'Médiane'
+                                                }[x],
+                                                key="agg_method_univ")
+                            
+                            # Remplacement des non-réponses par np.nan uniquement dans la variable d'agrégation
+                            st.session_state.merged_data[groupby_col] = st.session_state.merged_data[groupby_col].replace(missing_values, np.nan)
+                            
+                            # Création des données agrégées
+                            agg_data = st.session_state.merged_data.dropna(subset=[var, groupby_col]).groupby(groupby_col).agg({
+                                var: agg_method
+                            }).reset_index()
+                            
+                            plot_data = agg_data[var]
                     
                     # Statistiques pour variable quantitative
                     stats_df = pd.DataFrame({
