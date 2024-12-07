@@ -976,10 +976,7 @@ def main():
                 value_counts.columns = ['Modalité', 'Effectif']
                 value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
                 st.dataframe(value_counts)
-
-    else:
-        st.info("Veuillez sélectionner une variable à analyser")
-        
+     
             # Visualisation
             st.write("### Configuration de la visualisation")
             
