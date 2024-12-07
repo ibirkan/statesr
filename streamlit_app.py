@@ -886,9 +886,13 @@ def main():
     
     # Analyse univariée
     if analysis_type == "Analyse univariée":
-        # Sélection de la variable
-        var = st.selectbox("Sélectionnez la variable:", options=st.session_state.merged_data.columns)
-        plot_data = st.session_state.merged_data[var]
+        # Sélection de la variable avec une option vide
+        var = st.selectbox("Sélectionnez la variable:", 
+                          options=["---"] + list(st.session_state.merged_data.columns))
+        
+        # Ne continuer que si une variable réelle est sélectionnée
+        if var != "---":
+            plot_data = st.session_state.merged_data[var]
         
         # Vérification des données non nulles
         if plot_data is not None and not plot_data.empty:
@@ -972,6 +976,9 @@ def main():
                 value_counts.columns = ['Modalité', 'Effectif']
                 value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
                 st.dataframe(value_counts)
+
+    else:
+        st.info("Veuillez sélectionner une variable à analyser")
         
             # Visualisation
             st.write("### Configuration de la visualisation")
