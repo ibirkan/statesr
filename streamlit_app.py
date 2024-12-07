@@ -1527,73 +1527,67 @@ def main():
                     else:
                         st.write("### Analyse Bivariée - Variables Quantitatives")
                         
-                        # Option d'agrégation avec variable de référence
+                        # Option d'agrégation avec variable de référence AVANT la sélection des variables
                         st.write("Si certaines observations sont répétées dans votre jeu de données, vous pouvez choisir une variable de référence pour l'agrégation.")
                         
-                        # Sélection de la variable de référence
-                        reference_cols = [col for col in st.session_state.merged_data.columns 
-                                         if col not in [var_x, var_y]]
-                        
-                        do_aggregate = st.checkbox("Vérifier les observations répétées avec une variable de référence", key="do_aggregate_check")
+                        do_aggregate = st.checkbox("Vérifier les observations répétées avec une variable de référence", key="do_aggregate_quant")
                         
                         if do_aggregate:
+                            # Sélection de la variable de référence
                             reference_var = st.selectbox(
                                 "Sélectionner la variable de référence", 
-                                reference_cols,
-                                key="reference_var_select"  # Ajout d'une clé unique
+                                st.session_state.merged_data.columns,
+                                key="ref_var_quant"
                             )
                             
-                            # Vérification des répétitions basée sur la variable de référence
+                            # Vérification des répétitions
                             has_duplicates = st.session_state.merged_data[reference_var].duplicated().any()
                             
                             if has_duplicates:
-                                st.warning(f"⚠️ La variable {reference_var} contient des observations répétées. Une agrégation est recommandée.")
-                                
+                                st.warning(f"⚠️ La variable {reference_var} contient des observations répétées. Une agrégation sera effectuée.")
                                 # Méthode d'agrégation
                                 agg_method = st.radio(
                                     "Méthode d'agrégation", 
                                     ['sum', 'mean', 'median'],
-                                    format_func=lambda x: {
-                                        'sum': 'Somme',
-                                        'mean': 'Moyenne',
-                                        'median': 'Médiane'
-                                    }[x],
-                                    key="agg_method_radio"  # Ajout d'une clé unique
-                                )
-                                
-                                # Création des données agrégées
-                                agg_data = st.session_state.merged_data.groupby(reference_var).agg({
-                                    var_x: agg_method,
-                                    var_y: agg_method
-                                }).reset_index()
-                                
-                                # Calcul et affichage des statistiques
-                                results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
-                                    st.session_state.merged_data,
-                                    var_x,
-                                    var_y,
-                                    groupby_col=reference_var,
-                                    agg_method=agg_method
+                                    format_func=lambda x: {'sum': 'Somme', 'mean': 'Moyenne', 'median': 'Médiane'}[x],
+                                    key="agg_method_quant"
                                 )
                             else:
                                 st.info(f"La variable {reference_var} ne contient pas d'observations répétées. L'agrégation n'est pas nécessaire.")
-                                results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
-                                    st.session_state.merged_data,
-                                    var_x,
-                                    var_y
-                                )
-                                agg_data = st.session_state.merged_data
                                 agg_method = None
+                        
+                        # Sélection des variables X et Y APRÈS la configuration de l'agrégation
+                        numeric_cols = [col for col in st.session_state.merged_data.columns 
+                                       if is_numeric_column(st.session_state.merged_data, col)]
+                        
+                        var_x = st.selectbox("Variable X", numeric_cols, key='var_x_quant')
+                        var_y = st.selectbox(
+                            "Variable Y", 
+                            [col for col in numeric_cols if col != var_x],
+                            key='var_y_quant'
+                        )
+                        
+                        # Traitement des données selon la configuration d'agrégation
+                        if do_aggregate and has_duplicates:
+                            agg_data = st.session_state.merged_data.groupby(reference_var).agg({
+                                var_x: agg_method,
+                                var_y: agg_method
+                            }).reset_index()
+                            
+                            results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
+                                st.session_state.merged_data,
+                                var_x,
+                                var_y,
+                                groupby_col=reference_var,
+                                agg_method=agg_method
+                            )
                         else:
-                            # Analyse sans agrégation
+                            agg_data = st.session_state.merged_data
                             results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
                                 st.session_state.merged_data,
                                 var_x,
                                 var_y
                             )
-                            agg_data = st.session_state.merged_data
-                            reference_var = None
-                            agg_method = None
        
                         # Affichage des taux de réponse
                         st.write("Taux de réponse :")
