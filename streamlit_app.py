@@ -1323,10 +1323,24 @@ def main():
     elif analysis_type == "Analyse bivariée":
         try:
             # Sélection des variables
+            # Initialisation de var_y dans session_state s'il n'existe pas
+            if 'previous_var_y' not in st.session_state:
+                st.session_state.previous_var_y = None
+            
             var_x = st.selectbox("Variable X", st.session_state.merged_data.columns, key='var_x_select')
-            var_y = st.selectbox("Variable Y", 
-                                [col for col in st.session_state.merged_data.columns if col != var_x],
-                                key='var_y_select')
+            
+            # Filtrer les colonnes pour var_y en excluant var_x
+            available_columns_y = [col for col in st.session_state.merged_data.columns if col != var_x]
+            
+            # Si la valeur précédente de var_y est valide, la mettre en premier dans la liste
+            if st.session_state.previous_var_y in available_columns_y:
+                available_columns_y.remove(st.session_state.previous_var_y)
+                available_columns_y.insert(0, st.session_state.previous_var_y)
+            
+            var_y = st.selectbox("Variable Y", available_columns_y, key='var_y_select')
+            
+            # Sauvegarder la valeur de var_y pour la prochaine itération
+            st.session_state.previous_var_y = var_y
             
             # Détection des types de variables avec gestion d'erreur
             is_x_numeric = is_numeric_column(st.session_state.merged_data, var_x)
