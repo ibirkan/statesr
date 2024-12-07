@@ -1328,8 +1328,8 @@ def main():
     
             # Ajout de l'option vide pour var_x
             var_x = st.selectbox("Variable X", 
-                               ["---"] + list(st.session_state.merged_data.columns), 
-                               key='var_x_select')
+                                 ["---"] + list(st.session_state.merged_data.columns), 
+                                 key='var_x_select')
     
             if var_x != "---":
                 # Filtrer les colonnes pour var_y en excluant var_x
@@ -1342,8 +1342,8 @@ def main():
     
                 # Ajout de l'option vide pour var_y
                 var_y = st.selectbox("Variable Y", 
-                                   ["---"] + available_columns_y, 
-                                   key='var_y_select')
+                                     ["---"] + available_columns_y, 
+                                     key='var_y_select')
     
                 # Ne continuer que si les deux variables sont sélectionnées
                 if var_y != "---":
@@ -1353,339 +1353,339 @@ def main():
                     # Détection des types de variables
                     is_x_numeric = is_numeric_column(st.session_state.merged_data, var_x)
                     is_y_numeric = is_numeric_column(st.session_state.merged_data, var_y)
-            
-            # Analyse pour deux variables qualitatives
-            if not is_x_numeric and not is_y_numeric:
-                st.write("### Analyse Bivariée - Variables Qualitatives")
-                
-                # Option d'inversion des variables
-                invert_vars = st.checkbox("Inverser les variables X et Y", key='invert_vars_qual')
-                
-                # Variables actuelles
-                current_x = var_y if invert_vars else var_x
-                current_y = var_x if invert_vars else var_y
-                
-                # Affichage du tableau croisé avec les taux de réponse
-                combined_table, response_stats = analyze_qualitative_bivariate(
-                    st.session_state.merged_data, current_x, current_y, exclude_missing=True
-                )
-                
-                # Affichage des taux de réponse
-                st.write("Taux de réponse :")
-                for var, rate in response_stats.items():
-                    st.write(f"- {var} : {rate}")
-                
-                st.write("Tableau croisé (Pourcentages en ligne et effectifs)")
-                st.dataframe(combined_table)
-                
-                # Configuration de la visualisation
-                st.write("### Configuration de la visualisation")
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    plot_type = st.selectbox(
-                        "Type de graphique",
-                        ["Grouped Bar Chart", "Stacked Bar Chart", "Mosaic Plot"],
-                        key='plot_type_qual'
-                    )
-                
-                with col2:
-                    color_scheme = st.selectbox(
-                        "Palette de couleurs",
-                        list(COLOR_PALETTES.keys()),
-                        key='color_scheme_qual'
-                    )
-                
-                # Options avancées
-                with st.expander("Options avancées"):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        title = st.text_input("Titre du graphique", 
-                                            f"Distribution de {current_x} par {current_y}",
-                                            key='title_qual')
-                        x_label = st.text_input("Titre de l'axe X", current_x,
-                                              key='x_label_qual')
-                        y_label = st.text_input("Titre de l'axe Y", "Valeur",
-                                              key='y_label_qual')
-                    with col2:
-                        source = st.text_input("Source des données", "",
-                                             key='source_qual')
-                        note = st.text_input("Note de lecture", "",
-                                           key='note_qual')
-                        show_values = st.checkbox("Afficher les valeurs", True,
-                                                key='show_values_qual')
-                
-                # Options du graphique
-                plot_options = {
-                    'title': title,
-                    'x_label': x_label,
-                    'y_label': y_label,
-                    'source': source,
-                    'note': note,
-                    'show_values': show_values
-                }
-                
-                # Création et affichage du graphique
-                fig = plot_qualitative_bivariate(
-                    st.session_state.merged_data,
-                    current_x,
-                    current_y,
-                    plot_type,
-                    COLOR_PALETTES[color_scheme],
-                    plot_options
-                )
-                st.pyplot(fig)
-                plt.close()
     
-            # Analyse pour une variable qualitative et une quantitative
-            elif (is_x_numeric and not is_y_numeric) or (not is_x_numeric and is_y_numeric):
-                st.write("### Analyse Bivariée - Variable Qualitative et Quantitative")
-                
-                # Réorganisation des variables (qualitative en X, quantitative en Y)
-                if is_x_numeric:
-                    quant_var = var_x
-                    qual_var = var_y
-                    st.info("Les variables ont été réorganisées : variable qualitative en X et quantitative en Y")
-                else:
-                    qual_var = var_x
-                    quant_var = var_y
-                
-                # Affichage des statistiques descriptives et du taux de réponse
-                stats_df, response_rate = analyze_mixed_bivariate(
-                    st.session_state.merged_data, 
-                    qual_var, 
-                    quant_var
-                )
-                
-                st.write(f"Taux de réponse : {response_rate:.1f}%")
-                st.write("Statistiques descriptives par modalité")
-                st.dataframe(stats_df)
-                
-                # Configuration de la visualisation
-                st.write("### Configuration de la visualisation")
-                
-                # Sélection de la palette de couleurs
-                color_scheme = st.selectbox(
-                    "Palette de couleurs",
-                    list(COLOR_PALETTES.keys()),
-                    key='color_scheme_mixed'
-                )
-                
-                # Options avancées
-                with st.expander("Options avancées"):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        title = st.text_input(
-                            "Titre du graphique", 
-                            f"Distribution de {quant_var} par {qual_var}",
-                            key='title_mixed'
+                    # Analyse pour deux variables qualitatives
+                    if not is_x_numeric and not is_y_numeric:
+                        st.write("### Analyse Bivariée - Variables Qualitatives")
+    
+                        # Option d'inversion des variables
+                        invert_vars = st.checkbox("Inverser les variables X et Y", key='invert_vars_qual')
+    
+                        # Variables actuelles
+                        current_x = var_y if invert_vars else var_x
+                        current_y = var_x if invert_vars else var_y
+    
+                        # Affichage du tableau croisé avec les taux de réponse
+                        combined_table, response_stats = analyze_qualitative_bivariate(
+                            st.session_state.merged_data, current_x, current_y, exclude_missing=True
                         )
-                        x_label = st.text_input(
-                            "Titre de l'axe X", 
-                            qual_var,
-                            key='x_label_mixed'
+    
+                        # Affichage des taux de réponse
+                        st.write("Taux de réponse :")
+                        for var, rate in response_stats.items():
+                            st.write(f"- {var} : {rate}")
+    
+                        st.write("Tableau croisé (Pourcentages en ligne et effectifs)")
+                        st.dataframe(combined_table)
+    
+                        # Configuration de la visualisation
+                        st.write("### Configuration de la visualisation")
+                        col1, col2 = st.columns(2)
+    
+                        with col1:
+                            plot_type = st.selectbox(
+                                "Type de graphique",
+                                ["Grouped Bar Chart", "Stacked Bar Chart", "Mosaic Plot"],
+                                key='plot_type_qual'
+                            )
+    
+                        with col2:
+                            color_scheme = st.selectbox(
+                                "Palette de couleurs",
+                                list(COLOR_PALETTES.keys()),
+                                key='color_scheme_qual'
+                            )
+    
+                        # Options avancées
+                        with st.expander("Options avancées"):
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                title = st.text_input("Titre du graphique", 
+                                                      f"Distribution de {current_x} par {current_y}",
+                                                      key='title_qual')
+                                x_label = st.text_input("Titre de l'axe X", current_x,
+                                                        key='x_label_qual')
+                                y_label = st.text_input("Titre de l'axe Y", "Valeur",
+                                                        key='y_label_qual')
+                            with col2:
+                                source = st.text_input("Source des données", "",
+                                                       key='source_qual')
+                                note = st.text_input("Note de lecture", "",
+                                                     key='note_qual')
+                                show_values = st.checkbox("Afficher les valeurs", True,
+                                                        key='show_values_qual')
+    
+                        # Options du graphique
+                        plot_options = {
+                            'title': title,
+                            'x_label': x_label,
+                            'y_label': y_label,
+                            'source': source,
+                            'note': note,
+                            'show_values': show_values
+                        }
+    
+                        # Création et affichage du graphique
+                        fig = plot_qualitative_bivariate(
+                            st.session_state.merged_data,
+                            current_x,
+                            current_y,
+                            plot_type,
+                            COLOR_PALETTES[color_scheme],
+                            plot_options
                         )
-                        y_label = st.text_input(
-                            "Titre de l'axe Y", 
-                            quant_var,
-                            key='y_label_mixed'
-                        )
-                    with col2:
-                        source = st.text_input(
-                            "Source des données", 
-                            "",
-                            key='source_mixed'
-                        )
-                        note = st.text_input(
-                            "Note de lecture", 
-                            "",
-                            key='note_mixed'
-                        )
-                
-                # Options du graphique
-                plot_options = {
-                    'title': title,
-                    'x_label': x_label,
-                    'y_label': y_label,
-                    'source': source,
-                    'note': note,
-                    'show_values': True
-                }
-                
-                # Création et affichage du graphique
-                fig = plot_mixed_bivariate(
-                    st.session_state.merged_data,
-                    qual_var,
-                    quant_var,
-                    COLOR_PALETTES[color_scheme],
-                    plot_options
-                )
-                
-                st.plotly_chart(fig, use_container_width=True)
-        
-            # Analyse pour deux variables quantitatives
-            else:
-                st.write("### Analyse Bivariée - Variables Quantitatives")
-                
-                # Détection des doublons potentiels
-                has_duplicates = check_duplicates(st.session_state.merged_data, var_x, var_y)
-                
-                if has_duplicates:
-                    st.warning("⚠️ Certaines observations sont répétées dans le jeu de données. "
-                              "Vous pouvez choisir d'agréger les données avant l'analyse.")
-                    
-                    # Option d'agrégation
-                    do_aggregate = st.checkbox("Agréger les données avant l'analyse")
-                    
-                    if do_aggregate:
-                        # Sélection de la colonne d'agrégation
-                        groupby_cols = [col for col in st.session_state.merged_data.columns 
-                                      if col not in [var_x, var_y]]
-                        groupby_col = st.selectbox("Sélectionner la colonne d'agrégation", groupby_cols)
-                        
-                        # Méthode d'agrégation
-                        agg_method = st.radio("Méthode d'agrégation", 
-                                            ['sum', 'mean', 'median'],
-                                            format_func=lambda x: {
-                                                'sum': 'Somme',
-                                                'mean': 'Moyenne',
-                                                'median': 'Médiane'
-                                            }[x])
-                        
-                        # Vérification des doublons par modalité de manière plus précise
-                        x_counts = (st.session_state.merged_data.groupby(groupby_col)
-                                   .agg({var_x: 'count'})
-                                   .reset_index())
-                        y_counts = (st.session_state.merged_data.groupby(groupby_col)
-                                   .agg({var_y: 'count'})
-                                   .reset_index())
-                        
-                        # Vérification si une variable a plus d'observations que l'autre
-                        x_has_duplicates = (x_counts[var_x] > 1).any()
-                        y_has_duplicates = (y_counts[var_y] > 1).any()
-                        
-                        # Création du dictionnaire d'agrégation
-                        agg_dict = {}
-                        if y_has_duplicates:
-                            agg_dict[var_x] = 'first'
-                            agg_dict[var_y] = agg_method
-                            st.info(f"La variable {var_y} sera agrégée car elle contient des observations répétées")
-                        elif x_has_duplicates:
-                            agg_dict[var_x] = agg_method
-                            agg_dict[var_y] = 'first'
-                            st.info(f"La variable {var_x} sera agrégée car elle contient des observations répétées")
+                        st.pyplot(fig)
+                        plt.close()
+    
+                    # Analyse pour une variable qualitative et une quantitative
+                    elif (is_x_numeric and not is_y_numeric) or (not is_x_numeric and is_y_numeric):
+                        st.write("### Analyse Bivariée - Variable Qualitative et Quantitative")
+    
+                        # Réorganisation des variables (qualitative en X, quantitative en Y)
+                        if is_x_numeric:
+                            quant_var = var_x
+                            qual_var = var_y
+                            st.info("Les variables ont été réorganisées : variable qualitative en X et quantitative en Y")
                         else:
-                            # Si on ne peut pas détecter clairement, alerter l'utilisateur
-                            st.warning("Aucune variable ne semble nécessiter d'agrégation")
-                            agg_dict[var_x] = 'first'
-                            agg_dict[var_y] = 'first'
-                        
-                        # Création des données agrégées
-                        agg_data = st.session_state.merged_data.groupby(groupby_col).agg(agg_dict).reset_index()
-                        
-                        # Calcul et affichage des statistiques
-                        results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
-                            st.session_state.merged_data,
-                            var_x,
-                            var_y,
-                            groupby_col=groupby_col,
-                            agg_method=agg_method
+                            qual_var = var_x
+                            quant_var = var_y
+    
+                        # Affichage des statistiques descriptives et du taux de réponse
+                        stats_df, response_rate = analyze_mixed_bivariate(
+                            st.session_state.merged_data, 
+                            qual_var, 
+                            quant_var
                         )
+    
+                        st.write(f"Taux de réponse : {response_rate:.1f}%")
+                        st.write("Statistiques descriptives par modalité")
+                        st.dataframe(stats_df)
+    
+                        # Configuration de la visualisation
+                        st.write("### Configuration de la visualisation")
+    
+                        # Sélection de la palette de couleurs
+                        color_scheme = st.selectbox(
+                            "Palette de couleurs",
+                            list(COLOR_PALETTES.keys()),
+                            key='color_scheme_mixed'
+                        )
+    
+                        # Options avancées
+                        with st.expander("Options avancées"):
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                title = st.text_input(
+                                    "Titre du graphique", 
+                                    f"Distribution de {quant_var} par {qual_var}",
+                                    key='title_mixed'
+                                )
+                                x_label = st.text_input(
+                                    "Titre de l'axe X", 
+                                    qual_var,
+                                    key='x_label_mixed'
+                                )
+                                y_label = st.text_input(
+                                    "Titre de l'axe Y", 
+                                    quant_var,
+                                    key='y_label_mixed'
+                                )
+                            with col2:
+                                source = st.text_input(
+                                    "Source des données", 
+                                    "",
+                                    key='source_mixed'
+                                )
+                                note = st.text_input(
+                                    "Note de lecture", 
+                                    "",
+                                    key='note_mixed'
+                                )
+    
+                        # Options du graphique
+                        plot_options = {
+                            'title': title,
+                            'x_label': x_label,
+                            'y_label': y_label,
+                            'source': source,
+                            'note': note,
+                            'show_values': True
+                        }
+    
+                        # Création et affichage du graphique
+                        fig = plot_mixed_bivariate(
+                            st.session_state.merged_data,
+                            qual_var,
+                            quant_var,
+                            COLOR_PALETTES[color_scheme],
+                            plot_options
+                        )
+    
+                        st.plotly_chart(fig, use_container_width=True)
+    
+                    # Analyse pour deux variables quantitatives
                     else:
-                        results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
-                            st.session_state.merged_data,
+                        st.write("### Analyse Bivariée - Variables Quantitatives")
+    
+                        # Détection des doublons potentiels
+                        has_duplicates = check_duplicates(st.session_state.merged_data, var_x, var_y)
+    
+                        if has_duplicates:
+                            st.warning("⚠️ Certaines observations sont répétées dans le jeu de données. "
+                                      "Vous pouvez choisir d'agréger les données avant l'analyse.")
+    
+                            # Option d'agrégation
+                            do_aggregate = st.checkbox("Agréger les données avant l'analyse")
+    
+                            if do_aggregate:
+                                # Sélection de la colonne d'agrégation
+                                groupby_cols = [col for col in st.session_state.merged_data.columns 
+                                              if col not in [var_x, var_y]]
+                                groupby_col = st.selectbox("Sélectionner la colonne d'agrégation", groupby_cols)
+    
+                                # Méthode d'agrégation
+                                agg_method = st.radio("Méthode d'agrégation", 
+                                                    ['sum', 'mean', 'median'],
+                                                    format_func=lambda x: {
+                                                        'sum': 'Somme',
+                                                        'mean': 'Moyenne',
+                                                        'median': 'Médiane'
+                                                    }[x])
+    
+                                # Vérification des doublons par modalité de manière plus précise
+                                x_counts = (st.session_state.merged_data.groupby(groupby_col)
+                                           .agg({var_x: 'count'})
+                                           .reset_index())
+                                y_counts = (st.session_state.merged_data.groupby(groupby_col)
+                                           .agg({var_y: 'count'})
+                                           .reset_index())
+    
+                                # Vérification si une variable a plus d'observations que l'autre
+                                x_has_duplicates = (x_counts[var_x] > 1).any()
+                                y_has_duplicates = (y_counts[var_y] > 1).any()
+    
+                                # Création du dictionnaire d'agrégation
+                                agg_dict = {}
+                                if y_has_duplicates:
+                                    agg_dict[var_x] = 'first'
+                                    agg_dict[var_y] = agg_method
+                                    st.info(f"La variable {var_y} sera agrégée car elle contient des observations répétées")
+                                elif x_has_duplicates:
+                                    agg_dict[var_x] = agg_method
+                                    agg_dict[var_y] = 'first'
+                                    st.info(f"La variable {var_x} sera agrégée car elle contient des observations répétées")
+                                else:
+                                    # Si on ne peut pas détecter clairement, alerter l'utilisateur
+                                    st.warning("Aucune variable ne semble nécessiter d'agrégation")
+                                    agg_dict[var_x] = 'first'
+                                    agg_dict[var_y] = 'first'
+    
+                                # Création des données agrégées
+                                agg_data = st.session_state.merged_data.groupby(groupby_col).agg(agg_dict).reset_index()
+    
+                                # Calcul et affichage des statistiques
+                                results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
+                                    st.session_state.merged_data,
+                                    var_x,
+                                    var_y,
+                                    groupby_col=groupby_col,
+                                    agg_method=agg_method
+                                )
+                            else:
+                                results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
+                                    st.session_state.merged_data,
+                                    var_x,
+                                    var_y
+                                )
+                                agg_data = st.session_state.merged_data
+                                groupby_col = None
+                                agg_method = None
+                        else:
+                            results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
+                                st.session_state.merged_data,
+                                var_x,
+                                var_y
+                            )
+                            agg_data = st.session_state.merged_data
+                            groupby_col = None
+                            agg_method = None
+    
+                        # Affichage des taux de réponse
+                        st.write("Taux de réponse :")
+                        st.write(f"- {var_x} : {response_rate_x:.1f}%")
+                        st.write(f"- {var_y} : {response_rate_y:.1f}%")
+    
+                        st.write("Statistiques de corrélation")
+                        st.dataframe(results_df)
+    
+                        # Configuration de la visualisation
+                        st.write("### Configuration de la visualisation")
+    
+                        # Sélection de la palette de couleurs
+                        color_scheme = st.selectbox(
+                            "Palette de couleurs",
+                            list(COLOR_PALETTES.keys()),
+                            key='color_scheme_quant'
+                        )
+    
+                        # Options avancées
+                        with st.expander("Options avancées"):
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                title = st.text_input(
+                                    "Titre du graphique", 
+                                    f"Relation entre {var_x} et {var_y}",
+                                    key='title_quant'
+                                )
+                                x_label = st.text_input(
+                                    "Titre de l'axe X", 
+                                    var_x,
+                                    key='x_label_quant'
+                                )
+                                y_label = st.text_input(
+                                    "Titre de l'axe Y", 
+                                    var_y,
+                                    key='y_label_quant'
+                                )
+                            with col2:
+                                source = st.text_input(
+                                    "Source des données", 
+                                    "",
+                                    key='source_quant'
+                                )
+                                note = st.text_input(
+                                    "Note de lecture", 
+                                    "",
+                                    key='note_quant'
+                                )
+    
+                        # Options du graphique
+                        plot_options = {
+                            'title': title,
+                            'x_label': x_label,
+                            'y_label': y_label,
+                            'source': source,
+                            'note': note
+                        }
+    
+                        # Création et affichage du graphique
+                        fig = plot_quantitative_bivariate_interactive(
+                            agg_data,
                             var_x,
-                            var_y
-                        )
-                        agg_data = st.session_state.merged_data
-                        groupby_col = None
-                        agg_method = None
-                else:
-                    results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
-                        st.session_state.merged_data,
-                        var_x,
-                        var_y
-                    )
-                    agg_data = st.session_state.merged_data
-                    groupby_col = None
-                    agg_method = None
-                
-                # Affichage des taux de réponse
-                st.write("Taux de réponse :")
-                st.write(f"- {var_x} : {response_rate_x:.1f}%")
-                st.write(f"- {var_y} : {response_rate_y:.1f}%")
-                
-                st.write("Statistiques de corrélation")
-                st.dataframe(results_df)
-                
-                # Configuration de la visualisation
-                st.write("### Configuration de la visualisation")
-                
-                # Sélection de la palette de couleurs
-                color_scheme = st.selectbox(
-                    "Palette de couleurs",
-                    list(COLOR_PALETTES.keys()),
-                    key='color_scheme_quant'
-                )
-                
-                # Options avancées
-                with st.expander("Options avancées"):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        title = st.text_input(
-                            "Titre du graphique", 
-                            f"Relation entre {var_x} et {var_y}",
-                            key='title_quant'
-                        )
-                        x_label = st.text_input(
-                            "Titre de l'axe X", 
-                            var_x,
-                            key='x_label_quant'
-                        )
-                        y_label = st.text_input(
-                            "Titre de l'axe Y", 
                             var_y,
-                            key='y_label_quant'
+                            COLOR_PALETTES[color_scheme],
+                            plot_options,
+                            groupby_col if do_aggregate else None,
+                            agg_method if do_aggregate else None
                         )
-                    with col2:
-                        source = st.text_input(
-                            "Source des données", 
-                            "",
-                            key='source_quant'
-                        )
-                        note = st.text_input(
-                            "Note de lecture", 
-                            "",
-                            key='note_quant'
-                        )
-                
-                # Options du graphique
-                plot_options = {
-                    'title': title,
-                    'x_label': x_label,
-                    'y_label': y_label,
-                    'source': source,
-                    'note': note
-                }
-                
-                # Création et affichage du graphique
-                fig = plot_quantitative_bivariate_interactive(
-                    agg_data,
-                    var_x,
-                    var_y,
-                    COLOR_PALETTES[color_scheme],
-                    plot_options,
-                    groupby_col if do_aggregate else None,
-                    agg_method if do_aggregate else None
-                )
-                
-                st.plotly_chart(fig, use_container_width=True)
-                
+    
+                        st.plotly_chart(fig, use_container_width=True)
+    
                 else:
-                st.info("Veuillez sélectionner une variable Y")
-                else:
+                    st.info("Veuillez sélectionner une variable Y")
+            else:
                 st.info("Veuillez sélectionner une variable X")
-                
+                    
         except Exception as e:
             st.error(f"Une erreur s'est produite : {str(e)}")
 
