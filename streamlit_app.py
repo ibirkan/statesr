@@ -516,36 +516,32 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
     """
     fig = go.Figure()
     
-    # Construction des textes pour les info-bulles
-    hover_texts = []
-    for index, row in df.iterrows():
-        if groupby_col:
-            text = (f"<b>{groupby_col}</b>: {row[groupby_col]}<br>" +
-                   f"<b>{var_x}</b>: {row[var_x]:,.0f}<br>")
-            
-            if agg_method == 'sum':
-                text += f"<b>{var_y}</b> (somme): {row[var_y]:,.0f}"
-            elif agg_method == 'mean':
-                text += f"<b>{var_y}</b> (moyenne): {row[var_y]:.2f}"
-            else:  # median
-                text += f"<b>{var_y}</b> (médiane): {row[var_y]:.2f}"
-        else:
-            text = (f"<b>{var_x}</b>: {row[var_x]:,.0f}<br>" +
-                   f"<b>{var_y}</b>: {row[var_y]:,.0f}")
-        hover_texts.append(text)
-    
-    # Ajout du nuage de points
+    # Ajout du nuage de points avec info-bulles reliables
     fig.add_trace(go.Scatter(
         x=df[var_x],
         y=df[var_y],
         mode='markers',
         name='Observations',
-        text=hover_texts,
-        hoverinfo='text',
         marker=dict(
             color=color_scheme[0],
             size=10,
             opacity=0.7
+        ),
+        # Données pour les info-bulles
+        hovertemplate=(
+            f"<b>{groupby_col}</b>: %{{customdata}}<br>" +
+            f"<b>{var_x}</b>: %{{x:,.0f}}<br>" +
+            f"<b>{var_y}</b>" + (f" ({agg_method})" if agg_method else "") + ": %{{y:,.0f}}" +
+            "<extra></extra>"  # Supprime la légende secondaire
+        ) if groupby_col else (
+            f"<b>{var_x}</b>: %{{x:,.0f}}<br>" +
+            f"<b>{var_y}</b>: %{{y:,.0f}}" +
+            "<extra></extra>"
+        ),
+        customdata=df[groupby_col] if groupby_col else None,
+        hoverlabel=dict(
+            bgcolor='white',
+            font=dict(size=12, family="Arial")
         )
     ))
     
@@ -565,23 +561,21 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
                 color=color_scheme[0],
                 dash='dash'
             ),
-            hoverinfo='none'
+            hoverinfo='none'  # Désactive complètement les info-bulles pour la ligne
         ))
     except Exception as e:
         st.warning("La ligne de régression n'a pas pu être calculée.")
     
     # Configuration du layout
-    title = plot_options['title']
-    if groupby_col and agg_method:
-        method_name = "Somme" if agg_method == 'sum' else "Moyenne" if agg_method == 'mean' else "Médiane"
-        title += f"<br><sup>Données agrégées par {groupby_col} ({method_name})</sup>"
-    
     fig.update_layout(
-        title=dict(text=title, x=0.5, xanchor='center'),
+        title=dict(
+            text=plot_options['title'] + (f"<br><sup>Données agrégées par {groupby_col} ({agg_method})</sup>" if groupby_col and agg_method else ""),
+            x=0.5,
+            xanchor='center'
+        ),
         xaxis_title=plot_options['x_label'],
         yaxis_title=plot_options['y_label'],
-        hovermode='closest',
-        hoverdistance=100,
+        hovermode='closest',  # Force le survol sur le point le plus proche
         plot_bgcolor='white',
         width=900,
         height=600,
@@ -592,14 +586,20 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
             y=0.99,
             xanchor="left",
             x=0.01
+        ),
+        # Configuration des interactions
+        modebar_remove=['lasso_select', 'select2d'],  # Simplifie la barre d'outils
+        hoverlabel=dict(
+            font_size=12,
+            font_family="Arial"
         )
     )
     
-    # Configuration des axes
+    # Configuration des axes avec grille
     fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
     fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
     
-    # Ajout des annotations (source et note)
+    # Ajout des annotations si spécifiées
     annotations = []
     if plot_options['source']:
         annotations.append(dict(
@@ -609,7 +609,6 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
             showarrow=False,
             font=dict(size=10)
         ))
-    
     if plot_options['note']:
         annotations.append(dict(
             text=f"Note : {plot_options['note']}",
@@ -618,7 +617,6 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
             showarrow=False,
             font=dict(size=10)
         ))
-    
     if annotations:
         fig.update_layout(annotations=annotations)
     
