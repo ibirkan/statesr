@@ -1559,44 +1559,63 @@ def main():
                     # Analyse pour deux variables quantitatives
                     else:
                         st.write("### Analyse Bivariée - Variables Quantitatives")
-                        
-                        st.write("Vous pouvez choisir une échelle d'analyse différente pour ces variables.")
-                        
-                        # Option d'agrégation
-                        do_aggregate = st.checkbox("Analyser à une échelle différente")
-                        
-                        if do_aggregate:
-                            # Sélection de la colonne d'agrégation uniquement parmi les variables non numériques
-                            groupby_cols = [col for col in st.session_state.merged_data.columns 
-                                           if col not in [var_x, var_y] and not is_numeric_column(st.session_state.merged_data, col)]
-                            
-                            if groupby_cols:
-                                groupby_col = st.selectbox(
-                                    "Sélectionner l'unité d'analyse", 
-                                    groupby_cols,
-                                    help="Par exemple : établissement, académie, région..."
-                                )
-                                
+    
+                        # Détection des doublons potentiels
+                        has_duplicates = check_duplicates(st.session_state.merged_data, var_x, var_y)
+    
+                        if has_duplicates:
+                            st.warning("⚠️ Certaines observations sont répétées dans le jeu de données. "
+                                      "Vous pouvez choisir d'agréger les données avant l'analyse.")
+    
+                            # Option d'agrégation
+                            do_aggregate = st.checkbox("Agréger les données avant l'analyse")
+    
+                            if do_aggregate:
+                                # Sélection de la colonne d'agrégation
+                                groupby_cols = [col for col in st.session_state.merged_data.columns 
+                                              if col not in [var_x, var_y]]
+                                groupby_col = st.selectbox("Sélectionner la colonne d'agrégation", groupby_cols)
+    
                                 # Méthode d'agrégation
-                                agg_method = st.radio(
-                                    "Méthode d'agrégation", 
-                                    ['sum', 'mean', 'median'],
-                                    format_func=lambda x: {
-                                        'sum': 'Somme',
-                                        'mean': 'Moyenne',
-                                        'median': 'Médiane'
-                                    }[x]
-                                )
-                                
+                                agg_method = st.radio("Méthode d'agrégation", 
+                                                    ['sum', 'mean', 'median'],
+                                                    format_func=lambda x: {
+                                                        'sum': 'Somme',
+                                                        'mean': 'Moyenne',
+                                                        'median': 'Médiane'
+                                                    }[x])
+    
+                                # Vérification des doublons par modalité de manière plus précise
+                                x_counts = (st.session_state.merged_data.groupby(groupby_col)
+                                           .agg({var_x: 'count'})
+                                           .reset_index())
+                                y_counts = (st.session_state.merged_data.groupby(groupby_col)
+                                           .agg({var_y: 'count'})
+                                           .reset_index())
+    
+                                # Vérification si une variable a plus d'observations que l'autre
+                                x_has_duplicates = (x_counts[var_x] > 1).any()
+                                y_has_duplicates = (y_counts[var_y] > 1).any()
+    
                                 # Création du dictionnaire d'agrégation
-                                agg_dict = {
-                                    var_x: agg_method,
-                                    var_y: agg_method
-                                }
-                                
+                                agg_dict = {}
+                                if y_has_duplicates:
+                                    agg_dict[var_x] = 'first'
+                                    agg_dict[var_y] = agg_method
+                                    st.info(f"La variable {var_y} sera agrégée car elle contient des observations répétées")
+                                elif x_has_duplicates:
+                                    agg_dict[var_x] = agg_method
+                                    agg_dict[var_y] = 'first'
+                                    st.info(f"La variable {var_x} sera agrégée car elle contient des observations répétées")
+                                else:
+                                    # Si on ne peut pas détecter clairement, alerter l'utilisateur
+                                    st.warning("Aucune variable ne semble nécessiter d'agrégation")
+                                    agg_dict[var_x] = 'first'
+                                    agg_dict[var_y] = 'first'
+    
                                 # Création des données agrégées
                                 agg_data = st.session_state.merged_data.groupby(groupby_col).agg(agg_dict).reset_index()
-                                
+    
                                 # Calcul et affichage des statistiques
                                 results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
                                     st.session_state.merged_data,
@@ -1606,21 +1625,24 @@ def main():
                                     agg_method=agg_method
                                 )
                             else:
-                                st.warning("Aucune variable qualitative disponible pour servir d'unité d'analyse.")
-                                agg_data = st.session_state.merged_data
                                 results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
                                     st.session_state.merged_data,
                                     var_x,
                                     var_y
                                 )
+                                agg_data = st.session_state.merged_data
+                                groupby_col = None
+                                agg_method = None
                         else:
-                            agg_data = st.session_state.merged_data
                             results_df, response_rate_x, response_rate_y = analyze_quantitative_bivariate(
                                 st.session_state.merged_data,
                                 var_x,
                                 var_y
                             )
-        
+                            agg_data = st.session_state.merged_data
+                            groupby_col = None
+                            agg_method = None
+    
                         # Affichage des taux de réponse
                         st.write("Taux de réponse :")
                         st.write(f"- {var_x} : {response_rate_x:.1f}%")
