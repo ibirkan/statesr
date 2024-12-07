@@ -1214,7 +1214,6 @@ def main():
                                                 fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
                                         elif graph_type == "Density plot":
                                             fig = plot_density(plot_data, var, title, x_axis, y_axis)
-                                            st.plotly_chart(fig, use_container_width=True)
                                   
                                     else:
                                         data = value_counts
