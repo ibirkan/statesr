@@ -1560,14 +1560,24 @@ def main():
                     else:
                         st.write("### Analyse Bivariée - Variables Quantitatives")
                         
+                        var_x = st.selectbox("Variable X", 
+                                            numeric_cols, 
+                                            key='quant_var_x')
+                        
+                        remaining_numeric_cols = [col for col in numeric_cols if col != var_x]
+                        var_y = st.selectbox(
+                            "Variable Y", 
+                            remaining_numeric_cols,
+                            key='quant_var_y'
+                        )
+                        
                         # Offrir l'opportunité de changer l'échelle d'analyse
                         st.write("Vous pouvez choisir une échelle d'analyse différente pour ces variables.")
                         
-                        do_aggregate = st.checkbox("Analyser à une échelle différente")
+                        do_aggregate = st.checkbox("Analyser à une échelle différente", key="do_agg_quant_biv")
                         
                         if do_aggregate:
                             # Sélection de la variable de référence (unité d'analyse)
-                            # On exclut les variables quantitatives car elles ne peuvent pas servir d'identifiant
                             potential_ref_cols = [col for col in st.session_state.merged_data.columns 
                                               if col not in [var_x, var_y] and not is_numeric_column(st.session_state.merged_data, col)]
                             
@@ -1575,7 +1585,8 @@ def main():
                                 groupby_col = st.selectbox(
                                     "Sélectionner l'unité d'analyse", 
                                     potential_ref_cols,
-                                    help="Par exemple : établissement, académie, région..."
+                                    help="Par exemple : établissement, académie, région...",
+                                    key="ref_col_quant_biv"
                                 )
                                 
                                 # Méthode d'agrégation
@@ -1586,7 +1597,8 @@ def main():
                                         'sum': 'Somme',
                                         'mean': 'Moyenne',
                                         'median': 'Médiane'
-                                    }[x]
+                                    }[x],
+                                    key="agg_method_quant_biv"
                                 )
                                 
                                 # Création des données agrégées
