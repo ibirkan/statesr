@@ -903,6 +903,39 @@ def main():
                 st.write(f"### Statistiques principales de la variable {var}")
                 
                 if is_numeric:
+                    # Détection des doublons potentiels
+                    has_duplicates = st.session_state.merged_data.duplicated(subset=[var]).any()
+                    
+                    if has_duplicates:
+                        st.warning("⚠️ Certaines observations sont répétées dans le jeu de données. "
+                                  "Vous pouvez choisir d'agréger les données avant l'analyse.")
+                        
+                        # Option d'agrégation
+                        do_aggregate = st.checkbox("Agréger les données avant l'analyse", key="agg_univ")
+                        
+                        if do_aggregate:
+                            # Sélection de la colonne d'agrégation
+                            groupby_cols = [col for col in st.session_state.merged_data.columns 
+                                          if col != var]
+                            groupby_col = st.selectbox("Sélectionner la colonne d'agrégation", groupby_cols, key="groupby_univ")
+                            
+                            # Méthode d'agrégation
+                            agg_method = st.radio("Méthode d'agrégation", 
+                                                ['sum', 'mean', 'median'],
+                                                format_func=lambda x: {
+                                                    'sum': 'Somme',
+                                                    'mean': 'Moyenne',
+                                                    'median': 'Médiane'
+                                                }[x],
+                                                key="agg_method_univ")
+                            
+                            # Création des données agrégées
+                            agg_data = st.session_state.merged_data.groupby(groupby_col).agg({
+                                var: agg_method
+                            }).reset_index()
+                            
+                            plot_data = agg_data[var]
+                    
                     # Statistiques pour variable quantitative
                     stats_df = pd.DataFrame({
                         'Statistique': ['Effectif total', 'Moyenne', 'Médiane', 'Écart-type', 'Minimum', 'Maximum'],
