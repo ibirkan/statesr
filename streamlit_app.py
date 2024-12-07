@@ -510,7 +510,7 @@ def detect_repeated_variable(df, var_x, var_y, groupby_col):
         return var_y
     return None
 
-def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot_options, groupby_col=None, agg_method=None, original_df=None):
+def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot_options, groupby_col=None, agg_method=None):
     """
     Création d'un scatter plot interactif avec Plotly pour l'analyse quantitative.
     """
@@ -525,59 +525,37 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
     # Création du scatter plot
     fig = go.Figure()
     
-    # Détection de la variable répétée si on a les données originales
-    repeated_var = None
-    if groupby_col and original_df is not None:
-        repeated_var = detect_repeated_variable(original_df, var_x, var_y, groupby_col)
-    
     # Préparation des info-bulles
     hover_text = []
     for idx, row in df.iterrows():
         if pd.isna(row[var_x]) or pd.isna(row[var_y]):
             continue
             
-        text_parts = []
         if groupby_col:
-            modalite = str(row[groupby_col])
-            text_parts.append(f"<b>{groupby_col}</b>: {modalite}")
+            # Format de l'info-bulle pour les données agrégées
+            text = (
+                f"<b>{groupby_col}</b>: {row[groupby_col]}<br>"
+                f"<b>{var_x}</b>: {row[var_x]:,}<br>"
+            )
             
-            if repeated_var:
-                # Calcul de l'effectif pour cette modalité
-                effectif = len(original_df[original_df[groupby_col] == row[groupby_col]])
-                text_parts.append(f"<b>Effectif</b>: {effectif}")
-                
-                # Affichage des valeurs en fonction de la variable répétée
-                if repeated_var == var_x:
-                    # x est la variable agrégée
-                    if agg_method == 'sum':
-                        text_parts.append(f"<b>{var_x}</b> (somme): {int(row[var_x]):,}")
-                    else:
-                        text_parts.append(f"<b>{var_x}</b> ({agg_method}): {row[var_x]:.2f}")
-                    text_parts.append(f"<b>{var_y}</b>: {row[var_y]:,}")
-                else:
-                    # y est la variable agrégée
-                    text_parts.append(f"<b>{var_x}</b>: {row[var_x]:,}")
-                    if agg_method == 'sum':
-                        text_parts.append(f"<b>{var_y}</b> (somme): {int(row[var_y]):,}")
-                    else:
-                        text_parts.append(f"<b>{var_y}</b> ({agg_method}): {row[var_y]:.2f}")
-            else:
-                # Si on ne peut pas détecter la variable répétée, comportement par défaut
-                text_parts.extend([
-                    f"<b>{var_x}</b>: {row[var_x]:,}",
-                    f"<b>{var_y}</b>: {row[var_y]:,}"
-                ])
+            # Ajout de la valeur agrégée avec son type
+            if agg_method == 'sum':
+                text += f"<b>{var_y}</b> (somme): {int(row[var_y]):,}"
+            elif agg_method == 'mean':
+                text += f"<b>{var_y}</b> (moyenne): {row[var_y]:.2f}"
+            else:  # median
+                text += f"<b>{var_y}</b> (médiane): {row[var_y]:.2f}"
+            
+            hover_text.append(text)
         else:
             # Pour les données non agrégées
-            text_parts.extend([
-                f"<b>{var_x}</b>: {row[var_x]:,.2f}",
+            hover_text.append(
+                f"<b>{var_x}</b>: {row[var_x]:,.2f}<br>"
                 f"<b>{var_y}</b>: {row[var_y]:,.2f}"
-            ])
-            
-        hover_text.append("<br>".join(text_parts))
+            )
     
     # Ajout du nuage de points
-    fig.add_trace(go.Scatter(
+    scatter = go.Scatter(
         x=df[var_x],
         y=df[var_y],
         mode='markers',
@@ -588,20 +566,24 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
             opacity=0.7
         ),
         text=hover_text,
-        hovertemplate="%{text}<extra></extra>",
+        hoverinfo='text',
         hoverlabel=dict(
             bgcolor='white',
             font_size=12,
-            font_family="Arial"
-        )
-    ))
+            font_family="Arial",
+            namelength=-1  # Pour afficher le nom complet
+        ),
+        hoverlabel_font_size=12
+    )
+    
+    fig.add_trace(scatter)
     
     # Ajout de la ligne de régression si le calcul a réussi
     if regression_success:
         x_range = np.linspace(df[var_x].min(), df[var_x].max(), 100)
         y_range = regression_coeffs[0] * x_range + regression_coeffs[1]
         
-        fig.add_trace(go.Scatter(
+        regression_line = go.Scatter(
             x=x_range,
             y=y_range,
             mode='lines',
@@ -610,17 +592,16 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
                 color=color_scheme[0],
                 dash='dash'
             ),
-            hovertemplate='<extra></extra>',
-            showlegend=True
-        ))
+            hoverinfo='skip'  # Désactive complètement l'info-bulle pour la ligne
+        )
+        
+        fig.add_trace(regression_line)
     
     # Configuration du layout
     title = plot_options['title']
     if groupby_col and agg_method:
         method_name = "Somme" if agg_method == 'sum' else "Moyenne" if agg_method == 'mean' else "Médiane"
         title += f"<br><sup>Données agrégées par {groupby_col} ({method_name})</sup>"
-        if repeated_var:
-            title += f" pour {repeated_var}"
     
     fig.update_layout(
         title=dict(
@@ -631,6 +612,7 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
         xaxis_title=plot_options['x_label'],
         yaxis_title=plot_options['y_label'],
         hovermode='closest',
+        hoverdistance=100,  # Augmente la distance de détection du survol
         plot_bgcolor='white',
         width=900,
         height=600,
