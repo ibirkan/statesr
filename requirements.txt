@@ -10,3 +10,4 @@ seaborn
 numpy
 stats
 st_aggrid
+st_aggrid.grid_options_builder
