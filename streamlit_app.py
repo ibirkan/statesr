@@ -12,6 +12,8 @@ import squarify
 import seaborn as sns
 import numpy as np
 from scipy import stats
+from st_aggrid import AgGrid, GridOptionsBuilder
+from st_aggrid.grid_options_builder import GridOptionsBuilder
 sns.set_theme()
 sns.set_style("whitegrid")
 
@@ -902,6 +904,136 @@ def display_comparison_stats(data, var, groupby_col):
         st.write(f"Nombre de groupes: {agg_stats['count']}")
         
     return agg_data
+
+def create_interactive_stats_table(stats_df, analysis_type, variables_info):
+    """
+    Crée un tableau de statistiques interactif avec possibilité de création d'indicateur.
+    
+    Parameters:
+    -----------
+    stats_df : pandas.DataFrame
+        DataFrame contenant les statistiques
+    analysis_type : str
+        Type d'analyse ('univariate' ou 'bivariate')
+    variables_info : dict
+        Informations sur les variables analysées
+    """
+    # Configuration du tableau interactif
+    gb = GridOptionsBuilder.from_dataframe(stats_df)
+    gb.configure_selection('single', use_checkbox=False)
+    gb.configure_grid_options(enableCellTextSelection=True)
+    gridOptions = gb.build()
+    
+    # Affichage du tableau interactif
+    grid_response = AgGrid(
+        stats_df,
+        gridOptions=gridOptions,
+        enable_enterprise_modules=False,
+        allow_unsafe_jscode=True,
+        update_mode='selection_changed'
+    )
+    
+    # Si une ligne est sélectionnée, afficher le formulaire d'indicateur
+    if grid_response['selected_rows']:
+        selected_stat = grid_response['selected_rows'][0]
+        show_indicator_form(selected_stat, analysis_type, variables_info)
+
+def show_indicator_form(selected_stat, analysis_type, variables_info):
+    """
+    Affiche et gère le formulaire de création d'indicateur.
+    """
+    st.write("### Création d'un nouvel indicateur")
+    
+    with st.form("indicator_form"):
+        # Informations pré-remplies
+        col1, col2 = st.columns(2)
+        with col1:
+            indicator_name = st.text_input(
+                "Nom de l'indicateur",
+                value=f"Indicateur {variables_info['var_name']}"
+            )
+            
+            calculation_method = st.text_area(
+                "Méthode de calcul",
+                value=f"Statistique : {selected_stat.get('Statistique', 'N/A')}\n"
+                      f"Variable(s) : {', '.join(variables_info.values())}"
+            )
+            
+        with col2:
+            description = st.text_area(
+                "Description",
+                placeholder="Description détaillée de l'indicateur..."
+            )
+            
+            interpretation = st.text_area(
+                "Interprétation",
+                placeholder="Comment interpréter cet indicateur..."
+            )
+        
+        # Métadonnées supplémentaires
+        col3, col4 = st.columns(2)
+        with col3:
+            frequency = st.selectbox(
+                "Fréquence de mise à jour",
+                ["Annuelle", "Semestrielle", "Trimestrielle", "Mensuelle"]
+            )
+            
+            source = st.text_input(
+                "Source des données",
+                value=variables_info.get('source', '')
+            )
+            
+        with col4:
+            unit = st.text_input("Unité de mesure")
+            
+            tags = st.text_input(
+                "Tags (séparés par des virgules)",
+                placeholder="tag1, tag2, tag3..."
+            )
+        
+        submit_button = st.form_submit_button("Enregistrer l'indicateur")
+        
+        if submit_button:
+            # Préparation des données pour l'enregistrement
+            indicator_data = {
+                "name": indicator_name,
+                "description": description,
+                "calculation_method": calculation_method,
+                "interpretation": interpretation,
+                "frequency": frequency,
+                "source": source,
+                "unit": unit,
+                "tags": tags,
+                "creation_date": datetime.now().strftime("%Y-%m-%d"),
+                "analysis_type": analysis_type,
+                "statistics": str(selected_stat),
+                "variables": str(variables_info)
+            }
+            
+            # Enregistrement dans Grist
+            try:
+                save_indicator_to_grist(indicator_data)
+                st.success("✅ Indicateur enregistré avec succès !")
+                
+                # Option pour créer un autre indicateur
+                if st.button("Créer un autre indicateur"):
+                    st.experimental_rerun()
+                    
+            except Exception as e:
+                st.error(f"Erreur lors de l'enregistrement : {str(e)}")
+
+def save_indicator_to_grist(indicator_data):
+    """
+    Sauvegarde l'indicateur dans une table Grist.
+    """
+    # Utiliser la fonction grist_api_request existante
+    response = grist_api_request(
+        "indicators",  # Nom de la table des indicateurs
+        method="POST",
+        data={"records": [{"fields": indicator_data}]}
+    )
+    
+    return response
 
 # Fonctions pour les différentes pages
 def page_analyse():
