@@ -1062,6 +1062,8 @@ def main():
                         ]
                     })
                     st.dataframe(stats_df)
+                    if do_aggregate:
+                    st.info("Note : Les statistiques (moyenne, médiane, écart-type, minimum, maximum) sont calculées à l'échelle de la variable d'agrégation sélectionnée.")
                     
                     # Options de regroupement
                     st.write("### Options de regroupement")
@@ -1601,6 +1603,7 @@ def main():
                     st.write(f"Taux de réponse : {response_rate:.1f}%")
                     st.write("Statistiques descriptives par modalité")
                     st.dataframe(stats_df)
+                    st.info("Note : Les statistiques de la ligne "total" sont calculées à l'échelle de l'unité d'observation de la table")
     
                     # Configuration de la visualisation
                     st.write("### Configuration de la visualisation")
