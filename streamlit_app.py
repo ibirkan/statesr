@@ -1602,8 +1602,8 @@ def main():
                     st.write(f"Taux de réponse : {response_rate:.1f}%")
                     st.write("Statistiques descriptives par modalité")
                     st.dataframe(stats_df)
-                    st.info("Note : Les statistiques de la ligne "total" sont calculées à l'échelle de l'unité d'observation de la table")
-    
+                    st.info("Note : Les statistiques de la ligne total sont calculées à l'échelle de l'unité d'observation de la table")
+                    
                     # Configuration de la visualisation
                     st.write("### Configuration de la visualisation")
     
