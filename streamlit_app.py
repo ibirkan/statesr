@@ -1193,7 +1193,12 @@ def main():
                             plot_data.max()
                         ]
                     })
-                    st.dataframe(stats_df)
+                    
+                    variables_info = {
+                        'var_name': var,
+                        'source': source if 'source' in locals() else None
+                    }
+                    create_interactive_stats_table(stats_df, 'univariate', variables_info)
                     if do_aggregate: st.info("Note : Les statistiques sont calculées à l'échelle de la variable d'agrégation sélectionnée.")
                     
                     # Options de regroupement
