@@ -1062,8 +1062,7 @@ def main():
                         ]
                     })
                     st.dataframe(stats_df)
-                    if do_aggregate:
-                    st.info("Note : Les statistiques (moyenne, médiane, écart-type, minimum, maximum) sont calculées à l'échelle de la variable d'agrégation sélectionnée.")
+                    if do_aggregate: st.info("Note : Les statistiques (moyenne, médiane, écart-type, minimum, maximum) sont calculées à l'échelle de la variable d'agrégation sélectionnée.")
                     
                     # Options de regroupement
                     st.write("### Options de regroupement")
