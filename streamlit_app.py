@@ -820,6 +820,89 @@ def plot_density(plot_data, var, title, x_axis, y_axis):
     )
     return fig
 
+
+def calculate_grouped_stats(data, var, groupby_col, agg_method='mean'):
+    """
+    Calcule les statistiques avec agrégation.
+    
+    Parameters:
+    -----------
+    data : pandas.DataFrame
+        Données source
+    var : str
+        Variable à analyser
+    groupby_col : str
+        Colonne d'agrégation
+    agg_method : str
+        Méthode d'agrégation ('sum', 'mean', 'median')
+    """
+    # Nettoyage des données pour les deux variables
+    clean_data = data.dropna(subset=[var, groupby_col])
+    
+    # Calcul des statistiques sans agrégation (niveau détaillé)
+    detailed_stats = {
+        'sum': clean_data[var].sum(),
+        'mean': clean_data[var].mean(),
+        'median': clean_data[var].median(),
+        'std': clean_data[var].std(),
+        'count': len(clean_data)
+    }
+    
+    # Agrégation des données
+    agg_data = clean_data.groupby(groupby_col).agg({
+        var: agg_method
+    }).reset_index()
+    
+    # Calcul des statistiques sur données agrégées
+    agg_stats = {
+        'sum': agg_data[var].sum(),
+        'mean': agg_data[var].mean(),
+        'median': agg_data[var].median(),
+        'std': agg_data[var].std(),
+        'count': len(agg_data)  # nombre de groupes
+    }
+    
+    return detailed_stats, agg_stats, agg_data
+
+# Interface Streamlit
+def display_comparison_stats(data, var, groupby_col):
+    agg_method = st.radio(
+        "Méthode d'agrégation",
+        ['sum', 'mean', 'median'],
+        format_func=lambda x: {
+            'sum': 'Somme',
+            'mean': 'Moyenne',
+            'median': 'Médiane'
+        }[x],
+        key="agg_method_univ"
+    )
+    
+    # Calcul des statistiques
+    detailed_stats, agg_stats, agg_data = calculate_grouped_stats(
+        data, var, groupby_col, agg_method
+    )
+    
+    # Affichage des résultats
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.write("Statistiques au niveau détaillé")
+        st.write(f"Somme: {detailed_stats['sum']:,.2f}")
+        st.write(f"Moyenne: {detailed_stats['mean']:,.2f}")
+        st.write(f"Médiane: {detailed_stats['median']:,.2f}")
+        st.write(f"Écart-type: {detailed_stats['std']:,.2f}")
+        st.write(f"Nombre d'observations: {detailed_stats['count']}")
+    
+    with col2:
+        st.write("Statistiques après agrégation")
+        st.write(f"Somme: {agg_stats['sum']:,.2f}")
+        st.write(f"Moyenne: {agg_stats['mean']:,.2f}")
+        st.write(f"Médiane: {agg_stats['median']:,.2f}")
+        st.write(f"Écart-type: {agg_stats['std']:,.2f}")
+        st.write(f"Nombre de groupes: {agg_stats['count']}")
+        
+    return agg_data
+
 # Fonctions pour les différentes pages
 def page_analyse():
     st.title("Analyse des données ESR")
@@ -917,13 +1000,7 @@ def main():
         if var != "---":
             plot_data = st.session_state.merged_data[var]
         
-            # Liste des valeurs considérées comme non-réponses
-            missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr', 'NR', 'Non-réponse']
-        
-            # Remplacement des non-réponses par np.nan uniquement dans la variable sélectionnée
-            plot_data = plot_data.replace(missing_values, np.nan)
-        
-            # Suppression des non-réponses uniquement dans la variable sélectionnée
+            # Nettoyage des données pour la variable sélectionnée
             plot_data = plot_data.dropna()
             
             # Vérification des données non nulles
@@ -961,11 +1038,11 @@ def main():
                                                 }[x],
                                                 key="agg_method_univ")
                             
-                            # Remplacement des non-réponses par np.nan uniquement dans la variable d'agrégation
-                            st.session_state.merged_data[groupby_col] = st.session_state.merged_data[groupby_col].replace(missing_values, np.nan)
+                            # Nettoyage des données pour l'agrégation
+                            clean_data = st.session_state.merged_data.dropna(subset=[var, groupby_col])
                             
                             # Création des données agrégées
-                            agg_data = st.session_state.merged_data.dropna(subset=[var, groupby_col]).groupby(groupby_col).agg({
+                            agg_data = clean_data.groupby(groupby_col).agg({
                                 var: agg_method
                             }).reset_index()
                             
@@ -1413,14 +1490,7 @@ def main():
                 if var_y != "---":
                     # Sauvegarder la valeur de var_y pour la prochaine itération
                     st.session_state.previous_var_y = var_y
-    
-                # Liste des valeurs considérées comme non-réponses
-                missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr', 'NR', 'Non-réponse']
-    
-                # Remplacement des non-réponses par np.nan
-                st.session_state.merged_data[var_x] = st.session_state.merged_data[var_x].replace(missing_values, np.nan)
-                st.session_state.merged_data[var_y] = st.session_state.merged_data[var_y].replace(missing_values, np.nan)
-    
+      
                 # Détection des types de variables avec gestion d'erreur
                 is_x_numeric = is_numeric_column(st.session_state.merged_data, var_x)
                 is_y_numeric = is_numeric_column(st.session_state.merged_data, var_y)
