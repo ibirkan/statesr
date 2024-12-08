@@ -920,8 +920,8 @@ def create_interactive_stats_table(stats_df, analysis_type, variables_info):
     """
     # Configuration du tableau interactif
     gb = GridOptionsBuilder.from_dataframe(stats_df)
-    gb.configure_selection('single', use_checkbox=False)
-    gb.configure_grid_options(enableCellTextSelection=True)
+    gb.configure_selection(selection_mode='single', use_checkbox=False)
+    gb.configure_grid_options(domLayout='normal')
     gridOptions = gb.build()
     
     # Affichage du tableau interactif
@@ -930,12 +930,13 @@ def create_interactive_stats_table(stats_df, analysis_type, variables_info):
         gridOptions=gridOptions,
         enable_enterprise_modules=False,
         allow_unsafe_jscode=True,
-        update_mode='selection_changed'
+        update_mode='SELECTION_CHANGED'
     )
     
-    # Si une ligne est sélectionnée, afficher le formulaire d'indicateur
-    if grid_response['selected_rows']:
-        selected_stat = grid_response['selected_rows'][0]
+    # Vérification de la sélection
+    selected_rows = grid_response.get('selected_rows', [])
+    if len(selected_rows) > 0:
+        selected_stat = selected_rows[0]
         show_indicator_form(selected_stat, analysis_type, variables_info)
 
 def show_indicator_form(selected_stat, analysis_type, variables_info):
