@@ -1021,98 +1021,98 @@ def show_indicator_form(statistics, analysis_type, variables_info):
                     generated_title += f" par {population.lower()}"
                 st.session_state.generated_title = generated_title
                 st.experimental_rerun()
-                                
-            # Étape 2 : Fiche descriptive
-            elif st.session_state.indicator_step == 'description':
-                st.write("### Fiche descriptive de l'indicateur")
+
+    # Étape 2 : Fiche descriptive
+    elif st.session_state.indicator_step == 'description':
+        st.write("### Fiche descriptive de l'indicateur")
+        
+        with st.form("indicator_description"):
+            col1, col2 = st.columns(2)
+            with col1:
+                indicator_name = st.text_input(
+                    "Nom de l'indicateur",
+                    value=st.session_state.generated_title
+                )
                 
-                with st.form("indicator_description"):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        indicator_name = st.text_input(
-                            "Nom de l'indicateur",
-                            value=st.session_state.generated_title
-                        )
-                        
-                        stats_text = "\n".join([f"{stat['Statistique']}: {stat['Valeur']}" for stat in statistics])
-                        calculation_method = st.text_area(
-                            "Méthode de calcul",
-                            value=f"Variable analysée : {st.session_state.construction_data['object_desc']}\n"
-                                  f"Type de statistique : {st.session_state.construction_data['stat_type']}\n"
-                                  f"Population : {st.session_state.construction_data['population']}\n"
-                                  f"Sous-population : {st.session_state.construction_data['sub_population']}\n"
-                                  f"Statistiques :\n{stats_text}"
-                        )
-                        
-                    with col2:
-                        description = st.text_area(
-                            "Description",
-                            placeholder="Description détaillée de l'indicateur..."
-                        )
-                        
-                        interpretation = st.text_area(
-                            "Interprétation",
-                            placeholder="Comment interpréter cet indicateur..."
-                        )
+                stats_text = "\n".join([f"{stat['Statistique']}: {stat['Valeur']}" for stat in statistics])
+                calculation_method = st.text_area(
+                    "Méthode de calcul",
+                    value=f"Variable analysée : {st.session_state.construction_data['object_desc']}\n"
+                          f"Type de statistique : {st.session_state.construction_data['stat_type']}\n"
+                          f"Population : {st.session_state.construction_data['population']}\n"
+                          f"Sous-population : {st.session_state.construction_data['sub_population']}\n"
+                          f"Statistiques :\n{stats_text}"
+                )
+                
+            with col2:
+                description = st.text_area(
+                    "Description",
+                    placeholder="Description détaillée de l'indicateur..."
+                )
+                
+                interpretation = st.text_area(
+                    "Interprétation",
+                    placeholder="Comment interpréter cet indicateur..."
+                )
+            
+            col3, col4 = st.columns(2)
+            with col3:
+                frequency = st.selectbox(
+                    "Fréquence de mise à jour",
+                    ["Annuelle", "Semestrielle", "Trimestrielle", "Mensuelle"]
+                )
+                
+                source = st.text_input(
+                    "Source des données",
+                    value=variables_info.get('source', '')
+                )
+                
+            with col4:
+                unit = st.text_input("Unité de mesure")
+                
+                tags = st.text_input(
+                    "Tags (séparés par des virgules)",
+                    placeholder="tag1, tag2, tag3..."
+                )
+            
+            col5, col6 = st.columns(2)
+            with col5:
+                submit = st.form_submit_button("Enregistrer l'indicateur")
+            with col6:
+                back = st.form_submit_button("Retour à la construction")
+            
+            if back:
+                st.session_state.indicator_step = 'construction'
+                st.experimental_rerun()
+                
+            if submit:
+                indicator_data = {
+                    "name": indicator_name,
+                    "description": description,
+                    "calculation_method": calculation_method,
+                    "interpretation": interpretation,
+                    "frequency": frequency,
+                    "source": source,
+                    "unit": unit,
+                    "tags": tags,
+                    "creation_date": datetime.now().strftime("%Y-%m-%d"),
+                    "analysis_type": analysis_type,
+                    "statistics": str(statistics),
+                    "variables": str(variables_info),
+                    **st.session_state.construction_data
+                }
+                
+                try:
+                    save_indicator_to_grist(indicator_data)
+                    st.success("✅ Indicateur enregistré avec succès !")
                     
-                    col3, col4 = st.columns(2)
-                    with col3:
-                        frequency = st.selectbox(
-                            "Fréquence de mise à jour",
-                            ["Annuelle", "Semestrielle", "Trimestrielle", "Mensuelle"]
-                        )
-                        
-                        source = st.text_input(
-                            "Source des données",
-                            value=variables_info.get('source', '')
-                        )
-                        
-                    with col4:
-                        unit = st.text_input("Unité de mesure")
-                        
-                        tags = st.text_input(
-                            "Tags (séparés par des virgules)",
-                            placeholder="tag1, tag2, tag3..."
-                        )
-                    
-                    col5, col6 = st.columns(2)
-                    with col5:
-                        submit = st.form_submit_button("Enregistrer l'indicateur")
-                    with col6:
-                        back = st.form_submit_button("Retour à la construction")
-                    
-                    if back:
+                    # Réinitialisation pour un nouvel indicateur
+                    if st.button("Créer un autre indicateur"):
                         st.session_state.indicator_step = 'construction'
                         st.experimental_rerun()
                         
-                    if submit:
-                        indicator_data = {
-                            "name": indicator_name,
-                            "description": description,
-                            "calculation_method": calculation_method,
-                            "interpretation": interpretation,
-                            "frequency": frequency,
-                            "source": source,
-                            "unit": unit,
-                            "tags": tags,
-                            "creation_date": datetime.now().strftime("%Y-%m-%d"),
-                            "analysis_type": analysis_type,
-                            "statistics": str(statistics),
-                            "variables": str(variables_info),
-                            **st.session_state.construction_data
-                        }
-                        
-                        try:
-                            save_indicator_to_grist(indicator_data)
-                            st.success("✅ Indicateur enregistré avec succès !")
-                            
-                            # Réinitialisation pour un nouvel indicateur
-                            if st.button("Créer un autre indicateur"):
-                                st.session_state.indicator_step = 'construction'
-                                st.experimental_rerun()
-                                
-                        except Exception as e:
-                            st.error(f"Erreur lors de l'enregistrement : {str(e)}")
+                except Exception as e:
+                    st.error(f"Erreur lors de l'enregistrement : {str(e)}")
 
 def save_indicator_to_grist(indicator_data):
     """
