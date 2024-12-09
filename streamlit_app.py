@@ -905,34 +905,54 @@ def display_comparison_stats(data, var, groupby_col):
         
     return agg_data
 
-def create_interactive_stats_table(stats_df, analysis_type, variables_info):
+def create_interactive_stats_table(stats_df):
     """
-    Crée un tableau de statistiques interactif avec possibilité de création d'indicateur.
+    Crée un tableau de statistiques interactif avec des fonctionnalités avancées.
+    
+    Parameters:
+    -----------
+    stats_df : pandas.DataFrame
+        DataFrame contenant les statistiques
     """
-    # Configuration du tableau interactif
     gb = GridOptionsBuilder.from_dataframe(stats_df)
-    gb.configure_selection('single', use_checkbox=False)
-    gb.configure_grid_options(domLayout='normal')
-    gb.configure_default_column(editable=False, groupable=True)
     
-    grid_options = gb.build()
-    
-    # Affichage du tableau interactif
-    grid_response = AgGrid(
-        stats_df,
-        gridOptions=grid_options,
-        enable_enterprise_modules=False,
-        allow_unsafe_jscode=True,
-        update_mode='SELECTION_CHANGED',
-        data_return_mode='AS_INPUT'
+    # Fonctionnalités de base
+    gb.configure_default_column(
+        sorteable=True,              # Tri
+        filterable=True,             # Filtres
+        resizable=True,              # Redimensionnement des colonnes
+        draggable=True              # Réorganisation des colonnes
     )
     
-    # Vérification de la sélection
-    if grid_response['selected_rows']:
-        selected_stat = grid_response['selected_rows'][0]
-        show_indicator_form(selected_stat, analysis_type, variables_info)
+    # Fonctionnalités de groupe
+    gb.configure_grid_options(
+        enableRangeSelection=True,   # Sélection de plages
+        groupable=True,             # Groupement
+        groupDefaultExpanded=1      # Groupes développés par défaut
+    )
+    
+    # Configuration des agrégations par groupe
+    gb.configure_columns(
+        stats_df.columns.tolist(),
+        groupable=True,
+        value=True,
+        aggFunc='sum',              # Fonction d'agrégation par défaut
+        enableValue=True
+    )
+    
+    gridOptions = gb.build()
+    
+    return AgGrid(
+        stats_df,
+        gridOptions=gridOptions,
+        enable_enterprise_modules=True,
+        allow_unsafe_jscode=True,
+        update_mode='VALUE_CHANGED',
+        fit_columns_on_grid_load=True,
+        theme='streamlit'           # Thème correspondant à Streamlit
+    )
 
-def show_indicator_form(selected_stat, analysis_type, variables_info):
+def show_indicator_form(statistics, analysis_type, variables_info):
     """
     Affiche et gère le formulaire de création d'indicateur.
     """
@@ -947,10 +967,11 @@ def show_indicator_form(selected_stat, analysis_type, variables_info):
                 value=f"Indicateur {variables_info['var_name']}"
             )
             
+            stats_text = "\n".join([f"{stat['Statistique']}: {stat['Valeur']}" for stat in statistics])
             calculation_method = st.text_area(
                 "Méthode de calcul",
-                value=f"Statistique : {selected_stat.get('Statistique', 'N/A')}\n"
-                      f"Variable(s) : {', '.join(variables_info.values())}"
+                value=f"Variable analysée : {variables_info['var_name']}\n"
+                      f"Statistiques :\n{stats_text}"
             )
             
         with col2:
@@ -1000,7 +1021,7 @@ def show_indicator_form(selected_stat, analysis_type, variables_info):
                 "tags": tags,
                 "creation_date": datetime.now().strftime("%Y-%m-%d"),
                 "analysis_type": analysis_type,
-                "statistics": str(selected_stat),
+                "statistics": str(statistics),
                 "variables": str(variables_info)
             }
             
@@ -1194,6 +1215,14 @@ def main():
                     }
                     create_interactive_stats_table(stats_df, 'univariate', variables_info)
                     if do_aggregate: st.info("Note : Les statistiques sont calculées à l'échelle de la variable d'agrégation sélectionnée.")
+
+                    # Ajout du bouton de création d'indicateur
+                    if st.button("Créer un indicateur à partir de ces statistiques"):
+                        variables_info = {
+                            'var_name': var,
+                            'source': source if 'source' in locals() else None
+                        }
+                        show_indicator_form(stats_df.to_dict('records'), 'univariate', variables_info)
                     
                     # Options de regroupement
                     st.write("### Options de regroupement")
@@ -1732,7 +1761,7 @@ def main():
     
                     st.write(f"Taux de réponse : {response_rate:.1f}%")
                     st.write("Statistiques descriptives par modalité")
-                    st.dataframe(stats_df)
+                    grid_response = create_interactive_stats_table(stats_df)
                     st.info("Note : Les statistiques de la ligne total sont calculées à l'échelle de l'unité d'observation de la table")
                     
                     # Configuration de la visualisation
