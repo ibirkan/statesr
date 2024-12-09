@@ -1227,14 +1227,6 @@ def main():
                     
                     if do_aggregate: st.info("Note : Les statistiques sont calculées à l'échelle de la variable d'agrégation sélectionnée.")
 
-                    # Ajout du bouton de création d'indicateur
-                    if st.button("Créer un indicateur à partir de ces statistiques", key="create_indicator_mixed"):
-                        variables_info = {
-                            'var_name': var,
-                            'source': source if 'source' in locals() else None
-                        }
-                        show_indicator_form(stats_df.to_dict('records'), 'univariate', variables_info)
-                    
                     # Options de regroupement
                     st.write("### Options de regroupement")
                     grouping_method = st.selectbox(
