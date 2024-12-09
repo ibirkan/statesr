@@ -951,13 +951,15 @@ def create_interactive_stats_table(stats_df):
         fit_columns_on_grid_load=True,
         theme='streamlit'           # Thème correspondant à Streamlit
     )
-
 def show_indicator_form(statistics, analysis_type, variables_info):
     """
     Affiche et gère la création d'indicateur en deux étapes.
     """
     if 'indicator_step' not in st.session_state:
         st.session_state.indicator_step = 'construction'
+    
+    if 'selected_population' not in st.session_state:
+        st.session_state.selected_population = ""
         
     # Étape 1 : Construction de l'indicateur
     if st.session_state.indicator_step == 'construction':
@@ -979,7 +981,7 @@ def show_indicator_form(statistics, analysis_type, variables_info):
         )
         
         # Population principale
-        population = st.selectbox(
+        st.session_state.selected_population = st.selectbox(
             "Population concernée",
             ["", "Étudiants", "Bacheliers", "Établissements", "Formations"],
             key="population"
@@ -987,7 +989,7 @@ def show_indicator_form(statistics, analysis_type, variables_info):
         
         # Population spécifique selon le choix précédent
         sub_population = None
-        if population:
+        if st.session_state.selected_population:
             sub_pop_options = {
                 "Étudiants": ["Aucune", "L1", "L2", "L3", "Licence", "M1", "M2", "Master", "Doctorat"],
                 "Bacheliers": ["Aucune", "Candidats", "Bacheliers généraux", "Bacheliers professionnels", "Bacheliers technologiques"],
@@ -997,20 +999,17 @@ def show_indicator_form(statistics, analysis_type, variables_info):
             
             sub_population = st.selectbox(
                 "Population spécifique",
-                sub_pop_options[population],
+                sub_pop_options[st.session_state.selected_population],
                 key="sub_population"
             )
-        
-        # Bouton de validation
-        if st.button("Valider et passer à la description"):
-            if not population:
-                st.error("Veuillez sélectionner une population")
-            else:
+            
+            # Bouton de validation
+            if st.button("Valider et passer à la description"):
                 st.session_state.indicator_step = 'description'
                 st.session_state.construction_data = {
                     'stat_type': stat_type,
                     'object_desc': object_desc,
-                    'population': population,
+                    'population': st.session_state.selected_population,
                     'sub_population': sub_population
                 }
                 # Construction du titre
@@ -1018,7 +1017,7 @@ def show_indicator_form(statistics, analysis_type, variables_info):
                 if sub_population and sub_population != "Aucune":
                     generated_title += f" des {sub_population}"
                 else:
-                    generated_title += f" par {population.lower()}"
+                    generated_title += f" par {st.session_state.selected_population.lower()}"
                 st.session_state.generated_title = generated_title
                 st.experimental_rerun()
 
