@@ -1218,7 +1218,7 @@ def main():
                     grid_response = create_interactive_stats_table(stats_df)
                     
                     # Bouton de création d'indicateur
-                    if st.button("Créer un indicateur à partir de ces statistiques"):
+                    if st.button("Créer un indicateur à partir de ces statistiques", key="create_indicator_univariate"):
                         variables_info = {
                             'var_name': var,
                             'source': source if 'source' in locals() else None
@@ -1228,7 +1228,7 @@ def main():
                     if do_aggregate: st.info("Note : Les statistiques sont calculées à l'échelle de la variable d'agrégation sélectionnée.")
 
                     # Ajout du bouton de création d'indicateur
-                    if st.button("Créer un indicateur à partir de ces statistiques"):
+                    if st.button("Créer un indicateur à partir de ces statistiques", key="create_indicator_mixed"):
                         variables_info = {
                             'var_name': var,
                             'source': source if 'source' in locals() else None
@@ -1776,7 +1776,7 @@ def main():
                     st.info("Note : Les statistiques de la ligne total sont calculées à l'échelle de l'unité d'observation de la table")
                     
                     # Bouton de création d'indicateur
-                    if st.button("Créer un indicateur à partir de ces statistiques"):
+                    if st.button("Créer un indicateur à partir de ces statistiques", key="create_indicator_mixed"):
                         variables_info = {
                             'var_qual': qual_var,
                             'var_quant': quant_var,
@@ -1919,7 +1919,7 @@ def main():
                     grid_response = create_interactive_stats_table(results_df)
                     
                     # Bouton de création d'indicateur
-                    if st.button("Créer un indicateur à partir de ces statistiques"):
+                    if st.button("Créer un indicateur à partir de ces statistiques", key="create_indicator_mixed"):
                         variables_info = {
                             'var_x': var_x,
                             'var_y': var_y,
