@@ -956,72 +956,70 @@ def show_indicator_form(statistics, analysis_type, variables_info):
     """
     Affiche et gère le formulaire de création d'indicateur avec construction guidée.
     """
-    st.write("### Construction de l'indicateur")
-    
-    # Première étape : Type de statistique
-    stat_type = st.selectbox(
-        "Type de statistique",
-        ["Taux", "Nombre", "Somme", "Moyenne"],
-        key="stat_type"
-    )
-    
-    # Deuxième étape : Objet de l'indicateur
-    var_name = variables_info.get('var_name', '')
-    object_desc = st.text_input(
-        "Objet de l'indicateur",
-        value=var_name,
-        help="Décrivez ce que vous mesurez (ex: effectifs, inscriptions, réussite...)"
-    )
-    
-    # Troisième étape : Population principale
-    population = st.selectbox(
-        "Population concernée",
-        ["Étudiants", "Bacheliers", "Établissements", "Formations"],
-        key="population"
-    )
-    
-    # Quatrième étape : Population spécifique selon le choix précédent
-    if population == "Étudiants":
+    if "indicator_stat_type" not in st.session_state:
+        st.session_state.indicator_stat_type = "Taux"
+    if "indicator_object" not in st.session_state:
+        st.session_state.indicator_object = variables_info.get('var_name', '')
+    if "indicator_population" not in st.session_state:
+        st.session_state.indicator_population = "Étudiants"
+    if "indicator_sub_population" not in st.session_state:
+        st.session_state.indicator_sub_population = "Aucune"
+
+    with st.form("indicator_complete_form"):
+        st.write("### Construction de l'indicateur")
+        
+        # Première étape : Type de statistique
+        stat_type = st.selectbox(
+            "Type de statistique",
+            ["Taux", "Nombre", "Somme", "Moyenne"],
+            key="stat_type_select"
+        )
+        
+        # Deuxième étape : Objet de l'indicateur
+        object_desc = st.text_input(
+            "Objet de l'indicateur",
+            value=st.session_state.indicator_object,
+            help="Décrivez ce que vous mesurez (ex: effectifs, inscriptions, réussite...)",
+            key="object_input"
+        )
+        
+        # Troisième étape : Population principale
+        population = st.selectbox(
+            "Population concernée",
+            ["Étudiants", "Bacheliers", "Établissements", "Formations"],
+            key="population_select"
+        )
+        
+        # Quatrième étape : Population spécifique selon le choix précédent
+        sub_pop_options = {
+            "Étudiants": ["Aucune", "L1", "L2", "L3", "Licence", "M1", "M2", "Master", "Doctorat"],
+            "Bacheliers": ["Aucune", "Candidats", "Bacheliers généraux", "Bacheliers professionnels", "Bacheliers technologiques"],
+            "Établissements": ["Aucune", "Universités", "Écoles d'ingénieurs", "Grands établissements", "Écoles privées"],
+            "Formations": ["Aucune", "Licence", "Master"]
+        }
+        
         sub_population = st.selectbox(
             "Population spécifique",
-            ["Aucune", "L1", "L2", "L3", "Licence", "M1", "M2", "Master", "Doctorat"],
-            key="sub_pop_students"
+            sub_pop_options[population],
+            key="sub_population_select"
         )
-    elif population == "Bacheliers":
-        sub_population = st.selectbox(
-            "Population spécifique",
-            ["Aucune", "Candidats", "Bacheliers généraux", "Bacheliers professionnels", "Bacheliers technologiques"],
-            key="sub_pop_bachelors"
-        )
-    elif population == "Établissements":
-        sub_population = st.selectbox(
-            "Population spécifique",
-            ["Aucune", "Universités", "Écoles d'ingénieurs", "Grands établissements", "Écoles privées"],
-            key="sub_pop_institutions"
-        )
-    elif population == "Formations":
-        sub_population = st.selectbox(
-            "Population spécifique",
-            ["Aucune", "Licence", "Master"],
-            key="sub_pop_formations"
-        )
-    
-    # Construction automatique du titre
-    generated_title = f"{stat_type} de {object_desc}"
-    if sub_population and sub_population != "Aucune":
-        generated_title += f" des {sub_population}"
-    else:
-        generated_title += f" par {population.lower()}"
-    
-    st.write("---")
-    st.write("### Fiche descriptive de l'indicateur")
-    
-    with st.form("indicator_form"):
+        
+        # Construction automatique du titre
+        generated_title = f"{stat_type} de {object_desc}"
+        if sub_population and sub_population != "Aucune":
+            generated_title += f" des {sub_population}"
+        else:
+            generated_title += f" par {population.lower()}"
+        
+        st.write("---")
+        st.write("### Fiche descriptive de l'indicateur")
+        
         col1, col2 = st.columns(2)
         with col1:
             indicator_name = st.text_input(
                 "Nom de l'indicateur",
-                value=generated_title
+                value=generated_title,
+                key="name_input"
             )
             
             stats_text = "\n".join([f"{stat['Statistique']}: {stat['Valeur']}" for stat in statistics])
@@ -1031,18 +1029,21 @@ def show_indicator_form(statistics, analysis_type, variables_info):
                       f"Type de statistique : {stat_type}\n"
                       f"Population : {population}\n"
                       f"Sous-population : {sub_population if sub_population != 'Aucune' else 'Toutes'}\n"
-                      f"Statistiques :\n{stats_text}"
+                      f"Statistiques :\n{stats_text}",
+                key="method_input"
             )
             
         with col2:
             description = st.text_area(
                 "Description",
-                placeholder="Description détaillée de l'indicateur..."
+                placeholder="Description détaillée de l'indicateur...",
+                key="desc_input"
             )
             
             interpretation = st.text_area(
                 "Interprétation",
-                placeholder="Comment interpréter cet indicateur..."
+                placeholder="Comment interpréter cet indicateur...",
+                key="interp_input"
             )
         
         # Métadonnées supplémentaires
@@ -1050,26 +1051,28 @@ def show_indicator_form(statistics, analysis_type, variables_info):
         with col3:
             frequency = st.selectbox(
                 "Fréquence de mise à jour",
-                ["Annuelle", "Semestrielle", "Trimestrielle", "Mensuelle"]
+                ["Annuelle", "Semestrielle", "Trimestrielle", "Mensuelle"],
+                key="freq_select"
             )
             
             source = st.text_input(
                 "Source des données",
-                value=variables_info.get('source', '')
+                value=variables_info.get('source', ''),
+                key="source_input"
             )
             
         with col4:
-            unit = st.text_input("Unité de mesure")
+            unit = st.text_input("Unité de mesure", key="unit_input")
             
             tags = st.text_input(
                 "Tags (séparés par des virgules)",
-                placeholder="tag1, tag2, tag3..."
+                placeholder="tag1, tag2, tag3...",
+                key="tags_input"
             )
         
         submit_button = st.form_submit_button("Enregistrer l'indicateur")
         
         if submit_button:
-            # Ajout des informations de construction dans indicator_data
             indicator_data = {
                 "name": indicator_name,
                 "description": description,
@@ -1092,12 +1095,16 @@ def show_indicator_form(statistics, analysis_type, variables_info):
             try:
                 save_indicator_to_grist(indicator_data)
                 st.success("✅ Indicateur enregistré avec succès !")
+                st.session_state.show_new_indicator_button = True
                 
-                if st.button("Créer un autre indicateur", key="create_another"):
-                    st.experimental_rerun()
-                    
             except Exception as e:
                 st.error(f"Erreur lors de l'enregistrement : {str(e)}")
+    
+    # Bouton pour créer un nouvel indicateur (hors du formulaire)
+    if st.session_state.get('show_new_indicator_button', False):
+        if st.button("Créer un autre indicateur", key="create_another"):
+            st.session_state.show_new_indicator_button = False
+            st.experimental_rerun()
 
 def save_indicator_to_grist(indicator_data):
     """
