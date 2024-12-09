@@ -1069,16 +1069,48 @@ def show_indicator_form(statistics, analysis_type, variables_info):
 
 def save_indicator_to_grist(indicator_data):
     """
-    Sauvegarde l'indicateur dans une table Grist.
+    Sauvegarde l'indicateur dans la table Indicators de Grist.
     """
-    # Utiliser la fonction grist_api_request existante
-    response = grist_api_request(
-        "indicators",  # Nom de la table des indicateurs
-        method="POST",
-        data={"records": [{"fields": indicator_data}]}
-    )
-    
-    return response
+    try:
+        # Préparation des données pour l'API Grist
+        grist_data = {
+            "records": [
+                {
+                    "fields": {
+                        "name": indicator_data["name"],
+                        "description": indicator_data["description"],
+                        "calculation_method": indicator_data["calculation_method"],
+                        "interpretation": indicator_data["interpretation"],
+                        "frequency": indicator_data["frequency"],
+                        "source": indicator_data["source"],
+                        "unit": indicator_data["unit"],
+                        "tags": indicator_data["tags"],
+                        "creation_date": indicator_data["creation_date"],
+                        "analysis_type": indicator_data["analysis_type"],
+                        "statistics": indicator_data["statistics"],
+                        "variables": indicator_data["variables"],
+                        "stat_type": indicator_data["stat_type"],
+                        "population": indicator_data["population"],
+                        "scope": indicator_data["scope"]
+                    }
+                }
+            ]
+        }
+        
+        # Appel à l'API Grist
+        response = grist_api_request(
+            "Indicators",  # Nom exact de la table
+            method="POST",
+            data=grist_data
+        )
+        
+        if response is None:
+            raise Exception("Pas de réponse de l'API Grist")
+            
+        return response
+        
+    except Exception as e:
+        raise Exception(f"Erreur lors de l'enregistrement dans Grist : {str(e)}")
 
 # Fonctions pour les différentes pages
 def page_analyse():
