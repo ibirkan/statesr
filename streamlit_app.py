@@ -1099,7 +1099,7 @@ def save_indicator_to_grist(indicator_data):
         
         # Appel à l'API Grist
         response = grist_api_request(
-            "Indicators",  # Nom exact de la table
+            "4",  # Nom exact de la table
             method="POST",
             data=grist_data
         )
