@@ -1213,7 +1213,18 @@ def main():
                         'var_name': var,
                         'source': source if 'source' in locals() else None
                     }
-                    create_interactive_stats_table(stats_df, 'univariate', variables_info)
+                    
+                    # Affichage du tableau interactif
+                    grid_response = create_interactive_stats_table(stats_df)
+                    
+                    # Bouton de création d'indicateur
+                    if st.button("Créer un indicateur à partir de ces statistiques"):
+                        variables_info = {
+                            'var_name': var,
+                            'source': source if 'source' in locals() else None
+                        }
+                        show_indicator_form(stats_df.to_dict('records'), 'univariate', variables_info)
+                    
                     if do_aggregate: st.info("Note : Les statistiques sont calculées à l'échelle de la variable d'agrégation sélectionnée.")
 
                     # Ajout du bouton de création d'indicateur
@@ -1764,6 +1775,15 @@ def main():
                     grid_response = create_interactive_stats_table(stats_df)
                     st.info("Note : Les statistiques de la ligne total sont calculées à l'échelle de l'unité d'observation de la table")
                     
+                    # Bouton de création d'indicateur
+                    if st.button("Créer un indicateur à partir de ces statistiques"):
+                        variables_info = {
+                            'var_qual': qual_var,
+                            'var_quant': quant_var,
+                            'source': source if 'source' in locals() else None
+                        }
+                        show_indicator_form(stats_df.to_dict('records'), 'mixed', variables_info)
+                    
                     # Configuration de la visualisation
                     st.write("### Configuration de la visualisation")
     
@@ -1896,7 +1916,16 @@ def main():
                     st.write(f"- {var_y} : {response_rate_y:.1f}%")
     
                     st.write("Statistiques de corrélation")
-                    st.dataframe(results_df)
+                    grid_response = create_interactive_stats_table(results_df)
+                    
+                    # Bouton de création d'indicateur
+                    if st.button("Créer un indicateur à partir de ces statistiques"):
+                        variables_info = {
+                            'var_x': var_x,
+                            'var_y': var_y,
+                            'source': source if 'source' in locals() else None
+                        }
+                        show_indicator_form(results_df.to_dict('records'), 'quantitative', variables_info)
     
                     # Configuration de la visualisation
                     st.write("### Configuration de la visualisation")
