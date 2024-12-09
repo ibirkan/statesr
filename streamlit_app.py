@@ -1096,19 +1096,25 @@ def save_indicator_to_grist(indicator_data):
                 }
             ]
         }
-        
+
+        # Affichage des données pour débogage
+        st.write("Données envoyées à Grist : ", grist_data)
+
         # Appel à l'API Grist
         response = grist_api_request(
             "4",  # Nom exact de la table
             method="POST",
             data=grist_data
         )
-        
+
+        # Affichage de la réponse pour débogage
+        st.write("Réponse de l'API Grist : ", response)
+
         if response is None:
             raise Exception("Pas de réponse de l'API Grist")
-            
+
         return response
-        
+
     except Exception as e:
         raise Exception(f"Erreur lors de l'enregistrement dans Grist : {str(e)}")
 
