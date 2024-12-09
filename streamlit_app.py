@@ -963,74 +963,65 @@ def show_indicator_form(statistics, analysis_type, variables_info):
     if st.session_state.indicator_step == 'construction':
         st.write("### Construction de l'indicateur")
         
-        with st.form("indicator_construction"):
-            # Type de statistique
-            stat_type = st.selectbox(
-                "Type de statistique",
-                ["Taux", "Nombre", "Somme", "Moyenne"]
-            )
+        # Type de statistique
+        stat_type = st.selectbox(
+            "Type de statistique",
+            ["Taux", "Nombre", "Somme", "Moyenne"],
+            key="stat_type"
+        )
+        
+        # Objet de l'indicateur
+        object_desc = st.text_input(
+            "Objet de l'indicateur",
+            value=variables_info.get('var_name', ''),
+            help="Décrivez ce que vous mesurez (ex: effectifs, inscriptions, réussite...)",
+            key="object_desc"
+        )
+        
+        # Population principale
+        population = st.selectbox(
+            "Population concernée",
+            ["", "Étudiants", "Bacheliers", "Établissements", "Formations"],
+            key="population"
+        )
+        
+        # Population spécifique selon le choix précédent
+        sub_population = None
+        if population:
+            sub_pop_options = {
+                "Étudiants": ["Aucune", "L1", "L2", "L3", "Licence", "M1", "M2", "Master", "Doctorat"],
+                "Bacheliers": ["Aucune", "Candidats", "Bacheliers généraux", "Bacheliers professionnels", "Bacheliers technologiques"],
+                "Établissements": ["Aucune", "Universités", "Écoles d'ingénieurs", "Grands établissements", "Écoles privées"],
+                "Formations": ["Aucune", "Licence", "Master"]
+            }
             
-            # Objet de l'indicateur
-            object_desc = st.text_input(
-                "Objet de l'indicateur",
-                value=variables_info.get('var_name', ''),
-                help="Décrivez ce que vous mesurez (ex: effectifs, inscriptions, réussite...)"
+            sub_population = st.selectbox(
+                "Population spécifique",
+                sub_pop_options[population],
+                key="sub_population"
             )
-            
-            # Population principale
-            population = st.selectbox(
-                "Population concernée",
-                ["", "Étudiants", "Bacheliers", "Établissements", "Formations"]
-            )
-            
-            # Population spécifique selon le choix précédent
-            sub_population = None
-            if population:
-                sub_pop_options = {
-                    "Étudiants": ["Aucune", "L1", "L2", "L3", "Licence", "M1", "M2", "Master", "Doctorat"],
-                    "Bacheliers": ["Aucune", "Candidats", "Bacheliers généraux", "Bacheliers professionnels", "Bacheliers technologiques"],
-                    "Établissements": ["Aucune", "Universités", "Écoles d'ingénieurs", "Grands établissements", "Écoles privées"],
-                    "Formations": ["Aucune", "Licence", "Master"]
+        
+        # Bouton de validation
+        if st.button("Valider et passer à la description"):
+            if not population:
+                st.error("Veuillez sélectionner une population")
+            else:
+                st.session_state.indicator_step = 'description'
+                st.session_state.construction_data = {
+                    'stat_type': stat_type,
+                    'object_desc': object_desc,
+                    'population': population,
+                    'sub_population': sub_population
                 }
-                
-                sub_population = st.selectbox(
-                    "Population spécifique",
-                    sub_pop_options[population]
-                )
-            
-            # Bouton de validation de la construction
-            if st.form_submit_button("Valider et passer à la description"):
-                if not population:
-                    st.error("Veuillez sélectionner une population")
+                # Construction du titre
+                generated_title = f"{stat_type} de {object_desc}"
+                if sub_population and sub_population != "Aucune":
+                    generated_title += f" des {sub_population}"
                 else:
-                    st.session_state.indicator_step = 'description'
-                    st.session_state.construction_data = {
-                        'stat_type': stat_type,
-                        'object_desc': object_desc,
-                        'population': population,
-                        'sub_population': sub_population
-                    }
-                    # Construction du titre
-                    generated_title = f"{stat_type} de {object_desc}"
-                    if sub_population and sub_population != "Aucune":
-                        generated_title += f" des {sub_population}"
-                    else:
-                        generated_title += f" par {population.lower()}"
-                    st.session_state.generated_title = generated_title
-                    st.experimental_rerun()
-                    
-                    # Bouton de validation de la construction
-                    if st.form_submit_button("Valider et passer à la description"):
-                        st.session_state.indicator_step = 'description'
-                        st.session_state.generated_title = generated_title
-                        st.session_state.construction_data = {
-                            'stat_type': stat_type,
-                            'object_desc': object_desc,
-                            'population': population,
-                            'sub_population': sub_population
-                        }
-                        st.experimental_rerun()
-            
+                    generated_title += f" par {population.lower()}"
+                st.session_state.generated_title = generated_title
+                st.experimental_rerun()
+                                
             # Étape 2 : Fiche descriptive
             elif st.session_state.indicator_step == 'description':
                 st.write("### Fiche descriptive de l'indicateur")
