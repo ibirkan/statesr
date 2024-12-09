@@ -963,7 +963,7 @@ def show_indicator_form(statistics, analysis_type, variables_info):
         with col1:
             indicator_name = st.text_input(
                 "Nom de l'indicateur",
-                value=f"Indicateur {variables_info.get('var_name', '')}"
+                value=f"Indicateur {variables_info.get('var_name', '')}",
                 help="Donnez un nom clair et descriptif à votre indicateur. Il doit permettre de comprendre rapidement ce qui est mesuré."
             )
             
