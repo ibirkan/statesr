@@ -954,169 +954,65 @@ def create_interactive_stats_table(stats_df):
 
 def show_indicator_form(statistics, analysis_type, variables_info):
     """
-    Affiche et gère la création d'une fiche indicateur.
+    Version test simplifiée avec 3 champs.
     """
-    st.write("### Création d'une fiche indicateur")
+    st.write("### Test création d'indicateur")
     
-    with st.form("indicator_form"):
-        col1, col2 = st.columns(2)
-        with col1:
-            indicator_name = st.text_input(
-                "Nom de l'indicateur",
-                value=f"Indicateur {variables_info.get('var_name', '')}",
-                help="Donnez un nom clair et descriptif à votre indicateur. Il doit permettre de comprendre rapidement ce qui est mesuré."
-            )
-            
-            # Type de statistique avec selectbox
-            stat_type = st.selectbox(
-                "Type de statistique",
-                ["Taux", "Nombre", "Somme", "Moyenne", "Médiane", "Autre"]
-            )
-            if stat_type == "Autre":
-                stat_type_other = st.text_input("Précisez le type de statistique")
-            
-            # Population avec selectbox
-            population = st.selectbox(
-                "Population",
-                ["Étudiants", "Bacheliers", "Établissements", "Formations", "Autre"]
-            )
-            if population == "Autre":
-                population_other = st.text_input("Précisez la population")
-            
-            # Fréquence avec selectbox
-            frequency = st.selectbox(
-                "Fréquence de mise à jour",
-                ["Annuelle", "Semestrielle", "Trimestrielle", "Mensuelle", "Autre"]
-            )
-            if frequency == "Autre":
-                frequency_other = st.text_input("Précisez la fréquence")
-            
-            stats_text = "\n".join([f"{stat['Statistique']}: {stat['Valeur']}" for stat in statistics])
-            calculation_method = st.text_area(
-                "Méthode de calcul",
-                value=f"Variable analysée : {variables_info.get('var_name', '')}\n"
-                      f"Statistiques :\n{stats_text}"
-            )
-            
-        with col2:
-            # Périmètre avec selectbox
-            scope = st.selectbox(
-                "Périmètre",
-                ["National", "Académique", "Régional", "Établissement", "Autre"]
-            )
-            if scope == "Autre":
-                scope_other = st.text_input("Précisez le périmètre")
-            
-            description = st.text_area(
-                "Description",
-                placeholder="Description détaillée de l'indicateur..."
-            )
-            
-            interpretation = st.text_area(
-                "Interprétation",
-                placeholder="Comment interpréter cet indicateur..."
-            )
-            
-            source = st.text_input(
-                "Source des données",
-                value=variables_info.get('source', '')
-            )
-            
-            unit = st.text_input("Unité de mesure")
-            
-            tags = st.text_input(
-                "Tags (séparés par des virgules)",
-                placeholder="tag1, tag2, tag3..."
-            )
+    with st.form("test_indicator_form"):
+        name = st.text_input("Nom de l'indicateur")
+        description = st.text_input("Description")
+        creation_date = datetime.now().strftime("%Y-%m-%d")
         
-        submit_button = st.form_submit_button("Enregistrer l'indicateur")
+        submit = st.form_submit_button("Enregistrer")
         
-        if submit_button:
-            # Traitement des valeurs "Autre"
-            final_stat_type = stat_type_other if stat_type == "Autre" else stat_type
-            final_population = population_other if population == "Autre" else population
-            final_frequency = frequency_other if frequency == "Autre" else frequency
-            final_scope = scope_other if scope == "Autre" else scope
-            
-            indicator_data = {
-                "name": indicator_name,
+        if submit:
+            test_data = {
+                "name": name,
                 "description": description,
-                "calculation_method": calculation_method,
-                "interpretation": interpretation,
-                "frequency": final_frequency,
-                "source": source,
-                "unit": unit,
-                "tags": tags,
-                "creation_date": datetime.now().strftime("%Y-%m-%d"),
-                "analysis_type": analysis_type,
-                "statistics": str(statistics),
-                "variables": str(variables_info),
-                "stat_type": final_stat_type,
-                "population": final_population,
-                "scope": final_scope
+                "creation_date": creation_date
             }
             
             try:
-                save_indicator_to_grist(indicator_data)
-                st.success("✅ Indicateur enregistré avec succès !")
-                
-                # Option pour créer un autre indicateur
-                if st.button("Créer un autre indicateur"):
-                    st.experimental_rerun()
-                    
+                save_test_indicator(test_data)
+                st.success("✅ Test d'enregistrement réussi!")
             except Exception as e:
-                st.error(f"Erreur lors de l'enregistrement : {str(e)}")
+                st.error(f"Erreur : {str(e)}")
 
-def save_indicator_to_grist(indicator_data):
+def save_test_indicator(test_data):
     """
-    Sauvegarde l'indicateur dans la table Indicators de Grist.
+    Version test simplifiée de la sauvegarde.
     """
     try:
-        # Préparation des données pour l'API Grist
+        # Préparation des données
         grist_data = {
             "records": [
                 {
                     "fields": {
-                        "name": indicator_data["name"],
-                        "description": indicator_data["description"],
-                        "calculation_method": indicator_data["calculation_method"],
-                        "interpretation": indicator_data["interpretation"],
-                        "frequency": indicator_data["frequency"],
-                        "source": indicator_data["source"],
-                        "unit": indicator_data["unit"],
-                        "tags": indicator_data["tags"],
-                        "creation_date": indicator_data["creation_date"],
-                        "analysis_type": indicator_data["analysis_type"],
-                        "statistics": indicator_data["statistics"],
-                        "variables": indicator_data["variables"],
-                        "stat_type": indicator_data["stat_type"],
-                        "population": indicator_data["population"],
-                        "scope": indicator_data["scope"]
+                        "name": test_data["name"],
+                        "description": test_data["description"],
+                        "creation_date": test_data["creation_date"]
                     }
                 }
             ]
         }
-
-        # Affichage des données pour débogage
-        st.write("Données envoyées à Grist : ", grist_data)
-
-        # Appel à l'API Grist
+        
+        # Debug : afficher les données avant envoi
+        st.write("Données à envoyer:", grist_data)
+        
+        # Appel API
         response = grist_api_request(
-            "4",  # Nom exact de la table
+            "4",
             method="POST",
             data=grist_data
         )
-
-        # Affichage de la réponse pour débogage
-        st.write("Réponse de l'API Grist : ", response)
-
-        if response is None:
-            raise Exception("Pas de réponse de l'API Grist")
-
+        
+        # Debug : afficher la réponse
+        st.write("Réponse reçue:", response)
+        
         return response
-
+        
     except Exception as e:
-        raise Exception(f"Erreur lors de l'enregistrement dans Grist : {str(e)}")
+        raise Exception(f"Erreur test : {str(e)}")
 
 # Fonctions pour les différentes pages
 def page_analyse():
