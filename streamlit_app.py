@@ -763,7 +763,7 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
             showlegend=False,
             offsetgroup=0,
             textposition='top center',
-            textoffset=15  # Augmentation de la distance entre le point et le texte
+            textoffset=20  # Augmentation de la distance entre le point et le texte
         ))
 
     # Mise à jour du layout avec plus d'espace en haut pour les labels
@@ -779,7 +779,7 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
             zerolinewidth=1,
             zerolinecolor='lightgray',
             gridcolor='lightgray',
-            range=[0, max(data['Effectif']) * 1.3]  # Augmentation de l'espace au-dessus des points
+            range=[0, max(data['Effectif']) * 1.2]  # Augmentation de l'espace au-dessus des points
         ),
         xaxis=dict(
             gridcolor='lightgray'
