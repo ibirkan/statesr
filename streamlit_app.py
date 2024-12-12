@@ -728,6 +728,46 @@ def plot_treemap_qualitative(data, labels, values, title):
     )
     return fig
 
+# Function to plot lollipop plot for qualitative data
+def plot_lollipop_qualitative(data, x, y, title, x_label, y_label, color):
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=data[x],
+        y=data[y],
+        mode='markers+lines',
+        marker=dict(color=color, size=10),
+        line=dict(color=color, width=2)
+    ))
+
+    fig.update_layout(
+        title=title,
+        xaxis_title=x_label,
+        yaxis_title=y_label,
+        showlegend=False,
+        plot_bgcolor='white',
+        height=600,
+        margin=dict(t=100, b=100),
+    )
+    return fig
+
+# Function to plot treemap for qualitative data
+def plot_treemap_qualitative(data, labels, values, title):
+    fig = px.treemap(
+        data,
+        path=[labels],
+        values=values,
+        color=values,
+        color_continuous_scale='Blues'
+    )
+
+    fig.update_layout(
+        title=title,
+        showlegend=False,
+        height=600,
+        margin=dict(t=100, b=100),
+    )
+    return fig
+
 def calculate_grouped_stats(data, var, groupby_col, agg_method='mean'):
     """
     Calcule les statistiques avec agrégation.
