@@ -756,7 +756,7 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
             y=data['Effectif'],
             mode='text',
             text=data['Effectif'].round(0).astype(str),
-            textposition='top center',
+            textposition='outside',
             textfont=dict(size=12),
             showlegend=False
         ))
