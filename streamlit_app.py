@@ -724,29 +724,32 @@ def plot_qualitative_bar(data, title, x_label, y_label, color_palette, show_valu
 
 def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show_values=True):
     """
-    Crée un graphique lollipop pour une variable qualitative.
+    Crée un graphique lollipop pour une variable qualitative avec des bâtons verticaux.
     """
     fig = go.Figure()
     
-    # Ajout des lignes
-    fig.add_trace(go.Scatter(
-        x=data['Modalité'],
-        y=data['Effectif'],
-        mode='lines',
-        line=dict(color=color_palette[0], width=2),
-        showlegend=False
-    ))
+    # Pour chaque point, créer une ligne verticale partant de zéro
+    for i in range(len(data)):
+        fig.add_trace(go.Scatter(
+            x=[data['Modalité'].iloc[i], data['Modalité'].iloc[i]],  # Même x pour les deux points
+            y=[0, data['Effectif'].iloc[i]],  # De zéro jusqu'à la valeur
+            mode='lines',
+            line=dict(color=color_palette[0], width=2),
+            showlegend=False,
+            hoverinfo='none'
+        ))
     
-    # Ajout des points
+    # Ajout des points (sucettes)
     fig.add_trace(go.Scatter(
         x=data['Modalité'],
         y=data['Effectif'],
         mode='markers',
         marker=dict(color=color_palette[0], size=10),
+        name='Valeurs',
         showlegend=False
     ))
 
-    # Ajout des valeurs si demandé
+    # Ajout des valeurs au-dessus des points si demandé
     if show_values:
         fig.add_trace(go.Scatter(
             x=data['Modalité'],
@@ -758,13 +761,24 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
             showlegend=False
         ))
 
+    # Mise à jour du layout
     fig.update_layout(
         title=title,
         xaxis_title=x_label,
         yaxis_title=y_label,
         height=600,
         margin=dict(t=100, b=100),
-        plot_bgcolor='white'
+        plot_bgcolor='white',
+        yaxis=dict(
+            zeroline=True,
+            zerolinewidth=1,
+            zerolinecolor='lightgray',
+            gridcolor='lightgray',
+            range=[0, max(data['Effectif']) * 1.1]  # Laisse un peu d'espace au-dessus des points
+        ),
+        xaxis=dict(
+            gridcolor='lightgray'
+        )
     )
 
     return fig
