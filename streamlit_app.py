@@ -779,7 +779,7 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
             zerolinewidth=1,
             zerolinecolor='lightgray',
             gridcolor='lightgray',
-            range=[0, max(data['Effectif']) * 1.2]  # Augmentation de l'espace au-dessus des points
+            range=[0, max(data['Effectif']) * 1.3]  # Augmentation de l'espace au-dessus des points
         ),
         xaxis=dict(
             gridcolor='lightgray'
