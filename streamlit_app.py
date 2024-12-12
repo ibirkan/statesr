@@ -1275,7 +1275,7 @@ def main():
                                     title,
                                     COLOR_PALETTES[color_scheme]
                                 )
-    
+                
                         else:  # Pour les variables numériques
                             if grouping_method == "Aucune":
                                 if graph_type == "Histogramme":
@@ -1343,7 +1343,7 @@ def main():
                                             title,
                                             COLOR_PALETTES[color_scheme]
                                         )
-    
+                
                         # Ajout de la source pour tous les graphiques Plotly
                         if source and isinstance(fig, go.Figure):
                             fig.add_annotation(
@@ -1359,7 +1359,7 @@ def main():
                         
                         # Affichage du graphique
                         st.plotly_chart(fig, use_container_width=True)
-                                           
+                                               
                     except Exception as e:
                         st.error(f"Erreur lors de la génération du graphique : {str(e)}")
                         
