@@ -516,138 +516,6 @@ def detect_repeated_variable(df, var_x, var_y, groupby_col):
     elif y_duplicates.any() and not x_duplicates.any():
         return var_y
     return None
-
-def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot_options, groupby_col=None, agg_method=None):
-    """
-    Création d'un scatter plot interactif avec Plotly pour l'analyse quantitative.
-    Inclut des info-bulles et une ligne de régression robuste.
-    """
-    # Nettoyage des données pour la régression
-    df_clean = df.dropna(subset=[var_x, var_y])
-    x = df_clean[var_x].values
-    y = df_clean[var_y].values
-    
-    # Calcul de la régression de manière robuste
-    regression_coeffs, regression_success = calculate_regression(x, y)
-    
-    # Création du scatter plot
-    fig = go.Figure()
-    
-    # Ajout du nuage de points avec info-bulles personnalisées
-    hover_text = []
-    for idx, row in df.iterrows():
-        if pd.isna(row[var_x]) or pd.isna(row[var_y]):
-            continue
-            
-        text_parts = []
-        if groupby_col:
-            text_parts.append(f"<b>{groupby_col}</b>: {row[groupby_col]}")
-        text_parts.extend([
-            f"<b>{var_x}</b>: {row[var_x]:,.2f}",
-            f"<b>{var_y}</b>: {row[var_y]:,.2f}"
-        ])
-        hover_text.append("<br>".join(text_parts))
-    
-    # Ajout du nuage de points
-    fig.add_trace(go.Scatter(
-        x=df[var_x],
-        y=df[var_y],
-        mode='markers',
-        name='Observations',
-        marker=dict(
-            color=color_scheme[0],
-            size=10,
-            opacity=0.7
-        ),
-        hovertemplate='%{hovertext}<extra></extra>',
-        hovertext=hover_text,
-        hoverlabel=dict(
-            bgcolor='white',
-            font_size=12,
-            font_family="Arial"
-        )
-    ))
-    
-    # Ajout de la ligne de régression si le calcul a réussi
-    if regression_success:
-        x_range = np.linspace(df[var_x].min(), df[var_x].max(), 100)
-        y_range = regression_coeffs[0] * x_range + regression_coeffs[1]
-        
-        fig.add_trace(go.Scatter(
-            x=x_range,
-            y=y_range,
-            mode='lines',
-            name=f'Régression (y = {regression_coeffs[0]:.2f}x + {regression_coeffs[1]:.2f})',
-            line=dict(
-                color=color_scheme[0],
-                dash='dash'
-            )
-        ))
-    else:
-        st.warning("La ligne de régression n'a pas pu être calculée en raison de la distribution des données.")
-    
-    # Configuration du layout
-    title = plot_options['title']
-    if groupby_col and agg_method:
-        title += f"<br><sup>Données agrégées par {groupby_col} ({agg_method})</sup>"
-    
-    fig.update_layout(
-        title=dict(
-            text=title,
-            x=0.5,
-            xanchor='center'
-        ),
-        xaxis_title=plot_options['x_label'],
-        yaxis_title=plot_options['y_label'],
-        hovermode='closest',
-        plot_bgcolor='white',
-        width=900,
-        height=600,
-        margin=dict(t=100, b=100),
-        showlegend=True,
-        legend=dict(
-            yanchor="top",
-            y=0.99,
-            xanchor="left",
-            x=0.01
-        )
-    )
-    
-    # Ajout de la grille
-    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
-    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
-    
-    # Ajout de la source et de la note si spécifiées
-    annotations = []
-    
-    current_y = -0.15
-    if plot_options['source']:
-        annotations.append(dict(
-            text=f"Source : {plot_options['source']}",
-            x=0,
-            y=current_y,
-            xref="paper",
-            yref="paper",
-            showarrow=False,
-            font=dict(size=10)
-        ))
-        current_y -= 0.05
-    
-    if plot_options['note']:
-        annotations.append(dict(
-            text=f"Note : {plot_options['note']}",
-            x=0,
-            y=current_y,
-            xref="paper",
-            yref="paper",
-            showarrow=False,
-            font=dict(size=10)
-        ))
-    
-    if annotations:
-        fig.update_layout(annotations=annotations)
-    
-    return fig
     
 def calculate_regression(x, y):
     """
@@ -822,6 +690,43 @@ def plot_density(plot_data, var, title, x_axis, y_axis):
     )
     return fig
 
+def plot_lollipop_qualitative(data, x, y, title, x_label, y_label, color):
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=data[x],
+        y=data[y],
+        mode='markers+lines',
+        marker=dict(color=color, size=10),
+        line=dict(color=color, width=2)
+    ))
+
+    fig.update_layout(
+        title=title,
+        xaxis_title=x_label,
+        yaxis_title=y_label,
+        showlegend=False,
+        plot_bgcolor='white',
+        height=600,
+        margin=dict(t=100, b=100),
+    )
+    return fig
+
+def plot_treemap_qualitative(data, labels, values, title):
+    fig = px.treemap(
+        data,
+        path=[labels],
+        values=values,
+        color=values,
+        color_continuous_scale='Blues'
+    )
+
+    fig.update_layout(
+        title=title,
+        showlegend=False,
+        height=600,
+        margin=dict(t=100, b=100),
+    )
+    return fig
 
 def calculate_grouped_stats(data, var, groupby_col, agg_method='mean'):
     """
@@ -1352,24 +1257,13 @@ def main():
                     # Génération du graphique
                     if st.button("Générer la visualisation"):
                         try:
-                            if show_evolution:
-                                # Préparation des données temporelles
-                                evolution_data = plot_data.groupby(time_var)
-                                
-                                if is_numeric:
-                                    if evolution_type == "Somme globale":
-                                        y_values = evolution_data.sum()
-                                    elif evolution_type == "Moyenne":
-                                        y_values = evolution_data.mean()
-                                    else:  # Maximum
-                                        y_values = evolution_data.max()
-                                else:
-                                    if evolution_type == "Effectifs":
-                                        y_values = evolution_data.count()
-                                    else:  # Taux
-                                        y_values = (evolution_data.count() / len(plot_data)) * 100
-                                
-                                evolution_data = pd.DataFrame({'date': y_values.index, 'value': y_values.values})
+                            if graph_type == "Lollipop plot":
+                                fig = plot_lollipop_qualitative(value_counts, 'Modalité', 'Effectif', title, x_axis, y_axis, COLOR_PALETTES[color_scheme][0])
+                            
+                            elif graph_type == "Treemap":
+                                fig = plot_treemap_qualitative(value_counts, 'Modalité', 'Effectif', title)
+                            
+                            st.plotly_chart(fig, use_container_width=True)
                                 
                                 # Création du graphique d'évolution
                                 if graph_type == "Line plot":
