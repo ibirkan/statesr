@@ -690,82 +690,103 @@ def plot_density(plot_data, var, title, x_axis, y_axis):
     )
     return fig
 
-def plot_lollipop_qualitative(data, x, y, title, x_label, y_label, color):
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=data[x],
-        y=data[y],
-        mode='markers+lines',
-        marker=dict(color=color, size=10),
-        line=dict(color=color, width=2)
-    ))
+def plot_qualitative_bar(data, title, x_label, y_label, color_palette, show_values=True):
+    """
+    Crée un graphique en barres pour une variable qualitative.
+    """
+    fig = go.Figure(data=[
+        go.Bar(
+            x=data['Modalité'],
+            y=data['Effectif'],
+            marker_color=color_palette[0]
+        )
+    ])
 
     fig.update_layout(
         title=title,
         xaxis_title=x_label,
         yaxis_title=y_label,
-        showlegend=False,
-        plot_bgcolor='white',
         height=600,
         margin=dict(t=100, b=100),
-    )
-    return fig
-
-def plot_treemap_qualitative(data, labels, values, title):
-    fig = px.treemap(
-        data,
-        path=[labels],
-        values=values,
-        color=values,
-        color_continuous_scale='Blues'
-    )
-
-    fig.update_layout(
-        title=title,
         showlegend=False,
-        height=600,
-        margin=dict(t=100, b=100),
+        plot_bgcolor='white'
     )
+
+    # Ajout des valeurs sur les barres si demandé
+    if show_values:
+        fig.update_traces(
+            text=data['Effectif'],
+            textposition='outside',
+            texttemplate='%{text:.0f}'
+        )
+
     return fig
 
-# Function to plot lollipop plot for qualitative data
-def plot_lollipop_qualitative(data, x, y, title, x_label, y_label, color):
+def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show_values=True):
+    """
+    Crée un graphique lollipop pour une variable qualitative.
+    """
     fig = go.Figure()
+    
+    # Ajout des lignes
     fig.add_trace(go.Scatter(
-        x=data[x],
-        y=data[y],
-        mode='markers+lines',
-        marker=dict(color=color, size=10),
-        line=dict(color=color, width=2)
+        x=data['Modalité'],
+        y=data['Effectif'],
+        mode='lines',
+        line=dict(color=color_palette[0], width=2),
+        showlegend=False
     ))
+    
+    # Ajout des points
+    fig.add_trace(go.Scatter(
+        x=data['Modalité'],
+        y=data['Effectif'],
+        mode='markers',
+        marker=dict(color=color_palette[0], size=10),
+        showlegend=False
+    ))
+
+    # Ajout des valeurs si demandé
+    if show_values:
+        fig.add_trace(go.Scatter(
+            x=data['Modalité'],
+            y=data['Effectif'],
+            mode='text',
+            text=data['Effectif'].round(0).astype(str),
+            textposition='top center',
+            textfont=dict(size=12),
+            showlegend=False
+        ))
 
     fig.update_layout(
         title=title,
         xaxis_title=x_label,
         yaxis_title=y_label,
-        showlegend=False,
-        plot_bgcolor='white',
         height=600,
         margin=dict(t=100, b=100),
+        plot_bgcolor='white'
     )
+
     return fig
 
-# Function to plot treemap for qualitative data
-def plot_treemap_qualitative(data, labels, values, title):
+def plot_qualitative_treemap(data, title, color_palette):
+    """
+    Crée un treemap pour une variable qualitative.
+    """
     fig = px.treemap(
         data,
-        path=[labels],
-        values=values,
-        color=values,
-        color_continuous_scale='Blues'
+        path=['Modalité'],
+        values='Effectif',
+        title=title,
+        color='Effectif',
+        color_continuous_scale=[color_palette[0]] * 2
     )
 
     fig.update_layout(
-        title=title,
-        showlegend=False,
         height=600,
-        margin=dict(t=100, b=100),
+        margin=dict(t=100, b=100)
     )
+
     return fig
 
 def calculate_grouped_stats(data, var, groupby_col, agg_method='mean'):
@@ -1296,14 +1317,36 @@ def main():
                     
                     # Génération du graphique
                     if st.button("Générer la visualisation"):
-                        try: 
-                            if graph_type == "Lollipop plot":
-                                fig = plot_lollipop_qualitative(value_counts, 'Modalité', 'Effectif', title, x_axis, y_axis, COLOR_PALETTES[color_scheme][0])
-                            
+                        try:
+                            if graph_type == "Bar plot":
+                                fig = plot_qualitative_bar(
+                                    value_counts,
+                                    title,
+                                    x_axis,
+                                    y_axis,
+                                    COLOR_PALETTES[color_scheme],
+                                    show_values
+                                )
+                                st.plotly_chart(fig, use_container_width=True)
+                                
+                            elif graph_type == "Lollipop plot":
+                                fig = plot_qualitative_lollipop(
+                                    value_counts,
+                                    title,
+                                    x_axis,
+                                    y_axis,
+                                    COLOR_PALETTES[color_scheme],
+                                    show_values
+                                )
+                                st.plotly_chart(fig, use_container_width=True)
+                                
                             elif graph_type == "Treemap":
-                                fig = plot_treemap_qualitative(value_counts, 'Modalité', 'Effectif', title)
-                            
-                            st.plotly_chart(fig, use_container_width=True)
+                                fig = plot_qualitative_treemap(
+                                    value_counts,
+                                    title,
+                                    COLOR_PALETTES[color_scheme]
+                                )
+                                st.plotly_chart(fig, use_container_width=True)
                             
                             # Création du graphique d'évolution
                             if show_evolution:
