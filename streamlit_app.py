@@ -731,8 +731,8 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
     # Pour chaque point, créer une ligne verticale partant de zéro
     for i in range(len(data)):
         fig.add_trace(go.Scatter(
-            x=[data['Modalité'].iloc[i], data['Modalité'].iloc[i]],  # Même x pour les deux points
-            y=[0, data['Effectif'].iloc[i]],  # De zéro jusqu'à la valeur
+            x=[data['Modalité'].iloc[i], data['Modalité'].iloc[i]],
+            y=[0, data['Effectif'].iloc[i]],
             mode='lines',
             line=dict(color=color_palette[0], width=2),
             showlegend=False,
@@ -749,19 +749,24 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
         showlegend=False
     ))
 
-    # Ajout des valeurs au-dessus des points si demandé
+    # Ajout des valeurs au-dessus des points avec plus d'espace
     if show_values:
         fig.add_trace(go.Scatter(
             x=data['Modalité'],
             y=data['Effectif'],
             mode='text',
             text=data['Effectif'].round(0).astype(str),
-            textposition='outside',
+            textposition='top center',
             textfont=dict(size=12),
-            showlegend=False
+            texttemplate='%{text}',
+            textfont_color='black',
+            showlegend=False,
+            offsetgroup=0,
+            textposition='top center',
+            textoffset=15  # Augmentation de la distance entre le point et le texte
         ))
 
-    # Mise à jour du layout
+    # Mise à jour du layout avec plus d'espace en haut pour les labels
     fig.update_layout(
         title=title,
         xaxis_title=x_label,
@@ -774,7 +779,7 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
             zerolinewidth=1,
             zerolinecolor='lightgray',
             gridcolor='lightgray',
-            range=[0, max(data['Effectif']) * 1.1]  # Laisse un peu d'espace au-dessus des points
+            range=[0, max(data['Effectif']) * 1.2]  # Augmentation de l'espace au-dessus des points
         ),
         xaxis=dict(
             gridcolor='lightgray'
