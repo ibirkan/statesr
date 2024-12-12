@@ -1256,7 +1256,7 @@ def main():
                     
                     # Génération du graphique
                     if st.button("Générer la visualisation"):
-                        try:
+                        try: 
                             if graph_type == "Lollipop plot":
                                 fig = plot_lollipop_qualitative(value_counts, 'Modalité', 'Effectif', title, x_axis, y_axis, COLOR_PALETTES[color_scheme][0])
                             
@@ -1264,16 +1264,17 @@ def main():
                                 fig = plot_treemap_qualitative(value_counts, 'Modalité', 'Effectif', title)
                             
                             st.plotly_chart(fig, use_container_width=True)
-                                
-                                # Création du graphique d'évolution
+                            
+                            # Création du graphique d'évolution
+                            if show_evolution:
                                 if graph_type == "Line plot":
                                     fig = px.line(evolution_data, x='date', y='value',
-                                                title=title,
-                                                color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                                                  title=title,
+                                                  color_discrete_sequence=COLOR_PALETTES[color_scheme])
                                 elif graph_type == "Bar plot":
                                     fig = px.bar(evolution_data, x='date', y='value',
-                                               title=title,
-                                               color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                                                 title=title,
+                                                 color_discrete_sequence=COLOR_PALETTES[color_scheme])
                                 else:  # Lollipop plot avec matplotlib
                                     fig, ax = plt.subplots(figsize=(12, 6))
                                     
