@@ -1286,8 +1286,22 @@ def main():
                         source = st.text_input("Source des données", "", key="source_adv")
                         note = st.text_input("Note de lecture", "", key="note_adv")
                         show_values = st.checkbox("Afficher les valeurs", True, key="show_values_adv")
-                        if not is_numeric:
-                            value_type = st.radio("Type de valeur à afficher", ["Effectif", "Taux (%)"], key="value_type_adv")
+                        
+                        # Option spécifique selon le type de regroupement
+                        if is_numeric and grouping_method != "Aucune":
+                            if grouping_method == "Quantile":
+                                value_to_display = st.radio(
+                                    "Valeur à afficher",
+                                    ["Maximum", "Moyenne"],
+                                    index=0,  # Maximum par défaut
+                                    key="value_type_quant"
+                                )
+                            elif grouping_method == "Manuelle":
+                                value_to_display = st.radio(
+                                    "Valeur à afficher",
+                                    ["Effectif", "Taux (%)"],
+                                    key="value_type_manual"
+                                )
     
                 # Génération du graphique
                 if st.button("Générer la visualisation"):
@@ -1368,12 +1382,23 @@ def main():
                                         fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
                                 else:  # Density plot
                                     fig = plot_density(plot_data, var, title, x_axis, y_axis)
+
                             else:  # Pour les données groupées
                                 data_to_plot = pd.DataFrame({
-                                    'Modalité': value_counts['Groupe'].astype(str),  # Conversion en chaîne de caractères ici
-                                    'Effectif': value_counts['Effectif']
+                                    'Modalité': value_counts['Groupe'].astype(str)
                                 })
-                
+                                
+                                if grouping_method == "Quantile":
+                                    data_to_plot['Effectif'] = group_stats['Maximum'] if value_to_display == "Maximum" else group_stats['Moyenne']
+                                    y_axis = f"{y_axis} ({value_to_display.lower()})"
+                                else:  # Groupement manuel
+                                    if value_to_display == "Taux (%)":
+                                        data_to_plot['Effectif'] = value_counts['Taux (%)']
+                                        y_axis = "Taux (%)"
+                                    else:
+                                        data_to_plot['Effectif'] = value_counts['Effectif']
+                                        y_axis = "Effectif"
+                            
                                 if graph_type == "Bar plot":
                                     fig = plot_qualitative_bar(
                                         data_to_plot,
