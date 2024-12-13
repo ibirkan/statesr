@@ -1306,6 +1306,9 @@ def main():
                             if value_type == "Taux (%)":
                                 data_to_plot['Effectif'] = data_to_plot['Taux (%)']
                                 y_axis = "Taux (%)" if y_axis == "Valeur" else y_axis
+
+                            # Convertir les objets Interval en chaînes de caractères
+                            data_to_plot['Modalité'] = data_to_plot['Modalité'].astype(str)
                 
                             if graph_type == "Bar plot":
                                 fig = plot_qualitative_bar(
