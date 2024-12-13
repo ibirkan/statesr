@@ -716,7 +716,7 @@ def plot_qualitative_bar(data, title, x_label, y_label, color_palette, show_valu
             tickangle=45
         ),
         yaxis=dict(
-            showgrid=True,
+            showgrid=False,
             gridcolor='lightgray',
             zeroline=True,
             zerolinewidth=1,
