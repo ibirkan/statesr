@@ -1261,7 +1261,7 @@ def main():
                     adv_col1, adv_col2 = st.columns(2)
                     with adv_col1:
                         title = st.text_input("Titre du graphique", f"Distribution de {var}", key="title_adv")
-                        x_axis = st.text_input("Titre de l'axe XXX", var, key="x_axis_adv")
+                        x_axis = st.text_input("Titre de l'axe X", var, key="x_axis_adv")
                         y_axis = st.text_input("Titre de l'axe Y", "Valeur", key="y_axis_adv")
                     with adv_col2:
                         source = st.text_input("Source des données", "", key="source_adv")
