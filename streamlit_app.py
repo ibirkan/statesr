@@ -1231,9 +1231,16 @@ def main():
                                     value=float(plot_data.min() + (i/n_groups)*(plot_data.max()-plot_data.min())))
                             breaks.append(val)
                         
+                        # Création des groupes avec pd.cut
                         grouped_data = pd.cut(plot_data, bins=breaks)
                         value_counts = grouped_data.value_counts().reset_index()
                         value_counts.columns = ['Groupe', 'Effectif']
+                        
+                        # Tri des valeurs selon l'ordre des intervalles
+                        value_counts = value_counts.sort_values('Groupe', 
+                                                              key=lambda x: x.map(lambda y: y.left))
+                        
+                        # Calcul des taux après le tri
                         value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
                         
                         st.write("### Répartition des groupes")
