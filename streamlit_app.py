@@ -1346,6 +1346,10 @@ def main():
                 
                         # Affichage du graphique
                         st.plotly_chart(fig, use_container_width=True)
+                        
+                    except Exception as e:
+                        st.error(f"Erreur lors de la génération du graphique : {str(e)}")
+                        st.error(f"Détails : {str(type(e).__name__)}")  # Ajout des détails de l'erreur pour le debugging
                 
                         else:  # Pour les variables numériques
                             if grouping_method == "Aucune":
