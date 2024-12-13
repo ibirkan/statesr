@@ -760,23 +760,22 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
         showlegend=False
     ))
 
-    # Ajout des valeurs au-dessus des points avec une distance plus grande
+    # Ajout des valeurs au-dessus des points
     if show_values:
-        # Calcul de la position Y pour le texte (30% plus haut que les points)
-        max_y = data['Effectif'].max()
-        text_y = data['Effectif'] + (max_y * 0.1)
+        # Calcul de la position Y pour le texte (20% plus haut que les points)
+        text_y = data['Effectif'] + (data['Effectif'].max() * 0.1)
         
         fig.add_trace(go.Scatter(
             x=data['Modalité'],
-            y=text_y,
+            y=text_y,  # Position Y ajustée
             mode='text',
-            text=data['Effectif'].round(1).astype(str),
+            text=data['Effectif'].round(0).astype(str),
             textposition='middle center',
             textfont=dict(size=12),
             showlegend=False
         ))
 
-    # Mise à jour du layout avec plus d'espace pour les labels
+    # Mise à jour du layout
     fig.update_layout(
         title=title,
         xaxis_title=x_label,
@@ -789,11 +788,10 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
             zerolinewidth=1,
             zerolinecolor='lightgray',
             gridcolor='lightgray',
-            range=[0, max(data['Effectif']) * 1.5]  # Plus d'espace pour le texte
+            range=[0, max(data['Effectif']) * 1.3]  # Plus d'espace pour le texte
         ),
         xaxis=dict(
-            gridcolor='lightgray',
-            tickangle=45
+            gridcolor='lightgray'
         )
     )
 
