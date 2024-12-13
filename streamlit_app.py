@@ -1284,11 +1284,11 @@ def main():
                                 yref="paper",
                                 x=0,
                                 y=current_y,
-                                showarrow=True,
+                                showarrow=False,
                                 font=dict(size=10),
                                 align="left"
                             ))
-                            current_y -= 0.20
+                            current_y -= -0.20
                 
                         if note:
                             annotations.append(dict(
@@ -1297,7 +1297,7 @@ def main():
                                 yref="paper",
                                 x=0,
                                 y=current_y,
-                                showarrow=True,
+                                showarrow=False,
                                 font=dict(size=10),
                                 align="left"
                             ))
