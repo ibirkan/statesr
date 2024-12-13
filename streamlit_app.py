@@ -764,7 +764,7 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
     if show_values:
         # Calcul de la position Y pour le texte (30% plus haut que les points)
         max_y = data['Effectif'].max()
-        text_y = data['Effectif'] + (max_y * 0.2)
+        text_y = data['Effectif'] + (max_y * 0.1)
         
         fig.add_trace(go.Scatter(
             x=data['Modalité'],
