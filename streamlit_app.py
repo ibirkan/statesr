@@ -1197,8 +1197,8 @@ def main():
                     group_stats = plot_data.groupby(grouped_data).agg(['sum', 'mean', 'max']).round(2)
                     group_stats.columns = ['Somme', 'Moyenne', 'Maximum']
                         
-                        st.write("### Statistiques par groupe")
-                        st.dataframe(pd.concat([value_counts.set_index('Groupe'), group_stats], axis=1))
+                    st.write("### Statistiques par groupe")
+                    st.dataframe(pd.concat([value_counts.set_index('Groupe'), group_stats], axis=1))
                         
                     elif grouping_method == "Manuelle":
                         n_groups = st.number_input("Nombre de groupes", min_value=2, value=3)
