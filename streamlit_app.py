@@ -1288,7 +1288,7 @@ def main():
                                 font=dict(size=10),
                                 align="left"
                             ))
-                            current_y -= -0.20
+                            current_y -= 0.05
                 
                         if note:
                             annotations.append(dict(
