@@ -1174,25 +1174,28 @@ def main():
                         ["Aucune", "Quantile", "Manuelle"]
                     )
                     
-                    if grouping_method == "Quantile":
-                        quantile_type = st.selectbox(
-                            "Type de regroupement",
-                            ["Quartile (4 groupes)", "Quintile (5 groupes)", "Décile (10 groupes)"]
-                        )
-                        
-                        n_groups = {
-                            "Quartile (4 groupes)": 4, 
-                            "Quintile (5 groupes)": 5, 
-                            "Décile (10 groupes)": 10
-                        }[quantile_type]
-                        
-                        grouped_data = pd.qcut(plot_data, q=n_groups)
-                        value_counts = grouped_data.value_counts().reset_index()
-                        value_counts.columns = ['Groupe', 'Effectif']
-                        value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
-                        
-                        group_stats = plot_data.groupby(grouped_data).agg(['sum', 'mean', 'max']).round(2)
-                        group_stats.columns = ['Somme', 'Moyenne', 'Maximum']
+                    # Création des labels personnalisés selon le type de quantile
+                    if quantile_type == "Quartile (4 groupes)":
+                        labels = [f"{i}er quartile" if i == 1 else f"{i}ème quartile" 
+                                 for i in range(1, 5)]
+                    elif quantile_type == "Quintile (5 groupes)":
+                        labels = [f"{i}er quintile" if i == 1 else f"{i}ème quintile" 
+                                 for i in range(1, 6)]
+                    else:  # Déciles
+                        labels = [f"{i}er décile" if i == 1 else f"{i}ème décile" 
+                                 for i in range(1, 11)]
+                    
+                    # Création des groupes avec les labels personnalisés
+                    grouped_data = pd.qcut(plot_data, q=n_groups, labels=labels)
+                    value_counts = grouped_data.value_counts().reset_index()
+                    value_counts.columns = ['Groupe', 'Effectif']
+                    value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
+                    
+                    # Tri des valeurs pour avoir les groupes dans le bon ordre
+                    value_counts = value_counts.sort_values('Groupe')
+                    
+                    group_stats = plot_data.groupby(grouped_data).agg(['sum', 'mean', 'max']).round(2)
+                    group_stats.columns = ['Somme', 'Moyenne', 'Maximum']
                         
                         st.write("### Statistiques par groupe")
                         st.dataframe(pd.concat([value_counts.set_index('Groupe'), group_stats], axis=1))
