@@ -1124,18 +1124,15 @@ def main():
                 
                 if is_numeric:
                     # Gestion des variables numériques
-                    # Détection des doublons potentiels
                     has_duplicates = st.session_state.merged_data.duplicated(subset=[var]).any()
                     
                     if has_duplicates:
                         st.warning("⚠️ Certaines observations sont répétées dans le jeu de données. "
                                   "Vous pouvez choisir d'agréger les données avant l'analyse.")
                         
-                        # Option d'agrégation
                         do_aggregate = st.checkbox("Agréger les données avant l'analyse")
                         
                         if do_aggregate:
-                            # Configuration de l'agrégation
                             groupby_cols = [col for col in st.session_state.merged_data.columns if col != var]
                             groupby_col = st.selectbox("Sélectionner la colonne d'agrégation", groupby_cols)
                             
@@ -1149,7 +1146,6 @@ def main():
                                 }[x]
                             )
                             
-                            # Création des données agrégées
                             clean_data = st.session_state.merged_data.dropna(subset=[var, groupby_col])
                             agg_data = clean_data.groupby(groupby_col).agg({var: agg_method}).reset_index()
                             plot_data = agg_data[var]
@@ -1168,7 +1164,6 @@ def main():
                         ]
                     })
                     
-                    # Affichage du tableau statistique
                     grid_response = create_interactive_stats_table(stats_df)
                     
                     if do_aggregate:
@@ -1198,7 +1193,6 @@ def main():
                         value_counts.columns = ['Groupe', 'Effectif']
                         value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
                         
-                        # Statistiques par groupe
                         group_stats = plot_data.groupby(grouped_data).agg(['sum', 'mean', 'max']).round(2)
                         group_stats.columns = ['Somme', 'Moyenne', 'Maximum']
                         
@@ -1214,10 +1208,8 @@ def main():
                             elif i == n_groups:
                                 val = plot_data.max()
                             else:
-                                val = st.number_input(
-                                    f"Seuil {i}", 
-                                    value=float(plot_data.min() + (i/n_groups)*(plot_data.max()-plot_data.min()))
-                                )
+                                val = st.number_input(f"Seuil {i}", 
+                                    value=float(plot_data.min() + (i/n_groups)*(plot_data.max()-plot_data.min())))
                             breaks.append(val)
                         
                         grouped_data = pd.cut(plot_data, bins=breaks)
@@ -1238,6 +1230,7 @@ def main():
                 # Configuration de la visualisation
                 st.write("### Configuration de la visualisation")
                 
+                # Sélection du type de graphique et de la palette de couleurs
                 viz_col1, viz_col2 = st.columns([1, 2])
                 with viz_col1:
                     if is_numeric:
@@ -1251,11 +1244,6 @@ def main():
                                 "Type de graphique",
                                 ["Bar plot", "Lollipop plot", "Treemap"]
                             )
-                            if grouping_method != "Manuelle":
-                                value_type = st.selectbox(
-                                    "Valeur à afficher",
-                                    ["Effectifs", "Somme", "Moyenne", "Maximum"]
-                                )
                     else:
                         graph_type = st.selectbox(
                             "Type de graphique",
@@ -1268,7 +1256,7 @@ def main():
                         list(COLOR_PALETTES.keys())
                     )
                 
-                # Dans les options avancées (partie interface)
+                # Options avancées
                 with st.expander("Options avancées"):
                     adv_col1, adv_col2 = st.columns(2)
                     with adv_col1:
@@ -1279,19 +1267,47 @@ def main():
                         source = st.text_input("Source des données", "")
                         note = st.text_input("Note de lecture", "")
                         show_values = st.checkbox("Afficher les valeurs", True)
-                        value_type = st.radio("Type de valeur à afficher", ["Effectif", "Taux (%)"])
-                        
+                        if not is_numeric:
+                            value_type = st.radio("Type de valeur à afficher", ["Effectif", "Taux (%)"])
+    
                 # Génération du graphique
                 if st.button("Générer la visualisation"):
                     try:
-                        if not is_numeric:  # Pour les variables qualitatives uniquement
-                            # Préparation des données selon le type de valeur choisi
+                        # Préparation des annotations
+                        annotations = []
+                        current_y = -0.15
+    
+                        if source:
+                            annotations.append(dict(
+                                text=f"Source : {source}",
+                                xref="paper",
+                                yref="paper",
+                                x=0,
+                                y=current_y,
+                                showarrow=False,
+                                font=dict(size=10),
+                                align="left"
+                            ))
+                            current_y -= 0.05
+    
+                        if note:
+                            annotations.append(dict(
+                                text=f"Note : {note}",
+                                xref="paper",
+                                yref="paper",
+                                x=0,
+                                y=current_y,
+                                showarrow=False,
+                                font=dict(size=10),
+                                align="left"
+                            ))
+    
+                        if not is_numeric:  # Pour les variables qualitatives
                             data_to_plot = value_counts.copy()
                             if value_type == "Taux (%)":
                                 data_to_plot['Effectif'] = data_to_plot['Taux (%)']
                                 y_axis = "Taux (%)" if y_axis == "Valeur" else y_axis
-                
-                            # Création du graphique selon le type choisi
+    
                             if graph_type == "Bar plot":
                                 fig = plot_qualitative_bar(
                                     data_to_plot,
@@ -1301,7 +1317,6 @@ def main():
                                     COLOR_PALETTES[color_scheme],
                                     show_values
                                 )
-                
                             elif graph_type == "Lollipop plot":
                                 fig = plot_qualitative_lollipop(
                                     data_to_plot,
@@ -1311,46 +1326,13 @@ def main():
                                     COLOR_PALETTES[color_scheme],
                                     show_values
                                 )
-                
                             elif graph_type == "Treemap":
                                 fig = plot_qualitative_treemap(
                                     data_to_plot,
                                     title,
                                     COLOR_PALETTES[color_scheme]
                                 )
-                
-                        # Ajout de la source et de la note pour tous les graphiques
-                        if source:
-                            fig.add_annotation(
-                                text=f"Source : {source}",
-                                xref="paper",
-                                yref="paper",
-                                x=0,
-                                y=-0.15,
-                                showarrow=False,
-                                font=dict(size=10),
-                                align="left"
-                            )
-                
-                        if note:
-                            fig.add_annotation(
-                                text=f"Note : {note}",
-                                xref="paper",
-                                yref="paper",
-                                x=0,
-                                y=-0.2,
-                                showarrow=False,
-                                font=dict(size=10),
-                                align="left"
-                            )
-                
-                        # Affichage du graphique
-                        st.plotly_chart(fig, use_container_width=True)
-                        
-                    except Exception as e:
-                        st.error(f"Erreur lors de la génération du graphique : {str(e)}")
-                        st.error(f"Détails : {str(type(e).__name__)}")  # Ajout des détails de l'erreur pour le debugging
-                
+    
                         else:  # Pour les variables numériques
                             if grouping_method == "Aucune":
                                 if graph_type == "Histogramme":
@@ -1361,25 +1343,15 @@ def main():
                                     )
                                     if show_values:
                                         fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
-                                        
-                                elif graph_type == "Density plot":
+                                else:  # Density plot
                                     fig = plot_density(plot_data, var, title, x_axis, y_axis)
-                                    
                             else:  # Pour les données groupées
+                                data_to_plot = pd.DataFrame({
+                                    'Modalité': value_counts['Groupe'],
+                                    'Effectif': value_counts['Effectif']
+                                })
+    
                                 if graph_type == "Bar plot":
-                                    # Utiliser les données appropriées selon le type de valeur
-                                    if value_type != "Effectifs":
-                                        y_col = 'Somme' if value_type == "Somme" else 'Moyenne' if value_type == "Moyenne" else 'Maximum'
-                                        data_to_plot = pd.DataFrame({
-                                            'Modalité': value_counts['Groupe'],
-                                            'Effectif': group_stats[y_col]
-                                        })
-                                    else:
-                                        data_to_plot = pd.DataFrame({
-                                            'Modalité': value_counts['Groupe'],
-                                            'Effectif': value_counts['Effectif']
-                                        })
-                                        
                                     fig = plot_qualitative_bar(
                                         data_to_plot,
                                         title,
@@ -1388,70 +1360,33 @@ def main():
                                         COLOR_PALETTES[color_scheme],
                                         show_values
                                     )
-                                    
-                                elif graph_type in ["Lollipop plot", "Treemap"]:
-                                    # Même logique pour les données que le bar plot
-                                    if value_type != "Effectifs":
-                                        y_col = 'Somme' if value_type == "Somme" else 'Moyenne' if value_type == "Moyenne" else 'Maximum'
-                                        data_to_plot = pd.DataFrame({
-                                            'Modalité': value_counts['Groupe'],
-                                            'Effectif': group_stats[y_col]
-                                        })
-                                    else:
-                                        data_to_plot = pd.DataFrame({
-                                            'Modalité': value_counts['Groupe'],
-                                            'Effectif': value_counts['Effectif']
-                                        })
-                                    
-                                    if graph_type == "Lollipop plot":
-                                        fig = plot_qualitative_lollipop(
-                                            data_to_plot,
-                                            title,
-                                            x_axis,
-                                            y_axis,
-                                            COLOR_PALETTES[color_scheme],
-                                            show_values
-                                        )
-                                    else:  # Treemap
-                                        fig = plot_qualitative_treemap(
-                                            data_to_plot,
-                                            title,
-                                            COLOR_PALETTES[color_scheme]
-                                        )
-                
-                        # Ajout de la source pour tous les graphiques Plotly
-                        if source and isinstance(fig, go.Figure):
-                            fig.add_annotation(
-                                text=f"Source: {source}",
-                                xref="paper",
-                                yref="paper",
-                                x=0,
-                                y=-0.15,
-                                showarrow=False,
-                                font=dict(size=10),
-                                align="left"
-                            )
-
-                        # Ajout de la note pour tous les graphiques Plotly
-                        if note and isinstance(fig, go.Figure):
-                            fig.add_annotation(
-                                text=f"Note: {note}",
-                                xref="paper",
-                                yref="paper",
-                                x=0,
-                                y=-0.15,
-                                showarrow=False,
-                                font=dict(size=10),
-                                align="left"
-                            )   
-                        
+                                elif graph_type == "Lollipop plot":
+                                    fig = plot_qualitative_lollipop(
+                                        data_to_plot,
+                                        title,
+                                        x_axis,
+                                        y_axis,
+                                        COLOR_PALETTES[color_scheme],
+                                        show_values
+                                    )
+                                else:  # Treemap
+                                    fig = plot_qualitative_treemap(
+                                        data_to_plot,
+                                        title,
+                                        COLOR_PALETTES[color_scheme]
+                                    )
+    
+                        # Ajout des annotations au graphique
+                        if annotations and isinstance(fig, go.Figure):
+                            fig.update_layout(annotations=annotations)
+    
                         # Affichage du graphique
                         st.plotly_chart(fig, use_container_width=True)
-                                               
+    
                     except Exception as e:
                         st.error(f"Erreur lors de la génération du graphique : {str(e)}")
-                        st.error(f"Détails : {str(type(e).__name__)}")  # Ajout des détails de l'erreur pour le debugging
-
+                        st.error(f"Détails : {str(type(e).__name__)}")
+    
             else:
                 st.warning("Aucune donnée valide disponible pour cette variable")
         else:
