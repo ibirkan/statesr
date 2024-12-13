@@ -1276,7 +1276,7 @@ def main():
                         # Préparation des annotations
                         annotations = []
                         current_y = -0.15
-    
+                
                         if source:
                             annotations.append(dict(
                                 text=f"Source : {source}",
@@ -1289,7 +1289,7 @@ def main():
                                 align="left"
                             ))
                             current_y -= 0.05
-    
+                
                         if note:
                             annotations.append(dict(
                                 text=f"Note : {note}",
@@ -1301,13 +1301,14 @@ def main():
                                 font=dict(size=10),
                                 align="left"
                             ))
-    
+                
+                        # Création du graphique selon le type de variable
                         if not is_numeric:  # Pour les variables qualitatives
                             data_to_plot = value_counts.copy()
                             if value_type == "Taux (%)":
                                 data_to_plot['Effectif'] = data_to_plot['Taux (%)']
                                 y_axis = "Taux (%)" if y_axis == "Valeur" else y_axis
-    
+                
                             if graph_type == "Bar plot":
                                 fig = plot_qualitative_bar(
                                     data_to_plot,
@@ -1332,7 +1333,7 @@ def main():
                                     title,
                                     COLOR_PALETTES[color_scheme]
                                 )
-    
+                
                         else:  # Pour les variables numériques
                             if grouping_method == "Aucune":
                                 if graph_type == "Histogramme":
@@ -1350,7 +1351,7 @@ def main():
                                     'Modalité': value_counts['Groupe'],
                                     'Effectif': value_counts['Effectif']
                                 })
-    
+                
                                 if graph_type == "Bar plot":
                                     fig = plot_qualitative_bar(
                                         data_to_plot,
@@ -1375,14 +1376,14 @@ def main():
                                         title,
                                         COLOR_PALETTES[color_scheme]
                                     )
-    
+                
                         # Ajout des annotations au graphique
                         if annotations and isinstance(fig, go.Figure):
                             fig.update_layout(annotations=annotations)
-    
+                
                         # Affichage du graphique
                         st.plotly_chart(fig, use_container_width=True)
-    
+                
                     except Exception as e:
                         st.error(f"Erreur lors de la génération du graphique : {str(e)}")
                         st.error(f"Détails : {str(type(e).__name__)}")
