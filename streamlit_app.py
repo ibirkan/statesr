@@ -1349,7 +1349,7 @@ def main():
                                     fig = plot_density(plot_data, var, title, x_axis, y_axis)
                             else:  # Pour les données groupées
                                 data_to_plot = pd.DataFrame({
-                                    'Modalité': value_counts['Groupe'],
+                                    'Modalité': value_counts['Groupe'].astype(str),  # Conversion en chaîne de caractères ici
                                     'Effectif': value_counts['Effectif']
                                 })
                 
