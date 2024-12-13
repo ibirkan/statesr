@@ -711,12 +711,12 @@ def plot_qualitative_bar(data, title, x_label, y_label, color_palette, show_valu
         showlegend=False,
         plot_bgcolor='white',
         xaxis=dict(
-            showgrid=True,
+            showgrid=False,
             gridcolor='lightgray',
             tickangle=45
         ),
         yaxis=dict(
-            showgrid=False,
+            showgrid=True,
             gridcolor='lightgray',
             zeroline=True,
             zerolinewidth=1,
