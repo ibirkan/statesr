@@ -701,7 +701,7 @@ def plot_qualitative_bar(data, title, x_label, y_label, color_palette, show_valu
             marker_color=color_palette[0]
         )
     ])
-
+    
     fig.update_layout(
         title=title,
         xaxis_title=x_label,
@@ -709,15 +709,26 @@ def plot_qualitative_bar(data, title, x_label, y_label, color_palette, show_valu
         height=600,
         margin=dict(t=100, b=100),
         showlegend=False,
-        plot_bgcolor='white'
+        plot_bgcolor='white',
+        xaxis=dict(
+            showgrid=True,
+            gridcolor='lightgray',
+            tickangle=45
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor='lightgray',
+            zeroline=True,
+            zerolinewidth=1,
+            zerolinecolor='lightgray'
+        )
     )
 
-    # Ajout des valeurs sur les barres si demandé
     if show_values:
         fig.update_traces(
-            text=data['Effectif'],
+            text=data['Effectif'].round(1),
             textposition='outside',
-            texttemplate='%{text:.0f}'
+            texttemplate='%{text:.1f}'
         )
 
     return fig
@@ -749,22 +760,23 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
         showlegend=False
     ))
 
-    # Ajout des valeurs au-dessus des points
+    # Ajout des valeurs au-dessus des points avec une distance plus grande
     if show_values:
-        # Calcul de la position Y pour le texte (20% plus haut que les points)
-        text_y = data['Effectif'] + (data['Effectif'].max() * 0.1)
+        # Calcul de la position Y pour le texte (30% plus haut que les points)
+        max_y = data['Effectif'].max()
+        text_y = data['Effectif'] + (max_y * 0.2)
         
         fig.add_trace(go.Scatter(
             x=data['Modalité'],
-            y=text_y,  # Position Y ajustée
+            y=text_y,
             mode='text',
-            text=data['Effectif'].round(0).astype(str),
+            text=data['Effectif'].round(1).astype(str),
             textposition='middle center',
             textfont=dict(size=12),
             showlegend=False
         ))
 
-    # Mise à jour du layout
+    # Mise à jour du layout avec plus d'espace pour les labels
     fig.update_layout(
         title=title,
         xaxis_title=x_label,
@@ -777,10 +789,11 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
             zerolinewidth=1,
             zerolinecolor='lightgray',
             gridcolor='lightgray',
-            range=[0, max(data['Effectif']) * 1.3]  # Plus d'espace pour le texte
+            range=[0, max(data['Effectif']) * 1.5]  # Plus d'espace pour le texte
         ),
         xaxis=dict(
-            gridcolor='lightgray'
+            gridcolor='lightgray',
+            tickangle=45
         )
     )
 
@@ -801,7 +814,11 @@ def plot_qualitative_treemap(data, title, color_palette):
 
     fig.update_layout(
         height=600,
-        margin=dict(t=100, b=100)
+        margin=dict(t=100, b=100),
+        # Amélioration de la lisibilité des labels
+        uniformtext=dict(minsize=10, mode='hide'),
+        # Ajustement des marges pour éviter la superposition
+        margin_pad=5
     )
 
     return fig
@@ -1251,7 +1268,7 @@ def main():
                         list(COLOR_PALETTES.keys())
                     )
                 
-                # Options avancées
+                # Dans les options avancées (partie interface)
                 with st.expander("Options avancées"):
                     adv_col1, adv_col2 = st.columns(2)
                     with adv_col1:
@@ -1262,9 +1279,8 @@ def main():
                         source = st.text_input("Source des données", "")
                         note = st.text_input("Note de lecture", "")
                         show_values = st.checkbox("Afficher les valeurs", True)
-                        # Nouvelle option
                         value_type = st.radio("Type de valeur à afficher", ["Effectif", "Taux (%)"])
-                
+                        
                 # Génération du graphique
                 if st.button("Générer la visualisation"):
                     try:
@@ -1275,6 +1291,36 @@ def main():
                                 data_to_plot['Effectif'] = data_to_plot['Taux (%)']
                                 y_axis = "Taux (%)" if y_axis == "Valeur" else y_axis
                 
+                            # Préparation des annotations communes (source et note)
+                            annotations = []
+                            current_y = -0.15
+                
+                            if source:
+                                annotations.append(dict(
+                                    text=f"Source : {source}",
+                                    xref="paper",
+                                    yref="paper",
+                                    x=0,
+                                    y=current_y,
+                                    showarrow=False,
+                                    font=dict(size=10),
+                                    align="left"
+                                ))
+                                current_y -= 0.05
+                
+                            if note:
+                                annotations.append(dict(
+                                    text=f"Note : {note}",
+                                    xref="paper",
+                                    yref="paper",
+                                    x=0,
+                                    y=current_y,
+                                    showarrow=False,
+                                    font=dict(size=10),
+                                    align="left"
+                                ))
+                
+                            # Création du graphique selon le type choisi
                             if graph_type == "Bar plot":
                                 fig = plot_qualitative_bar(
                                     data_to_plot,
@@ -1284,28 +1330,9 @@ def main():
                                     COLOR_PALETTES[color_scheme],
                                     show_values
                                 )
-                                if source:
-                                    fig.add_annotation(
-                                        text=f"Source: {source}",
-                                        xref="paper",
-                                        yref="paper",
-                                        x=0,
-                                        y=-0.15,
-                                        showarrow=False,
-                                        font=dict(size=10),
-                                        align="left"
-                                    )
-                                if note
-                                    fig.add_annotation(
-                                        text=f"Note: {note}",
-                                        xref="paper",
-                                        yref="paper",
-                                        x=0,
-                                        y=-0.15,
-                                        showarrow=False,
-                                        font=dict(size=10),
-                                        align="left"
-                                    )
+                                
+                                if annotations:
+                                    fig.update_layout(annotations=annotations)
                                 st.plotly_chart(fig, use_container_width=True)
                 
                             elif graph_type == "Lollipop plot":
@@ -1317,28 +1344,9 @@ def main():
                                     COLOR_PALETTES[color_scheme],
                                     show_values
                                 )
-                                if source:
-                                    fig.add_annotation(
-                                        text=f"Source: {source}",
-                                        xref="paper",
-                                        yref="paper",
-                                        x=0,
-                                        y=-0.15,
-                                        showarrow=False,
-                                        font=dict(size=10),
-                                        align="left"
-                                    )
-                                if note
-                                    fig.add_annotation(
-                                        text=f"Note: {note}",
-                                        xref="paper",
-                                        yref="paper",
-                                        x=0,
-                                        y=-0.15,
-                                        showarrow=False,
-                                        font=dict(size=10),
-                                        align="left"
-                                    )
+                                
+                                if annotations:
+                                    fig.update_layout(annotations=annotations)
                                 st.plotly_chart(fig, use_container_width=True)
                                 
                             elif graph_type == "Treemap":
@@ -1347,28 +1355,9 @@ def main():
                                     title,
                                     COLOR_PALETTES[color_scheme]
                                 )
-                                if source:
-                                    fig.add_annotation(
-                                        text=f"Source: {source}",
-                                        xref="paper",
-                                        yref="paper",
-                                        x=0,
-                                        y=-0.15,
-                                        showarrow=False,
-                                        font=dict(size=10),
-                                        align="left"
-                                    )
-                                if note
-                                    fig.add_annotation(
-                                        text=f"Note: {note}",
-                                        xref="paper",
-                                        yref="paper",
-                                        x=0,
-                                        y=-0.15,
-                                        showarrow=False,
-                                        font=dict(size=10),
-                                        align="left"
-                                    )
+                                
+                                if annotations:
+                                    fig.update_layout(annotations=annotations)
                                 st.plotly_chart(fig, use_container_width=True)
                 
                         else:  # Pour les variables numériques
@@ -1470,7 +1459,8 @@ def main():
                                                
                     except Exception as e:
                         st.error(f"Erreur lors de la génération du graphique : {str(e)}")
-                        
+                        st.error(f"Détails : {str(type(e).__name__)}")  # Ajout des détails de l'erreur pour le debugging
+
             else:
                 st.warning("Aucune donnée valide disponible pour cette variable")
         else:
