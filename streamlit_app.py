@@ -773,7 +773,7 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
             textfont_color='black',
             showlegend=False,
             offsetgroup=0,
-            textposition='top center',
+            textposition='outside',
             textoffset=15  # Augmentation de la distance entre le point et le texte
         ))
 
