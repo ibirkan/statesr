@@ -1167,13 +1167,6 @@ def main():
                     if do_aggregate:
                         st.info("Note : Les statistiques sont calculées à l'échelle de la variable d'agrégation sélectionnée.")
     
-                    # Options de regroupement
-                    st.write("### Options de regroupement")
-                    grouping_method = st.selectbox(
-                        "Méthode de regroupement",
-                        ["Aucune", "Quantile", "Manuelle"]
-                    )
-                    
                     if grouping_method == "Quantile":
                         quantile_type = st.selectbox(
                             "Type de regroupement",
@@ -1199,19 +1192,25 @@ def main():
                         
                         # Création des groupes avec les labels personnalisés
                         grouped_data = pd.qcut(plot_data, q=n_groups, labels=labels)
-                        value_counts = grouped_data.value_counts().reset_index()
-                        value_counts.columns = ['Groupe', 'Effectif']
-                        value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
                         
-                        # Tri des valeurs pour avoir les groupes dans le bon ordre
-                        value_counts = value_counts.sort_values('Groupe')
+                        # Création du tableau des statistiques par groupe
+                        group_stats = pd.DataFrame()
+                        group_stats['Effectif'] = grouped_data.value_counts()
+                        group_stats['Taux (%)'] = (group_stats['Effectif'] / len(plot_data) * 100).round(2)
                         
-                        group_stats = plot_data.groupby(grouped_data).agg(['sum', 'mean', 'max']).round(2)
-                        group_stats.columns = ['Somme', 'Moyenne', 'Maximum']
+                        # Calcul des statistiques agrégées
+                        agg_stats = plot_data.groupby(grouped_data).agg(['sum', 'mean', 'max']).round(2)
+                        agg_stats.columns = ['Somme', 'Moyenne', 'Maximum']
+                        
+                        # Fusion des statistiques
+                        final_stats = pd.concat([group_stats, agg_stats], axis=1)
+                        
+                        # Tri du tableau par l'ordre des groupes
+                        final_stats = final_stats.reindex(labels)
                         
                         st.write("### Statistiques par groupe")
-                        st.dataframe(pd.concat([value_counts.set_index('Groupe'), group_stats], axis=1))
-                                           
+                        st.dataframe(final_stats)
+                
                     elif grouping_method == "Manuelle":
                         n_groups = st.number_input("Nombre de groupes", min_value=2, value=3)
                         breaks = []
