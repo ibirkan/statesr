@@ -1380,6 +1380,13 @@ def main():
                         # Ajout des annotations au graphique
                         if annotations and isinstance(fig, go.Figure):
                             fig.update_layout(annotations=annotations)
+
+                        # Configuration des axes et du titre
+                        fig.update_layout(
+                            title=title,
+                            xaxis_title=x_axis,
+                            yaxis_title=y_axis,
+                        )
                 
                         # Affichage du graphique
                         st.plotly_chart(fig, use_container_width=True)
