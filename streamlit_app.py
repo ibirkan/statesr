@@ -760,22 +760,24 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
         showlegend=False
     ))
 
-    # Ajout des valeurs au-dessus des points
+    # Ajout des valeurs au-dessus des points avec plus d'espace
     if show_values:
-        # Calcul de la position Y pour le texte (20% plus haut que les points)
-        text_y = data['Effectif'] + (data['Effectif'].max() * 0.1)
-        
         fig.add_trace(go.Scatter(
             x=data['Modalité'],
-            y=text_y,  # Position Y ajustée
+            y=data['Effectif'],
             mode='text',
             text=data['Effectif'].round(0).astype(str),
-            textposition='middle center',
+            textposition='top center',
             textfont=dict(size=12),
-            showlegend=False
+            texttemplate='%{text}',
+            textfont_color='black',
+            showlegend=False,
+            offsetgroup=0,
+            textposition='top center',
+            textoffset=15  # Augmentation de la distance entre le point et le texte
         ))
 
-    # Mise à jour du layout
+    # Mise à jour du layout avec plus d'espace en haut pour les labels
     fig.update_layout(
         title=title,
         xaxis_title=x_label,
@@ -788,7 +790,7 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
             zerolinewidth=1,
             zerolinecolor='lightgray',
             gridcolor='lightgray',
-            range=[0, max(data['Effectif']) * 1.3]  # Plus d'espace pour le texte
+            range=[0, max(data['Effectif']) * 1.2]  # Augmentation de l'espace au-dessus des points
         ),
         xaxis=dict(
             gridcolor='lightgray'
@@ -796,7 +798,7 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
     )
 
     return fig
-
+    
 def plot_qualitative_treemap(data, title, color_palette):
     """
     Crée un treemap pour une variable qualitative.
