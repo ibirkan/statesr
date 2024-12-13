@@ -1166,7 +1166,14 @@ def main():
                     
                     if do_aggregate:
                         st.info("Note : Les statistiques sont calculées à l'échelle de la variable d'agrégation sélectionnée.")
-    
+
+                    # Options de regroupement
+                    st.write("### Options de regroupement")
+                    grouping_method = st.selectbox(
+                        "Méthode de regroupement",
+                        ["Aucune", "Quantile", "Manuelle"]
+                    )
+                    
                     if grouping_method == "Quantile":
                         quantile_type = st.selectbox(
                             "Type de regroupement",
