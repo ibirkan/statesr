@@ -1172,15 +1172,7 @@ def main():
                 
                 with viz_col2:
                     color_scheme = st.selectbox("Palette de couleurs", list(COLOR_PALETTES.keys()), key="color_scheme")
-                
-                # Options spécifiques pour les quantiles
-                if is_numeric and grouping_method == "Quantile":
-                    quantile_viz_type = st.selectbox(
-                        "Type de visualisation des quantiles",
-                        ["Boîte à moustaches", "Violin plot", "Box plot avec points"],
-                        key="quantile_viz_type"
-                    )
-                
+                                
                 # Options avancées générales
                 with st.expander("Options avancées"):
                     adv_col1, adv_col2 = st.columns(2)
