@@ -1167,6 +1167,9 @@ def main():
                     if do_aggregate:
                         st.info("Note : Les statistiques sont calculées à l'échelle de la variable d'agrégation sélectionnée.")
 
+                    if is_numeric:
+                        is_integer_variable = all(float(x).is_integer() for x in plot_data)
+                        
                     # Options de regroupement
                     st.write("### Options de regroupement")
                     grouping_method = st.selectbox(
@@ -1199,49 +1202,69 @@ def main():
                         
                         # Création des groupes avec les labels personnalisés
                         grouped_data = pd.qcut(plot_data, q=n_groups, labels=labels)
+                        value_counts = pd.DataFrame({
+                            'Groupe': labels,
+                            'Effectif': grouped_data.value_counts().reindex(labels)
+                        })
                         
-                        # Création du tableau des statistiques par groupe
-                        group_stats = pd.DataFrame()
-                        group_stats['Effectif'] = grouped_data.value_counts()
-                        group_stats['Taux (%)'] = (group_stats['Effectif'] / len(plot_data) * 100).round(2)
+                        # Calcul des taux avec entiers si approprié
+                        value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100)
+                        value_counts['Taux (%)'] = value_counts['Taux (%)'].apply(
+                            lambda x: int(x) if x.is_integer() else round(x, 1)
+                        )
                         
-                        # Calcul des statistiques agrégées
-                        agg_stats = plot_data.groupby(grouped_data).agg(['sum', 'mean', 'max']).round(2)
-                        agg_stats.columns = ['Somme', 'Moyenne', 'Maximum']
-                        
-                        # Fusion des statistiques
-                        final_stats = pd.concat([group_stats, agg_stats], axis=1)
-                        
-                        # Tri du tableau par l'ordre des groupes
-                        final_stats = final_stats.reindex(labels)
-                        
-                        st.write("### Statistiques par groupe")
-                        st.dataframe(final_stats)
+                        # Calcul des statistiques par groupe
+                        group_stats = plot_data.groupby(grouped_data).agg(['sum', 'mean', 'max'])
+                        if is_integer_variable:
+                            group_stats = group_stats.applymap(lambda x: int(x) if float(x).is_integer() else round(x, 2))
+                        else:
+                            group_stats = group_stats.round(2)
+                        group_stats.columns = ['Somme', 'Moyenne', 'Maximum']
                 
                     elif grouping_method == "Manuelle":
                         n_groups = st.number_input("Nombre de groupes", min_value=2, value=3)
                         breaks = []
-                        for i in range(n_groups + 1):
-                            if i == 0:
-                                val = plot_data.min()
-                            elif i == n_groups:
-                                val = plot_data.max()
-                            else:
-                                val = st.number_input(f"Seuil {i}", 
-                                    value=float(plot_data.min() + (i/n_groups)*(plot_data.max()-plot_data.min())))
-                            breaks.append(val)
                         
-                        # Création des groupes avec pd.cut
+                        # Si variable entière, proposer des seuils entiers
+                        if is_integer_variable:
+                            for i in range(n_groups + 1):
+                                if i == 0:
+                                    val = int(plot_data.min())
+                                elif i == n_groups:
+                                    val = int(plot_data.max())
+                                else:
+                                    suggested_val = int(plot_data.min() + (i/n_groups)*(plot_data.max()-plot_data.min()))
+                                    val = st.number_input(f"Seuil {i}", 
+                                        value=suggested_val,
+                                        step=1  # Permet uniquement des valeurs entières
+                                    )
+                                breaks.append(val)
+                        else:
+                            # Code existant pour les variables non entières
+                            for i in range(n_groups + 1):
+                                if i == 0:
+                                    val = plot_data.min()
+                                elif i == n_groups:
+                                    val = plot_data.max()
+                                else:
+                                    val = st.number_input(f"Seuil {i}", 
+                                        value=float(plot_data.min() + (i/n_groups)*(plot_data.max()-plot_data.min())))
+                                breaks.append(val)
+                        
+                        # Création des groupes
                         grouped_data = pd.cut(plot_data, bins=breaks)
                         value_counts = grouped_data.value_counts().reset_index()
                         value_counts.columns = ['Groupe', 'Effectif']
                         
-                        # Tri des valeurs selon l'ordre des intervalles
-                        value_counts = value_counts.sort_values('Groupe', 
-                                                              key=lambda x: x.map(lambda y: y.left))
+                        # Tri et formatage
+                        value_counts = value_counts.sort_values('Groupe', key=lambda x: x.map(lambda y: y.left))
+                        value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100)
                         
-                        # Calcul des taux après le tri
-                        value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
+                        if is_integer_variable:
+                            value_counts['Effectif'] = value_counts['Effectif'].astype(int)
+                            value_counts['Taux (%)'] = value_counts['Taux (%)'].apply(
+                                lambda x: int(x) if x.is_integer() else round(x, 1)
+                            )
                         
                         st.write("### Répartition des groupes")
                         st.dataframe(value_counts)
