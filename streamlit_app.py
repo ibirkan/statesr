@@ -690,6 +690,71 @@ def plot_density(plot_data, var, title, x_axis, y_axis):
     )
     return fig
 
+def plot_quantile_distribution(data, title, y_label, color_palette, plot_type, is_integer_variable):
+    fig = go.Figure()
+    
+    if plot_type == "Boîte à moustaches":
+        fig.add_trace(go.Box(
+            y=data,
+            name='',
+            boxpoints=False,
+            marker_color=color_palette[0],
+            showlegend=False
+        ))
+    elif plot_type == "Violin plot":
+        fig.add_trace(go.Violin(
+            y=data,
+            name='',
+            box_visible=True,
+            meanline_visible=True,
+            marker_color=color_palette[0],
+            showlegend=False
+        ))
+    elif plot_type == "Box plot avec points":
+        fig.add_trace(go.Box(
+            y=data,
+            name='',
+            boxpoints='all',
+            jitter=0.3,
+            pointpos=-1.8,
+            marker_color=color_palette[0],
+            showlegend=False
+        ))
+    
+    quartiles = np.percentile(data, [0, 25, 50, 75, 100])
+    annotations = []
+    positions = [-0.2, -0.1, 0, 0.1, 0.2]
+    
+    for q, pos, label in zip(quartiles, positions, ['Min', 'Q1', 'Médiane', 'Q3', 'Max']):
+        q_value = int(q) if is_integer_variable else round(q, 2)
+        annotations.append(dict(
+            x=pos,
+            y=q,
+            xref="paper",
+            yref="y",
+            text=f"{label}: {q_value}",
+            showarrow=True,
+            ax=40,
+            ay=0
+        ))
+    
+    fig.update_layout(
+        title=title,
+        yaxis_title=y_label,
+        height=600,
+        showlegend=False,
+        annotations=annotations,
+        plot_bgcolor='white',
+        yaxis=dict(
+            gridcolor='lightgray',
+            zeroline=True,
+            zerolinewidth=1,
+            zerolinecolor='lightgray'
+        )
+    )
+    
+    return fig
+
 def plot_qualitative_bar(data, title, x_label, y_label, color_palette, show_values=True):
     """
     Crée un graphique en barres pour une variable qualitative.
@@ -865,6 +930,233 @@ def calculate_grouped_stats(data, var, groupby_col, agg_method='mean'):
     return detailed_stats, agg_stats, agg_data
 
 # Interface Streamlit
+def display_univariate_analysis():
+    # Sélection de la variable avec une option vide
+    var = st.selectbox("Sélectionnez la variable:", options=["---"] + list(st.session_state.merged_data.columns))
+    
+    if var != "---":
+        plot_data = st.session_state.merged_data[var].dropna()
+        
+        if not plot_data.empty:
+            is_numeric = pd.api.types.is_numeric_dtype(plot_data)
+            
+            st.write(f"### Statistiques principales de la variable {var}")
+            
+            if is_numeric:
+                stats_df = pd.DataFrame({
+                    'Statistique': ['Effectif total', 'Somme', 'Moyenne', 'Médiane', 'Écart-type', 'Minimum', 'Maximum'],
+                    'Valeur': [
+                        len(plot_data),
+                        plot_data.sum().round(2),
+                        plot_data.mean().round(2),
+                        plot_data.median().round(2),
+                        plot_data.std().round(2),
+                        plot_data.min(),
+                        plot_data.max()
+                    ]
+                })
+                create_interactive_stats_table(stats_df)
+                
+                is_integer_variable = all(float(x).is_integer() for x in plot_data)
+                
+                st.write("### Options de regroupement")
+                grouping_method = st.selectbox("Méthode de regroupement", ["Aucune", "Quantile", "Manuelle"], key="grouping_method")
+                
+                if grouping_method == "Quantile":
+                    quantile_type = st.selectbox("Type de regroupement", ["Quartile (4 groupes)", "Quintile (5 groupes)", "Décile (10 groupes)"], key="quantile_type")
+                    n_groups = {"Quartile (4 groupes)": 4, "Quintile (5 groupes)": 5, "Décile (10 groupes)": 10}[quantile_type]
+                    
+                    labels = [f"{i}er quantile" if i == 1 else f"{i}ème quantile" for i in range(1, n_groups + 1)]
+                    grouped_data = pd.qcut(plot_data, q=n_groups, labels=labels)
+                    value_counts = pd.DataFrame({
+                        'Groupe': labels,
+                        'Effectif': grouped_data.value_counts().reindex(labels)
+                    })
+                    
+                    value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).apply(lambda x: int(x) if x.is_integer() else round(x, 1))
+                    group_stats = plot_data.groupby(grouped_data).agg(['sum', 'mean', 'max'])
+                    if is_integer_variable:
+                        group_stats = group_stats.applymap(lambda x: int(x) if float(x).is_integer() else round(x, 2))
+                    else:
+                        group_stats = group_stats.round(2)
+                    group_stats.columns = ['Somme', 'Moyenne', 'Maximum']
+                    final_stats = pd.concat([value_counts, group_stats], axis=1)
+                    
+                    st.write("### Statistiques par groupe")
+                    st.dataframe(final_stats)
+
+                    quantile_viz_type = st.selectbox("Type de visualisation", ["Boîte à moustaches", "Violin plot", "Box plot avec points"], key="quantile_viz_type")
+                    with st.expander("Options avancées"):
+                        title = st.text_input("Titre du graphique", f"Distribution de {var}", key="title_adv")
+                        y_axis = st.text_input("Titre de l'axe Y", var, key="y_axis_adv")
+                        color_scheme = st.selectbox("Palette de couleurs", list(COLOR_PALETTES.keys()), key="color_scheme_quantile")
+                    
+                    fig = plot_quantile_distribution(plot_data, title, y_axis, COLOR_PALETTES[color_scheme], quantile_viz_type, is_integer_variable)
+                    st.plotly_chart(fig, use_container_width=True)
+                
+                elif grouping_method == "Manuelle":
+                    n_groups = st.number_input("Nombre de groupes", min_value=2, value=3, key="n_groups")
+                    breaks = []
+                    if is_integer_variable:
+                        for i in range(n_groups + 1):
+                            if i == 0:
+                                val = int(plot_data.min())
+                            elif i == n_groups:
+                                val = int(plot_data.max())
+                            else:
+                                suggested_val = int(plot_data.min() + (i/n_groups)*(plot_data.max()-plot_data.min()))
+                                val = st.number_input(f"Seuil {i}", value=suggested_val, step=1, key=f"threshold_{i}")
+                            breaks.append(val)
+                    else:
+                        for i in range(n_groups + 1):
+                            if i == 0:
+                                val = plot_data.min()
+                            elif i == n_groups:
+                                val = plot_data.max()
+                            else:
+                                val = st.number_input(f"Seuil {i}", value=float(plot_data.min() + (i/n_groups)*(plot_data.max()-plot_data.min())), key=f"threshold_{i}")
+                            breaks.append(val)
+                    
+                    grouped_data = pd.cut(plot_data, bins=breaks)
+                    value_counts = grouped_data.value_counts().reset_index()
+                    value_counts.columns = ['Groupe', 'Effectif']
+                    value_counts = value_counts.sort_values('Groupe', key=lambda x: x.map(lambda y: y.left))
+                    value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100)
+                    if is_integer_variable:
+                        value_counts['Effectif'] = value_counts['Effectif'].astype(int)
+                        value_counts['Taux (%)'] = value_counts['Taux (%)'].apply(lambda x: int(x) if x.is_integer() else round(x, 1))
+                    
+                    st.write("### Répartition des groupes")
+                    st.dataframe(value_counts)
+                
+            else:
+                value_counts = plot_data.value_counts().reset_index()
+                value_counts.columns = ['Modalité', 'Effectif']
+                value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
+                st.dataframe(value_counts)
+            
+            st.write("### Configuration de la visualisation")
+            viz_col1, viz_col2 = st.columns([1, 2])
+            with viz_col1:
+                if is_numeric:
+                    if grouping_method == "Aucune":
+                        graph_type = st.selectbox("Type de graphique", ["Histogramme", "Density plot"], key="graph_type_no_group")
+                    else:
+                        graph_type = st.selectbox("Type de graphique", ["Bar plot", "Lollipop plot", "Treemap"], key="graph_type_group")
+                else:
+                    graph_type = st.selectbox("Type de graphique", ["Bar plot", "Lollipop plot", "Treemap"], key="graph_type_qual")
+            
+            with viz_col2:
+                color_scheme = st.selectbox("Palette de couleurs", list(COLOR_PALETTES.keys()), key="color_scheme")
+            
+            with st.expander("Options avancées"):
+                adv_col1, adv_col2 = st.columns(2)
+                with adv_col1:
+                    title = st.text_input("Titre du graphique", f"Distribution de {var}", key="title_adv")
+                    x_axis = st.text_input("Titre de l'axe X", var, key="x_axis_adv")
+                    y_axis = st.text_input("Titre de l'axe Y", "Valeur", key="y_axis_adv")
+                with adv_col2:
+                    source = st.text_input("Source des données", "", key="source_adv")
+                    note = st.text_input("Note de lecture", "", key="note_adv")
+                    show_values = st.checkbox("Afficher les valeurs", True, key="show_values_adv")
+                    
+                    if is_numeric and grouping_method != "Aucune":
+                        if grouping_method == "Quantile":
+                            value_to_display = st.radio("Valeur à afficher", ["Maximum", "Moyenne"], index=0, key="value_type_quant")
+                        elif grouping_method == "Manuelle":
+                            value_to_display = st.radio("Valeur à afficher", ["Effectif", "Taux (%)"], key="value_type_manual")
+
+            if st.button("Générer la visualisation"):
+                try:
+                    annotations = []
+                    current_y = -0.15
+            
+                    if source:
+                        annotations.append(dict(
+                            text=f"Source : {source}",
+                            xref="paper",
+                            yref="paper",
+                            x=0,
+                            y=current_y,
+                            showarrow=False,
+                            font=dict(size=10),
+                            align="left"
+                        ))
+                        current_y -= 0.05
+            
+                    if note:
+                        annotations.append(dict(
+                            text=f"Note : {note}",
+                            xref="paper",
+                            yref="paper",
+                            x=0,
+                            y=current_y,
+                            showarrow=False,
+                            font=dict(size=10),
+                            align="left"
+                        ))
+            
+                    if not is_numeric:
+                        data_to_plot = value_counts.copy()
+                        if value_to_display == "Taux (%)":
+                            data_to_plot['Effectif'] = data_to_plot['Taux (%)']
+                            y_axis = "Taux (%)" if y_axis == "Valeur" else y_axis
+            
+                        data_to_plot['Modalité'] = data_to_plot['Modalité'].astype(str)
+            
+                        if graph_type == "Bar plot":
+                            fig = plot_qualitative_bar(data_to_plot, title, x_axis, y_axis, COLOR_PALETTES[color_scheme], show_values)
+                        elif graph_type == "Lollipop plot":
+                            fig = plot_qualitative_lollipop(data_to_plot, title, x_axis, y_axis, COLOR_PALETTES[color_scheme], show_values)
+                        elif graph_type == "Treemap":
+                            fig = plot_qualitative_treemap(data_to_plot, title, COLOR_PALETTES[color_scheme])
+            
+                    else:
+                        if grouping_method == "Aucune":
+                            if graph_type == "Histogramme":
+                                fig = px.histogram(plot_data, title=title, color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                                if show_values:
+                                    fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
+                            else:
+                                fig = plot_density(plot_data, var, title, x_axis, y_axis)
+                        else:
+                            data_to_plot = pd.DataFrame({'Modalité': value_counts['Groupe'].astype(str)})
+                            
+                            if grouping_method == "Quantile":
+                                fig = plot_quantile_distribution(plot_data, title, y_axis, COLOR_PALETTES[color_scheme], quantile_viz_type, is_integer_variable)
+                            elif grouping_method == "Manuelle":
+                                if value_to_display == "Effectif":
+                                    data_to_plot['Effectif'] = value_counts['Effectif']
+                                else:
+                                    data_to_plot['Effectif'] = value_counts['Taux (%)']
+                            
+                                if graph_type == "Bar plot":
+                                    fig = plot_qualitative_bar(data_to_plot, title, x_axis, y_axis, COLOR_PALETTES[color_scheme], show_values)
+                                elif graph_type == "Lollipop plot":
+                                    fig = plot_qualitative_lollipop(data_to_plot, title, x_axis, y_axis, COLOR_PALETTES[color_scheme], show_values)
+                                else:
+                                    fig = plot_qualitative_treemap(data_to_plot, title, COLOR_PALETTES[color_scheme])
+            
+                    if annotations and isinstance(fig, go.Figure):
+                        fig.update_layout(annotations=annotations)
+
+                    fig.update_layout(
+                        title=title,
+                        xaxis_title=x_axis,
+                        yaxis_title=y_axis,
+                    )
+            
+                    st.plotly_chart(fig, use_container_width=True)
+            
+                except Exception as e:
+                    st.error(f"Erreur lors de la génération du graphique : {str(e)}")
+                    st.error(f"Détails : {str(type(e).__name__)}")
+    
+        else:
+            st.warning("Aucune donnée valide disponible pour cette variable")
+    else:
+        st.info("Veuillez sélectionner une variable à analyser")
+        
 def display_comparison_stats(data, var, groupby_col):
     agg_method = st.radio(
         "Méthode d'agrégation",
@@ -906,27 +1198,22 @@ def display_comparison_stats(data, var, groupby_col):
 def create_interactive_stats_table(stats_df):
     """
     Crée un tableau de statistiques interactif avec des fonctionnalités avancées.
-    
-    Parameters:
-    -----------
-    stats_df : pandas.DataFrame
-        DataFrame contenant les statistiques
     """
     gb = GridOptionsBuilder.from_dataframe(stats_df)
     
     # Fonctionnalités de base
     gb.configure_default_column(
-        sorteable=True,              # Tri
-        filterable=True,             # Filtres
-        resizable=True,              # Redimensionnement des colonnes
-        draggable=True              # Réorganisation des colonnes
+        sorteable=True,
+        filterable=True,
+        resizable=True,
+        draggable=True
     )
     
     # Fonctionnalités de groupe
     gb.configure_grid_options(
-        enableRangeSelection=True,   # Sélection de plages
-        groupable=True,             # Groupement
-        groupDefaultExpanded=1      # Groupes développés par défaut
+        enableRangeSelection=True,
+        groupable=True,
+        groupDefaultExpanded=1
     )
     
     # Configuration des agrégations par groupe
@@ -934,7 +1221,7 @@ def create_interactive_stats_table(stats_df):
         stats_df.columns.tolist(),
         groupable=True,
         value=True,
-        aggFunc='sum',              # Fonction d'agrégation par défaut
+        aggFunc='sum',
         enableValue=True
     )
     
@@ -947,7 +1234,7 @@ def create_interactive_stats_table(stats_df):
         allow_unsafe_jscode=True,
         update_mode='VALUE_CHANGED',
         fit_columns_on_grid_load=True,
-        theme='streamlit'           # Thème correspondant à Streamlit
+        theme='streamlit'
     )
 
 def show_indicator_form(statistics, analysis_type, variables_info):
