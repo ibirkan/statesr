@@ -1075,23 +1075,49 @@ def main():
                     elif grouping_method == "Manuelle":
                         n_groups = st.number_input("Nombre de groupes", min_value=2, value=3)
                         breaks = []
+                        
+                        # Conversion en float pour assurer la cohérence des types
+                        min_val = float(plot_data.min())
+                        max_val = float(plot_data.max())
+                        
                         for i in range(n_groups + 1):
                             if i == 0:
-                                val = plot_data.min()
+                                val = min_val
                             elif i == n_groups:
-                                val = plot_data.max()
+                                val = max_val
                             else:
-                                val = st.number_input(
-                                    f"Seuil {i}", 
-                                    value=float(plot_data.min() + (i/n_groups)*(plot_data.max()-plot_data.min())),
-                                    step=1 if is_integer_variable else 0.1
-                                )
+                                suggested_val = min_val + (i/n_groups)*(max_val-min_val)
+                                if is_integer_variable:
+                                    val = st.number_input(
+                                        f"Seuil {i}", 
+                                        value=int(suggested_val),
+                                        min_value=int(min_val),
+                                        max_value=int(max_val),
+                                        step=1
+                                    )
+                                else:
+                                    val = st.number_input(
+                                        f"Seuil {i}", 
+                                        value=float(suggested_val),
+                                        min_value=float(min_val),
+                                        max_value=float(max_val),
+                                        step=0.1
+                                    )
                             breaks.append(val)
                         
                         grouped_data = pd.cut(plot_data, bins=breaks)
                         value_counts = grouped_data.value_counts().reset_index()
                         value_counts.columns = ['Groupe', 'Effectif']
-                        value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
+                        
+                        # Tri et formatage
+                        value_counts = value_counts.sort_values('Groupe', key=lambda x: x.map(lambda y: y.left))
+                        value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100)
+                        
+                        if is_integer_variable:
+                            value_counts['Effectif'] = value_counts['Effectif'].astype(int)
+                            value_counts['Taux (%)'] = value_counts['Taux (%)'].apply(
+                                lambda x: int(x) if x.is_integer() else round(x, 1)
+                            )
                         
                         st.write("### Répartition des groupes")
                         st.dataframe(value_counts)
