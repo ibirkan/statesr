@@ -1183,23 +1183,56 @@ def main():
                         else:  # Variables numériques
                             if grouping_method == "Aucune":
                                 data_to_plot = plot_data
-                            else:
-                                if grouping_method == "Manuelle":
-                                    # Création de labels plus lisibles pour les intervalles
-                                    def format_interval(interval):
-                                        left = int(interval.left) if is_integer_variable else round(interval.left, 2)
-                                        right = int(interval.right) if is_integer_variable else round(interval.right, 2)
-                                        return f"[{left} - {right}]"
-                                    
-                                    value_counts['Groupe'] = value_counts['Groupe'].apply(format_interval)
+                            elif grouping_method == "Quantile":
+                                # Pour les quantiles, on utilise directement plot_quantile_distribution
+                                fig = plot_quantile_distribution(
+                                    data=plot_data,
+                                    title=title,
+                                    y_label=y_axis,
+                                    color_palette=COLOR_PALETTES[color_scheme],
+                                    plot_type=quantile_viz_type,
+                                    is_integer_variable=is_integer_variable
+                                )
+                            else:  # Groupement manuel
+                                # Création de labels plus lisibles pour les intervalles
+                                def format_interval(interval):
+                                    left = int(interval.left) if is_integer_variable else round(interval.left, 2)
+                                    right = int(interval.right) if is_integer_variable else round(interval.right, 2)
+                                    return f"[{left} - {right}]"
                                 
+                                value_counts['Groupe'] = value_counts['Groupe'].apply(format_interval)
                                 data_to_plot = pd.DataFrame({
                                     'Modalité': value_counts['Groupe'],
                                     'Effectif': value_counts['Effectif' if value_type == "Effectif" else 'Taux (%)']
                                 })
                 
                         # Création du graphique selon le type choisi
-                        if is_numeric and grouping_method == "Aucune":
+                        if not is_numeric or (is_numeric and grouping_method == "Manuelle"):
+                            if graph_type == "Bar plot":
+                                fig = plot_qualitative_bar(
+                                    data_to_plot,
+                                    title,
+                                    x_axis,
+                                    y_axis,
+                                    COLOR_PALETTES[color_scheme],
+                                    show_values
+                                )
+                            elif graph_type == "Lollipop plot":
+                                fig = plot_qualitative_lollipop(
+                                    data_to_plot,
+                                    title,
+                                    x_axis,
+                                    y_axis,
+                                    COLOR_PALETTES[color_scheme],
+                                    show_values
+                                )
+                            elif graph_type == "Treemap":
+                                fig = plot_qualitative_treemap(
+                                    data_to_plot,
+                                    title,
+                                    COLOR_PALETTES[color_scheme]
+                                )
+                        elif is_numeric and grouping_method == "Aucune":
                             if graph_type == "Histogramme":
                                 fig = px.histogram(
                                     data_to_plot,
@@ -1210,34 +1243,7 @@ def main():
                                     fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
                             else:  # Density plot
                                 fig = plot_density(data_to_plot, var, title, x_axis, y_axis)
-                                
-                        if grouping_method == "Quantile":
-                            # Configuration des options de visualisation des quantiles
-                            st.write("### Visualisation des quantiles")
-                            
-                            if is_numeric:
-                                quantile_viz_type = st.selectbox(
-                                    "Type de visualisation",
-                                    ["Boîte à moustaches", "Violin plot", "Box plot avec points"],
-                                    key="quantile_viz_type"
-                                )
-                                
-                                with st.expander("Options avancées"):
-                                    title = st.text_input("Titre du graphique", f"Distribution de {var}", key="title_quantile")
-                                    y_axis = st.text_input("Titre de l'axe Y", var, key="y_axis_quantile")
-                                    color_scheme = st.selectbox("Palette de couleurs", list(COLOR_PALETTES.keys()), key="color_scheme_quantile")
-                                
-                                if st.button("Générer le graphique de distribution", key="gen_quantile_viz"):
-                                    fig = plot_quantile_distribution(
-                                        data=plot_data,
-                                        title=title,
-                                        y_label=y_axis,
-                                        color_palette=COLOR_PALETTES[color_scheme],
-                                        plot_type=quantile_viz_type,
-                                        is_integer_variable=is_integer_variable
-                                    )
-                                    st.plotly_chart(fig, use_container_width=True)
-            
+                
                         # Ajout des annotations si nécessaire
                         if (source or note) and isinstance(fig, go.Figure):
                             annotations = []
@@ -1265,10 +1271,10 @@ def main():
                                 ))
                             
                             fig.update_layout(annotations=annotations)
-    
+                
                         # Affichage du graphique
                         st.plotly_chart(fig, use_container_width=True)
-    
+                
                     except Exception as e:
                         st.error(f"Erreur lors de la génération du graphique : {str(e)}")
                         st.error(f"Détails : {str(type(e).__name__)}")
