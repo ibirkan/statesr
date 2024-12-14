@@ -355,60 +355,83 @@ def plot_density(plot_data, var, title, x_axis, y_axis):
     return fig
 
 def plot_quantile_distribution(data, title, y_label, color_palette, plot_type, is_integer_variable):
-    """Crée différents types de visualisations pour les distributions quantitatives."""
+    """
+    Crée une visualisation améliorée de distribution pour les données quantitatives groupées par quantiles.
+    """
     fig = go.Figure()
     
     if plot_type == "Boîte à moustaches":
-        fig.add_trace(go.Box(
-            y=data,
-            name='',
-            boxpoints=False,
-            marker_color=color_palette[0],
-            showlegend=False
-        ))
+        # Créer une boîte à moustaches pour chaque quantile
+        quantiles = pd.qcut(data, q=4, labels=['Q1', 'Q2', 'Q3', 'Q4'])
+        for i, quantile in enumerate(sorted(quantiles.unique())):
+            subset = data[quantiles == quantile]
+            fig.add_trace(go.Box(
+                y=subset,
+                name=quantile,
+                marker_color=color_palette[i % len(color_palette)],
+                boxpoints='outliers',  # Montrer uniquement les points aberrants
+                boxmean=True  # Montrer la moyenne
+            ))
+    
     elif plot_type == "Violin plot":
-        fig.add_trace(go.Violin(
-            y=data,
-            name='',
-            box_visible=True,
-            meanline_visible=True,
-            marker_color=color_palette[0],
-            showlegend=False
-        ))
+        # Créer un violin plot pour chaque quantile
+        quantiles = pd.qcut(data, q=4, labels=['Q1', 'Q2', 'Q3', 'Q4'])
+        for i, quantile in enumerate(sorted(quantiles.unique())):
+            subset = data[quantiles == quantile]
+            fig.add_trace(go.Violin(
+                y=subset,
+                name=quantile,
+                box_visible=True,
+                meanline_visible=True,
+                marker_color=color_palette[i % len(color_palette)]
+            ))
+    
     elif plot_type == "Box plot avec points":
-        fig.add_trace(go.Box(
-            y=data,
-            name='',
-            boxpoints='all',
-            jitter=0.3,
-            pointpos=-1.8,
-            marker_color=color_palette[0],
-            showlegend=False
-        ))
+        # Créer un box plot avec points pour chaque quantile
+        quantiles = pd.qcut(data, q=4, labels=['Q1', 'Q2', 'Q3', 'Q4'])
+        for i, quantile in enumerate(sorted(quantiles.unique())):
+            subset = data[quantiles == quantile]
+            fig.add_trace(go.Box(
+                y=subset,
+                name=quantile,
+                marker_color=color_palette[i % len(color_palette)],
+                boxpoints='all',
+                jitter=0.3,
+                pointpos=-1.8
+            ))
     
-    # Calcul et affichage des quantiles
-    quartiles = np.percentile(data, [0, 25, 50, 75, 100])
+    # Calcul des statistiques pour les annotations
+    stats = pd.DataFrame({
+        'Quantile': pd.qcut(data, q=4, labels=['Q1', 'Q2', 'Q3', 'Q4']),
+        'Valeur': data
+    }).groupby('Quantile').agg(['min', 'max', 'mean', 'median'])
+    
+    # Annotations améliorées
     annotations = []
-    positions = [-0.2, -0.1, 0, 0.1, 0.2]
-    
-    for q, pos, label in zip(quartiles, positions, ['Min', 'Q1', 'Médiane', 'Q3', 'Max']):
-        q_value = int(q) if is_integer_variable else round(q, 2)
+    for i, quantile in enumerate(stats.index):
+        stats_text = (
+            f"{quantile}<br>"
+            f"Min: {int(stats.loc[quantile, ('Valeur', 'min')]) if is_integer_variable else round(stats.loc[quantile, ('Valeur', 'min')], 2)}<br>"
+            f"Max: {int(stats.loc[quantile, ('Valeur', 'max')]) if is_integer_variable else round(stats.loc[quantile, ('Valeur', 'max')], 2)}<br>"
+            f"Moyenne: {int(stats.loc[quantile, ('Valeur', 'mean')]) if is_integer_variable else round(stats.loc[quantile, ('Valeur', 'mean')], 2)}"
+        )
+        
         annotations.append(dict(
-            x=pos,
-            y=q,
-            xref="paper",
-            yref="y",
-            text=f"{label}: {q_value}",
+            x=i,
+            y=stats.loc[quantile, ('Valeur', 'max')],
+            text=stats_text,
             showarrow=True,
-            ax=40,
-            ay=0
+            arrowhead=1,
+            ax=0,
+            ay=-40
         ))
     
     fig.update_layout(
         title=title,
         yaxis_title=y_label,
         height=600,
-        showlegend=False,
+        showlegend=True,
+        legend_title="Quantiles",
         annotations=annotations,
         plot_bgcolor='white',
         yaxis=dict(
@@ -416,7 +439,8 @@ def plot_quantile_distribution(data, title, y_label, color_palette, plot_type, i
             zeroline=True,
             zerolinewidth=1,
             zerolinecolor='lightgray'
-        )
+        ),
+        xaxis_title="Quantiles"
     )
     
     return fig
@@ -1068,9 +1092,6 @@ def main():
                         
                         st.write("### Statistiques par groupe")
                         st.dataframe(pd.concat([value_counts, group_stats], axis=1))
-                        
-                        st.write("### Statistiques par groupe")
-                        st.dataframe(pd.concat([value_counts.set_index('Groupe'), group_stats], axis=1))
     
                     elif grouping_method == "Manuelle":
                         n_groups = st.number_input("Nombre de groupes", min_value=2, value=3)
