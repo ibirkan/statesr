@@ -1,23 +1,25 @@
+# Importations
 import streamlit as st 
 import requests
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go  # Inclus dans plotly
-import plotly.figure_factory as ff  # Inclus dans plotly
+import plotly.graph_objects as go
+import plotly.figure_factory as ff
 import numpy as np
 from datetime import datetime
 import json
 import matplotlib.pyplot as plt
 import squarify
 import seaborn as sns
-import numpy as np
 from scipy import stats
 from st_aggrid import AgGrid, GridOptionsBuilder
 from st_aggrid.grid_options_builder import GridOptionsBuilder
+
+# Configuration de base
 sns.set_theme()
 sns.set_style("whitegrid")
 
-# Configuration de la page
+# Configuration de la page Streamlit
 st.set_page_config(
     page_title="Indicateurs ESR",
     page_icon="📊",
@@ -39,7 +41,7 @@ API_KEY = st.secrets["grist_key"]
 DOC_ID = st.secrets["grist_doc_id"]
 BASE_URL = "https://grist.numerique.gouv.fr/api/docs"
 
-# fonctions api de base
+# Fonctions API Grist
 def grist_api_request(endpoint, method="GET", data=None):
     """Fonction utilitaire pour les requêtes API Grist"""
     url = f"{BASE_URL}/{DOC_ID}/tables"
@@ -67,7 +69,6 @@ def grist_api_request(endpoint, method="GET", data=None):
         st.error(f"Erreur API Grist : {str(e)}")
         return None
 
-# fonctions de gestion des tables
 def get_grist_tables():
     """Récupère la liste des tables disponibles dans Grist."""
     try:
@@ -96,16 +97,13 @@ def get_grist_data(table_id):
     except Exception as e:
         st.error(f"Erreur lors de la récupération des données : {str(e)}")
         return None
-        
+
+# Fonctions de gestion des données
 def merge_multiple_tables(dataframes, merge_configs):
-    """Merge multiple dataframes based on the provided configurations."""
+    """Fusionne plusieurs DataFrames selon les configurations spécifiées."""
     merged_df = dataframes[0]
     for i in range(1, len(dataframes)):
         merge_config = merge_configs[i - 1]
-        # Print data types for debugging
-        print(f"Merging on columns: {merge_config['left']} and {merge_config['right']}")
-        print(f"Data types before merge: {merged_df[merge_config['left']].dtype}, {dataframes[i][merge_config['right']].dtype}")
-        # Convert data types if necessary
         if merged_df[merge_config['left']].dtype != dataframes[i][merge_config['right']].dtype:
             if pd.api.types.is_numeric_dtype(merged_df[merge_config['left']]) and pd.api.types.is_numeric_dtype(dataframes[i][merge_config['right']]):
                 merged_df[merge_config['left']] = merged_df[merge_config['left']].astype(float)
@@ -114,651 +112,104 @@ def merge_multiple_tables(dataframes, merge_configs):
                 merged_df[merge_config['left']] = merged_df[merge_config['left']].astype(str)
                 dataframes[i][merge_config['right']] = dataframes[i][merge_config['right']].astype(str)
         merged_df = merged_df.merge(dataframes[i], left_on=merge_config['left'], right_on=merge_config['right'], how='outer')
-        # Print data types after merge for debugging
-        print(f"Data types after merge: {merged_df[merge_config['left']].dtype}, {merged_df[merge_config['right']].dtype}")
     return merged_df
-    
+
 def is_numeric_column(df, column):
     """Vérifie si une colonne est numérique."""
     return pd.api.types.is_numeric_dtype(df[column])
 
-def analyze_qualitative_bivariate(df, var_x, var_y, exclude_missing=True):
-    """
-    Analyse bivariée pour deux variables qualitatives.
-    Parameters:
-        df: DataFrame source
-        var_x: Variable en ligne
-        var_y: Variable en colonne
-        exclude_missing: Si True, exclut les non-réponses
-    """
-    # Copie du DataFrame pour éviter les modifications sur l'original
-    data = df.copy()
-
-    # Liste des valeurs considérées comme non-réponses
-    missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr', 'NR', 'Non-réponse']
-    
-    # Remplacement des non-réponses par np.nan pour faciliter le filtrage
-    data[var_x] = data[var_x].replace(missing_values, np.nan)
-    data[var_y] = data[var_y].replace(missing_values, np.nan)
-    
-    # Filtrage des non-réponses
-    if exclude_missing:
-        data = data.dropna(subset=[var_x, var_y])
-
-        # Calcul du taux de réponse
-        response_rate_x = (df[var_x].notna().sum() / len(df)) * 100
-        response_rate_y = (df[var_y].notna().sum() / len(df)) * 100
-        response_stats = {
-            f"{var_x}": f"{response_rate_x:.1f}%",
-            f"{var_y}": f"{response_rate_y:.1f}%"
-        }
-    
-    # Création du tableau croisé avec effectifs
-    crosstab_n = pd.crosstab(data[var_x], data[var_y])
-
-    # Calcul des pourcentages en ligne
-    crosstab_pct = pd.crosstab(data[var_x], data[var_y], normalize='index') * 100
-
-    # Calcul des moyennes par colonne (pour le total)
-    col_means = crosstab_pct.mean()
-    
-    # Création du tableau combiné
-    combined_table = pd.DataFrame(index=crosstab_n.index, columns=crosstab_n.columns)
-    
-    # Remplissage du tableau principal
-    for idx in crosstab_n.index:
-        for col in crosstab_n.columns:
-            n = crosstab_n.loc[idx, col]
-            pct = crosstab_pct.loc[idx, col]
-            combined_table.loc[idx, col] = f"{pct:.1f}% ({n})"
-    
-    # Ajout des totaux
-    row_totals = crosstab_n.sum(axis=1)
-    combined_table['Total'] = [f"100% ({n})" for n in row_totals]
-    
-    # Ajout de la ligne des moyennes
-    mean_row = []
-    for col in crosstab_n.columns:
-        mean_val = col_means[col]
-        total_n = crosstab_n[col].sum()
-        mean_row.append(f"{mean_val:.1f}% ({total_n})")
-    mean_row.append(f"100% ({crosstab_n.values.sum()})")
-    
-    combined_table.loc['Moyenne'] = mean_row
-    
-    if exclude_missing:
-        return combined_table, response_stats
-    return combined_table
-
-def plot_qualitative_bivariate(df, var_x, var_y, plot_type, color_palette, plot_options):
-    """
-    Création des visualisations pour l'analyse bivariée qualitative.
-    """
-    # Copie du DataFrame pour éviter les modifications sur l'original
-    data = df.copy()
-    
-    # Liste des valeurs considérées comme non-réponses
-    missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr', 'NR', 'Non-réponse']
-    
-    # Remplacement des non-réponses par np.nan
-    data[var_x] = data[var_x].replace(missing_values, np.nan)
-    data[var_y] = data[var_y].replace(missing_values, np.nan)
-    
-    # Filtrage des non-réponses
-    data = data.dropna(subset=[var_x, var_y])
-    
-    # Données de base pour les graphiques
-    crosstab_n = pd.crosstab(data[var_x], data[var_y])
-    
-    if plot_type == "Grouped Bar Chart":
-        fig, ax = plt.subplots(figsize=(12, 6))
-        crosstab_n.plot(kind='bar', ax=ax, color=color_palette)
-        plt.title(plot_options['title'])
-        plt.xlabel(plot_options['x_label'])
-        plt.ylabel(plot_options['y_label'])
-        plt.legend(title=var_y, bbox_to_anchor=(1.05, 1), loc='upper left')
-        plt.xticks(rotation=45, ha='right')
-        
-    elif plot_type == "Stacked Bar Chart":
-        fig, ax = plt.subplots(figsize=(12, 6))
-        crosstab_pct = pd.crosstab(data[var_x], data[var_y], normalize='index') * 100
-        crosstab_pct.plot(kind='bar', stacked=True, ax=ax, color=color_palette)
-        plt.title(plot_options['title'])
-        plt.xlabel(plot_options['x_label'])
-        plt.ylabel("Pourcentage")
-        plt.legend(title=var_y, bbox_to_anchor=(1.05, 1), loc='upper left')
-        plt.xticks(rotation=45, ha='right')
-        
-    elif plot_type == "Mosaic Plot":
-        # Création d'une figure plus grande pour accommoder les labels
-        fig, ax = plt.subplots(figsize=(14, 8))
-        data_norm = crosstab_n.div(crosstab_n.sum().sum())
-        
-        # Calcul des positions pour les rectangles
-        widths = data_norm.sum(axis=1)
-        x = 0
-        x_centers = []  # Pour stocker les centres des rectangles en x
-        
-        # Premier passage pour créer les rectangles
-        for i, (idx, row) in enumerate(data_norm.iterrows()):
-            y = 0
-            width = widths[idx]
-            x_centers.append(x + width/2)  # Stocker le centre pour le label
-            
-            for j, val in enumerate(row):
-                height = val / widths[idx]
-                rect = plt.Rectangle((x, y), width, height, 
-                                   facecolor=color_palette[j % len(color_palette)],
-                                   edgecolor='white',
-                                   linewidth=1)
-                ax.add_patch(rect)
-                
-                # Ajout des pourcentages si assez d'espace
-                if plot_options['show_values'] and width * height > 0.02:
-                    plt.text(x + width/2, y + height/2, 
-                            f'{val*100:.1f}%',
-                            ha='center', va='center',
-                            fontsize=9)
-                y += height
-            x += width
-        
-        # Ajout des labels pour var_x sous les rectangles
-        ax.set_xticks(x_centers)
-        ax.set_xticklabels(crosstab_n.index, rotation=45, ha='right')
-        
-        # Ajout d'une légende pour var_y
-        legend_elements = [plt.Rectangle((0,0), 1, 1, 
-                                       facecolor=color_palette[i % len(color_palette)])
-                         for i in range(len(crosstab_n.columns))]
-        ax.legend(legend_elements, crosstab_n.columns, 
-                 title=var_y, bbox_to_anchor=(1.05, 1), 
-                 loc='upper left')
-        
-        # Ajustement des limites et des titres
-        ax.set_xlim(-0.05, 1.05)
-        ax.set_ylim(0, 1)
-        plt.title(plot_options['title'])
-        plt.xlabel(plot_options['x_label'])
-        
-        # Suppression des graduations de l'axe y mais conservation de l'axe
-        ax.set_yticks([])
-        
-        # Ajout de la source et de la note si spécifiées
-        if plot_options['source']:
-            plt.figtext(0.01, -0.1, f"Source : {plot_options['source']}", 
-                       ha='left', fontsize=8)
-        
-        if plot_options['note']:
-            plt.figtext(0.01, -0.15, f"Note : {plot_options['note']}", 
-                       ha='left', fontsize=8)
-        
-        plt.tight_layout()
-    
-    return fig
-
-def analyze_mixed_bivariate(df, qual_var, quant_var):
-    """
-    Analyse bivariée pour une variable qualitative et une quantitative.
-    Retourne les statistiques descriptives par modalité.
-    """
-    # Filtrage des non-réponses
-    data = df.copy()
-    missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr', 'NR', 'Non-réponse']
-    data[qual_var] = data[qual_var].replace(missing_values, np.nan)
-    data[quant_var] = data[quant_var].replace(missing_values, np.nan)
-    data = data.dropna(subset=[qual_var, quant_var])
-    
-    # Calcul des statistiques par modalité
-    stats_df = data.groupby(qual_var)[quant_var].agg([
-        ('Effectif', 'count'),
-        ('Total', lambda x: x.sum()),
-        ('Moyenne', 'mean'),
-        ('Médiane', 'median'),
-        ('Écart-type', 'std'),
-        ('Minimum', 'min'),
-        ('Maximum', 'max')
-    ]).round(2)
-    
-    # Ajout du total général
-    total_stats = pd.DataFrame({
-        'Effectif': data[quant_var].count(),
-        'Total': data[quant_var].sum(),
-        'Moyenne': data[quant_var].mean(),
-        'Médiane': data[quant_var].median(),
-        'Écart-type': data[quant_var].std(),
-        'Minimum': data[quant_var].min(),
-        'Maximum': data[quant_var].max()
-    }, index=['Total']).round(2)
-    
-    stats_df = pd.concat([stats_df, total_stats])
-
-    # Calcul du taux de réponse
-    response_rate = (data[qual_var].count() / len(df)) * 100
-    
-    return stats_df, response_rate
-
-def plot_mixed_bivariate(df, qual_var, quant_var, color_palette, plot_options):
-    """
-    Création d'un box plot pour l'analyse mixte avec Plotly.
-    """
-    # Filtrage des non-réponses
-    data = df.copy()
-    missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr', 'NR', 'Non-réponse']
-    data[qual_var] = data[qual_var].replace(missing_values, np.nan)
-    data[quant_var] = data[quant_var].replace(missing_values, np.nan)
-    data = data.dropna(subset=[qual_var, quant_var])
-    
-    fig = go.Figure()
-    
-    for i, modalite in enumerate(sorted(data[qual_var].unique())):
-        subset = data[data[qual_var] == modalite][quant_var]
-        
-        fig.add_trace(go.Box(
-            y=subset,
-            name=str(modalite),
-            marker_color=color_palette[i % len(color_palette)]
-        ))
-    
-    fig.update_layout(
-        title=plot_options['title'],
-        yaxis_title=plot_options['y_label'],
-        xaxis_title=plot_options['x_label'],
-        showlegend=False,
-        height=600,
-        margin=dict(t=100, b=100),
-        plot_bgcolor='white'
-    )
-    
-    # Ajout de la source et de la note si spécifiées
-    if plot_options['source']:
-        fig.add_annotation(
-            text=f"Source : {plot_options['source']}",
-            xref="paper",
-            yref="paper",
-            x=0,
-            y=-0.15,
-            showarrow=False,
-            font=dict(size=10),
-            align="left"
-        )
-    
-    if plot_options['note']:
-        fig.add_annotation(
-            text=f"Note : {plot_options['note']}",
-            xref="paper",
-            yref="paper",
-            x=0,
-            y=-0.2,
-            showarrow=False,
-            font=dict(size=10),
-            align="left"
-        )
-    
-    return fig
-
 def check_normality(data, var):
-    """
-    Vérifie la normalité d'une variable avec adaptation pour les grands échantillons.
-    """
+    """Vérifie la normalité d'une variable avec adaptation pour les grands échantillons."""
     n = len(data)
     if n > 5000:
-        # Pour les grands échantillons, utiliser le test d'Anderson-Darling
-        # qui est plus adapté aux grands échantillons
         _, p_value = stats.normaltest(data[var])
     else:
-        # Pour les petits échantillons, utiliser Shapiro-Wilk
         _, p_value = stats.shapiro(data[var])
     return p_value > 0.05
 
 def check_duplicates(df, var_x, var_y):
-    """
-    Vérifie si certaines valeurs de var_x ou var_y sont répétées
-    dans le jeu de données.
-    """
+    """Vérifie la présence de doublons dans les variables."""
     duplicates_x = df[var_x].duplicated().any()
     duplicates_y = df[var_y].duplicated().any()
     return duplicates_x or duplicates_y
 
-def analyze_quantitative_bivariate(df, var_x, var_y, groupby_col=None, agg_method='sum'):
-    """
-    Analyse bivariée pour deux variables quantitatives avec option d'agrégation.
-    """    
-    data = df.copy()
-    missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr', 'NR', 'Non-réponse']
+def calculate_grouped_stats(data, var, groupby_col, agg_method='mean'):
+    """Calcule les statistiques avec agrégation."""
+    clean_data = data.dropna(subset=[var, groupby_col])
     
-    # Remplacement des non-réponses par np.nan pour les colonnes sélectionnées
-    data[var_x] = data[var_x].replace(missing_values, np.nan)
-    data[var_y] = data[var_y].replace(missing_values, np.nan)
-    if groupby_col:
-        data[groupby_col] = data[groupby_col].replace(missing_values, np.nan)
-    
-    # Si une colonne de groupement est spécifiée, agrégeons d'abord les données
-    if groupby_col is not None:
-        # Suppression des non-réponses pour les variables quantitatives et la variable d'agrégation
-        data = data.dropna(subset=[var_x, var_y, groupby_col])
-        data = data.groupby(groupby_col).agg({
-            var_x: agg_method,
-            var_y: agg_method
-        }).reset_index()
-    else:
-        # Suppression des non-réponses pour les variables quantitatives seulement
-        data = data.dropna(subset=[var_x, var_y])
-    
-    # Test de normalité
-    is_normal_x = check_normality(data, var_x)
-    is_normal_y = check_normality(data, var_y)
-    is_normal = is_normal_x and is_normal_y
-    
-    if is_normal:
-        correlation_method = "Pearson"
-        correlation, p_value = stats.pearsonr(data[var_x], data[var_y])
-    else:
-        correlation_method = "Spearman"
-        correlation, p_value = stats.spearmanr(data[var_x], data[var_y])
-    
-    results_dict = {
-        "Test de corrélation": [correlation_method],
-        "Coefficient": [round(correlation, 3)],
-        "P-value": [round(p_value, 3)],
-        "Interprétation": ["Significatif" if p_value < 0.05 else "Non significatif"],
-        "Nombre d'observations": [len(data)]
+    detailed_stats = {
+        'sum': clean_data[var].sum(),
+        'mean': clean_data[var].mean(),
+        'median': clean_data[var].median(),
+        'std': clean_data[var].std(),
+        'count': len(clean_data)
     }
     
-    if groupby_col is not None:
-        results_dict["Note"] = [f"Données agrégées par {groupby_col} ({agg_method})"]
+    agg_data = clean_data.groupby(groupby_col).agg({var: agg_method}).reset_index()
     
-    results_df = pd.DataFrame(results_dict)
+    agg_stats = {
+        'sum': agg_data[var].sum(),
+        'mean': agg_data[var].mean(),
+        'median': agg_data[var].median(),
+        'std': agg_data[var].std(),
+        'count': len(agg_data)
+    }
+    
+    return detailed_stats, agg_stats, agg_data
 
-    # Calcul des taux de réponse sur données originales
-    response_rate_x = (df[var_x].count() / len(df)) * 100
-    response_rate_y = (df[var_y].count() / len(df)) * 100
+def create_interactive_stats_table(stats_df):
+    """Crée un tableau de statistiques interactif."""
+    gb = GridOptionsBuilder.from_dataframe(stats_df)
     
-    return results_df, response_rate_x, response_rate_y
+    gb.configure_default_column(
+        sorteable=True,
+        filterable=True,
+        resizable=True,
+        draggable=True
+    )
     
-def detect_variable_to_aggregate(df, var_x, var_y, groupby_col):
-    """
-    Détecte automatiquement quelles variables doivent être agrégées en comptant
-    le nombre de valeurs uniques pour chaque modalité du groupby_col.
+    gb.configure_grid_options(
+        enableRangeSelection=True,
+        groupable=True,
+        groupDefaultExpanded=1
+    )
     
-    Returns:
-        tuple: (vars_to_aggregate, vars_to_keep_raw)
-    """
-    # Pour chaque variable, on compte le nombre de valeurs différentes par groupby_col
-    x_values_per_group = df.groupby(groupby_col)[var_x].nunique()
-    y_values_per_group = df.groupby(groupby_col)[var_y].nunique()
+    gb.configure_columns(
+        stats_df.columns.tolist(),
+        groupable=True,
+        value=True,
+        aggFunc='sum',
+        enableValue=True
+    )
     
-    # Initialisation des variables à agréger et à garder
-    vars_to_aggregate = []
-    vars_to_keep_raw = []
-    
-    # Si une variable a plusieurs valeurs pour certains groupes, elle doit être agrégée
-    if (x_values_per_group > 1).any():
-        vars_to_aggregate.append(var_x)
-    else:
-        vars_to_keep_raw.append(var_x)
-    
-    if (y_values_per_group > 1).any():
-        vars_to_aggregate.append(var_y)
-    else:
-        vars_to_keep_raw.append(var_y)
-    
-    return vars_to_aggregate, vars_to_keep_raw
+    return AgGrid(
+        stats_df,
+        gridOptions=gb.build(),
+        enable_enterprise_modules=True,
+        allow_unsafe_jscode=True,
+        update_mode='VALUE_CHANGED',
+        fit_columns_on_grid_load=True,
+        theme='streamlit'
+    )
 
-def detect_repeated_variable(df, var_x, var_y, groupby_col):
-    """
-    Détecte quelle variable contient des observations répétées pour chaque modalité du groupby_col.
-    """
-    x_duplicates = df.groupby(groupby_col)[var_x].nunique() > 1
-    y_duplicates = df.groupby(groupby_col)[var_y].nunique() > 1
-    
-    if x_duplicates.any() and not y_duplicates.any():
-        return var_x
-    elif y_duplicates.any() and not x_duplicates.any():
-        return var_y
-    return None
-    
 def calculate_regression(x, y):
-    """
-    Calcule la régression linéaire de manière robuste.
-    Retourne les coefficients et un booléen indiquant si la régression a réussi.
-    """
+    """Calcule la régression linéaire de manière robuste."""
     try:
-        # Première tentative avec numpy polyfit
         z = np.polyfit(x, y, 1)
         return z, True
     except np.linalg.LinAlgError:
         try:
-            # Deuxième tentative avec statsmodels (plus robuste)
             import statsmodels.api as sm
             X = sm.add_constant(x)
             model = sm.OLS(y, X)
             results = model.fit()
             return [results.params[1], results.params[0]], True
         except:
-            # Si les deux méthodes échouent
             return None, False
 
-def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot_options, groupby_col=None, agg_method=None):
-    """
-    Création d'un scatter plot interactif avec Plotly pour l'analyse quantitative.
-    Inclut des info-bulles et une ligne de régression robuste.
-    """
-    # Nettoyage des données pour la régression
-    df_clean = df.dropna(subset=[var_x, var_y])
-    x = df_clean[var_x].values
-    y = df_clean[var_y].values
-    
-    # Calcul de la régression de manière robuste
-    regression_coeffs, regression_success = calculate_regression(x, y)
-    
-    # Création du scatter plot
-    fig = go.Figure()
-    
-    # Ajout du nuage de points avec info-bulles personnalisées
-    hover_text = []
-    for idx, row in df.iterrows():
-        if pd.isna(row[var_x]) or pd.isna(row[var_y]):
-            continue
-            
-        text_parts = []
-        if groupby_col:
-            text_parts.append(f"<b>{groupby_col}</b>: {row[groupby_col]}")
-        text_parts.extend([
-            f"<b>{var_x}</b>: {row[var_x]:,.2f}",
-            f"<b>{var_y}</b>: {row[var_y]:,.2f}"
-        ])
-        hover_text.append("<br>".join(text_parts))
-    
-    # Ajout du nuage de points
-    fig.add_trace(go.Scatter(
-        x=df[var_x],
-        y=df[var_y],
-        mode='markers',
-        name='Observations',
-        marker=dict(
-            color=color_scheme[0],
-            size=10,
-            opacity=0.7
-        ),
-        hovertext=hover_text,
-        hoverinfo='text',
-        hoverlabel=dict(
-            bgcolor='white',
-            font_size=12,
-            font_family="Arial"
-        )
-    ))
-    
-    # Ajout de la ligne de régression si le calcul a réussi
-    if regression_success:
-        x_range = np.linspace(df[var_x].min(), df[var_x].max(), 100)
-        y_range = regression_coeffs[0] * x_range + regression_coeffs[1]
-        
-        fig.add_trace(go.Scatter(
-            x=x_range,
-            y=y_range,
-            mode='lines',
-            name=f'Régression (y = {regression_coeffs[0]:.2f}x + {regression_coeffs[1]:.2f})',
-            line=dict(
-                color=color_scheme[0],
-                dash='dash'
-            )
-        ))
-    else:
-        st.warning("La ligne de régression n'a pas pu être calculée en raison de la distribution des données.")
-    
-    # Configuration du layout
-    title = plot_options['title']
-    if groupby_col and agg_method:
-        title += f"<br><sup>Données agrégées par {groupby_col} ({agg_method})</sup>"
-    
-    fig.update_layout(
-        title=dict(
-            text=title,
-            x=0.5,
-            xanchor='center'
-        ),
-        xaxis_title=plot_options['x_label'],
-        yaxis_title=plot_options['y_label'],
-        hovermode='closest',
-        plot_bgcolor='white',
-        width=900,
-        height=600,
-        margin=dict(t=100, b=100),
-        showlegend=True,
-        legend=dict(
-            yanchor="top",
-            y=0.99,
-            xanchor="left",
-            x=0.01
-        )
-    )
-    
-    # Ajout de la grille
-    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
-    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
-    
-    # Ajout de la source et de la note si spécifiées
-    annotations = []
-    
-    current_y = -0.15
-    if plot_options['source']:
-        annotations.append(dict(
-            text=f"Source : {plot_options['source']}",
-            x=0,
-            y=current_y,
-            xref="paper",
-            yref="paper",
-            showarrow=False,
-            font=dict(size=10)
-        ))
-        current_y -= 0.05
-    
-    if plot_options['note']:
-        annotations.append(dict(
-            text=f"Note : {plot_options['note']}",
-            x=0,
-            y=current_y,
-            xref="paper",
-            yref="paper",
-            showarrow=False,
-            font=dict(size=10)
-        ))
-    
-    if annotations:
-        fig.update_layout(annotations=annotations)
-    
-    return fig
-
-def plot_density(plot_data, var, title, x_axis, y_axis):
-    fig = ff.create_distplot(
-        [plot_data],
-        [var],
-        show_hist=False,
-        show_rug=False,
-        colors=[COLOR_PALETTES['Bleu'][0]]
-    )
-    fig.update_layout(
-        title=title,
-        xaxis_title=x_axis,
-        yaxis_title=y_axis,
-        plot_bgcolor='white',
-        paper_bgcolor='white',
-        hovermode='closest',
-        height=600,
-        margin=dict(t=100, b=100),
-    )
-    return fig
-
-def plot_quantile_distribution(data, title, y_label, color_palette, plot_type, is_integer_variable):
-    fig = go.Figure()
-    
-    if plot_type == "Boîte à moustaches":
-        fig.add_trace(go.Box(
-            y=data,
-            name='',
-            boxpoints=False,
-            marker_color=color_palette[0],
-            showlegend=False
-        ))
-    elif plot_type == "Violin plot":
-        fig.add_trace(go.Violin(
-            y=data,
-            name='',
-            box_visible=True,
-            meanline_visible=True,
-            marker_color=color_palette[0],
-            showlegend=False
-        ))
-    elif plot_type == "Box plot avec points":
-        fig.add_trace(go.Box(
-            y=data,
-            name='',
-            boxpoints='all',
-            jitter=0.3,
-            pointpos=-1.8,
-            marker_color=color_palette[0],
-            showlegend=False
-        ))
-    
-    quartiles = np.percentile(data, [0, 25, 50, 75, 100])
-    annotations = []
-    positions = [-0.2, -0.1, 0, 0.1, 0.2]
-    
-    for q, pos, label in zip(quartiles, positions, ['Min', 'Q1', 'Médiane', 'Q3', 'Max']):
-        q_value = int(q) if is_integer_variable else round(q, 2)
-        annotations.append(dict(
-            x=pos,
-            y=q,
-            xref="paper",
-            yref="y",
-            text=f"{label}: {q_value}",
-            showarrow=True,
-            ax=40,
-            ay=0
-        ))
-    
-    fig.update_layout(
-        title=title,
-        yaxis_title=y_label,
-        height=600,
-        showlegend=False,
-        annotations=annotations,
-        plot_bgcolor='white',
-        yaxis=dict(
-            gridcolor='lightgray',
-            zeroline=True,
-            zerolinewidth=1,
-            zerolinecolor='lightgray'
-        )
-    )
-    
-    return fig
-
+# Fonctions de visualisation univariée
 def plot_qualitative_bar(data, title, x_label, y_label, color_palette, show_values=True):
-    """
-    Crée un graphique en barres pour une variable qualitative.
-    """
+    """Crée un graphique en barres pour une variable qualitative."""
     fig = go.Figure(data=[
         go.Bar(
             x=data['Modalité'],
@@ -799,12 +250,10 @@ def plot_qualitative_bar(data, title, x_label, y_label, color_palette, show_valu
     return fig
 
 def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show_values=True):
-    """
-    Crée un graphique lollipop pour une variable qualitative avec des bâtons verticaux.
-    """
+    """Crée un graphique lollipop pour une variable qualitative."""
     fig = go.Figure()
     
-    # Pour chaque point, créer une ligne verticale partant de zéro
+    # Lignes verticales
     for i in range(len(data)):
         fig.add_trace(go.Scatter(
             x=[data['Modalité'].iloc[i], data['Modalité'].iloc[i]],
@@ -815,7 +264,7 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
             hoverinfo='none'
         ))
     
-    # Ajout des points (sucettes)
+    # Points
     fig.add_trace(go.Scatter(
         x=data['Modalité'],
         y=data['Effectif'],
@@ -825,22 +274,21 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
         showlegend=False
     ))
 
-    # Ajout des valeurs au-dessus des points
+    # Valeurs
     if show_values:
-        # Calcul de la position Y pour le texte (20% plus haut que les points)
-        text_y = data['Effectif'] + (data['Effectif'].max() * 0.1)
+        max_y = data['Effectif'].max()
+        text_y = data['Effectif'] + (max_y * 0.2)
         
         fig.add_trace(go.Scatter(
             x=data['Modalité'],
-            y=text_y,  # Position Y ajustée
+            y=text_y,
             mode='text',
-            text=data['Effectif'].round(0).astype(str),
+            text=data['Effectif'].round(1).astype(str),
             textposition='middle center',
             textfont=dict(size=12),
             showlegend=False
         ))
 
-    # Mise à jour du layout
     fig.update_layout(
         title=title,
         xaxis_title=x_label,
@@ -853,19 +301,18 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
             zerolinewidth=1,
             zerolinecolor='lightgray',
             gridcolor='lightgray',
-            range=[0, max(data['Effectif']) * 1.3]  # Plus d'espace pour le texte
+            range=[0, max(data['Effectif']) * 1.5]
         ),
         xaxis=dict(
-            gridcolor='lightgray'
+            gridcolor='lightgray',
+            tickangle=45
         )
     )
 
     return fig
-    
+
 def plot_qualitative_treemap(data, title, color_palette):
-    """
-    Crée un treemap pour une variable qualitative.
-    """
+    """Crée un treemap pour une variable qualitative."""
     fig = px.treemap(
         data,
         path=['Modalité'],
@@ -878,369 +325,349 @@ def plot_qualitative_treemap(data, title, color_palette):
     fig.update_layout(
         height=600,
         margin=dict(t=100, b=100),
-        # Amélioration de la lisibilité des labels
         uniformtext=dict(minsize=10, mode='hide'),
-        # Ajustement des marges pour éviter la superposition
         margin_pad=5
     )
 
     return fig
 
-def calculate_grouped_stats(data, var, groupby_col, agg_method='mean'):
-    """
-    Calcule les statistiques avec agrégation.
+def plot_density(plot_data, var, title, x_axis, y_axis):
+    """Crée un graphique de densité."""
+    fig = ff.create_distplot(
+        [plot_data],
+        [var],
+        show_hist=False,
+        show_rug=False,
+        colors=[COLOR_PALETTES['Bleu'][0]]
+    )
     
-    Parameters:
-    -----------
-    data : pandas.DataFrame
-        Données source
-    var : str
-        Variable à analyser
-    groupby_col : str
-        Colonne d'agrégation
-    agg_method : str
-        Méthode d'agrégation ('sum', 'mean', 'median')
-    """
-    # Nettoyage des données pour les deux variables
-    clean_data = data.dropna(subset=[var, groupby_col])
+    fig.update_layout(
+        title=title,
+        xaxis_title=x_axis,
+        yaxis_title=y_axis,
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        hovermode='closest',
+        height=600,
+        margin=dict(t=100, b=100),
+    )
     
-    # Calcul des statistiques sans agrégation (niveau détaillé)
-    detailed_stats = {
-        'sum': clean_data[var].sum(),
-        'mean': clean_data[var].mean(),
-        'median': clean_data[var].median(),
-        'std': clean_data[var].std(),
-        'count': len(clean_data)
-    }
-    
-    # Agrégation des données
-    agg_data = clean_data.groupby(groupby_col).agg({
-        var: agg_method
-    }).reset_index()
-    
-    # Calcul des statistiques sur données agrégées
-    agg_stats = {
-        'sum': agg_data[var].sum(),
-        'mean': agg_data[var].mean(),
-        'median': agg_data[var].median(),
-        'std': agg_data[var].std(),
-        'count': len(agg_data)  # nombre de groupes
-    }
-    
-    return detailed_stats, agg_stats, agg_data
+    return fig
 
-# Interface Streamlit
-def display_univariate_analysis():
-    # Sélection de la variable avec une option vide
-    var = st.selectbox("Sélectionnez la variable:", options=["---"] + list(st.session_state.merged_data.columns))
+def plot_quantile_distribution(data, title, y_label, color_palette, plot_type, is_integer_variable):
+    """Crée différents types de visualisations pour les distributions quantitatives."""
+    fig = go.Figure()
     
-    if var != "---":
-        plot_data = st.session_state.merged_data[var].dropna()
+    if plot_type == "Boîte à moustaches":
+        fig.add_trace(go.Box(
+            y=data,
+            name='',
+            boxpoints=False,
+            marker_color=color_palette[0],
+            showlegend=False
+        ))
+    elif plot_type == "Violin plot":
+        fig.add_trace(go.Violin(
+            y=data,
+            name='',
+            box_visible=True,
+            meanline_visible=True,
+            marker_color=color_palette[0],
+            showlegend=False
+        ))
+    elif plot_type == "Box plot avec points":
+        fig.add_trace(go.Box(
+            y=data,
+            name='',
+            boxpoints='all',
+            jitter=0.3,
+            pointpos=-1.8,
+            marker_color=color_palette[0],
+            showlegend=False
+        ))
+    
+    # Calcul et affichage des quantiles
+    quartiles = np.percentile(data, [0, 25, 50, 75, 100])
+    annotations = []
+    positions = [-0.2, -0.1, 0, 0.1, 0.2]
+    
+    for q, pos, label in zip(quartiles, positions, ['Min', 'Q1', 'Médiane', 'Q3', 'Max']):
+        q_value = int(q) if is_integer_variable else round(q, 2)
+        annotations.append(dict(
+            x=pos,
+            y=q,
+            xref="paper",
+            yref="y",
+            text=f"{label}: {q_value}",
+            showarrow=True,
+            ax=40,
+            ay=0
+        ))
+    
+    fig.update_layout(
+        title=title,
+        yaxis_title=y_label,
+        height=600,
+        showlegend=False,
+        annotations=annotations,
+        plot_bgcolor='white',
+        yaxis=dict(
+            gridcolor='lightgray',
+            zeroline=True,
+            zerolinewidth=1,
+            zerolinecolor='lightgray'
+        )
+    )
+    
+    return fig
+
+# Fonctions de visualisation bivariée
+def plot_mixed_bivariate(df, qual_var, quant_var, color_palette, plot_options):
+    """Crée un box plot pour l'analyse mixte."""
+    # Nettoyage des données
+    data = df.copy()
+    missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr', 'NR', 'Non-réponse']
+    data[qual_var] = data[qual_var].replace(missing_values, np.nan)
+    data[quant_var] = data[quant_var].replace(missing_values, np.nan)
+    data = data.dropna(subset=[qual_var, quant_var])
+    
+    fig = go.Figure()
+    
+    for i, modalite in enumerate(sorted(data[qual_var].unique())):
+        subset = data[data[qual_var] == modalite][quant_var]
+        fig.add_trace(go.Box(
+            y=subset,
+            name=str(modalite),
+            marker_color=color_palette[i % len(color_palette)]
+        ))
+    
+    fig.update_layout(
+        title=plot_options['title'],
+        yaxis_title=plot_options['y_label'],
+        xaxis_title=plot_options['x_label'],
+        showlegend=False,
+        height=600,
+        margin=dict(t=100, b=100),
+        plot_bgcolor='white'
+    )
+    
+    return fig
+
+def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot_options, groupby_col=None, agg_method=None):
+    """Crée un scatter plot interactif pour l'analyse quantitative."""
+    df_clean = df.dropna(subset=[var_x, var_y])
+    regression_coeffs, regression_success = calculate_regression(
+        df_clean[var_x].values,
+        df_clean[var_y].values
+    )
+    
+    fig = go.Figure()
+    
+    # Nuage de points
+    hover_text = []
+    for idx, row in df.iterrows():
+        if pd.isna(row[var_x]) or pd.isna(row[var_y]):
+            continue
         
-        if not plot_data.empty:
-            is_numeric = pd.api.types.is_numeric_dtype(plot_data)
-            
-            st.write(f"### Statistiques principales de la variable {var}")
-            
-            if is_numeric:
-                stats_df = pd.DataFrame({
-                    'Statistique': ['Effectif total', 'Somme', 'Moyenne', 'Médiane', 'Écart-type', 'Minimum', 'Maximum'],
-                    'Valeur': [
-                        len(plot_data),
-                        plot_data.sum().round(2),
-                        plot_data.mean().round(2),
-                        plot_data.median().round(2),
-                        plot_data.std().round(2),
-                        plot_data.min(),
-                        plot_data.max()
-                    ]
-                })
-                create_interactive_stats_table(stats_df)
-                
-                is_integer_variable = all(float(x).is_integer() for x in plot_data)
-                
-                st.write("### Options de regroupement")
-                grouping_method = st.selectbox("Méthode de regroupement", ["Aucune", "Quantile", "Manuelle"], key="grouping_method")
-                
-                if grouping_method == "Quantile":
-                    quantile_type = st.selectbox("Type de regroupement", ["Quartile (4 groupes)", "Quintile (5 groupes)", "Décile (10 groupes)"], key="quantile_type")
-                    n_groups = {"Quartile (4 groupes)": 4, "Quintile (5 groupes)": 5, "Décile (10 groupes)": 10}[quantile_type]
-                    
-                    labels = [f"{i}er quantile" if i == 1 else f"{i}ème quantile" for i in range(1, n_groups + 1)]
-                    grouped_data = pd.qcut(plot_data, q=n_groups, labels=labels)
-                    value_counts = pd.DataFrame({
-                        'Groupe': labels,
-                        'Effectif': grouped_data.value_counts().reindex(labels)
-                    })
-                    
-                    value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).apply(lambda x: int(x) if x.is_integer() else round(x, 1))
-                    group_stats = plot_data.groupby(grouped_data).agg(['sum', 'mean', 'max'])
-                    if is_integer_variable:
-                        group_stats = group_stats.applymap(lambda x: int(x) if float(x).is_integer() else round(x, 2))
-                    else:
-                        group_stats = group_stats.round(2)
-                    group_stats.columns = ['Somme', 'Moyenne', 'Maximum']
-                    final_stats = pd.concat([value_counts, group_stats], axis=1)
-                    
-                    st.write("### Statistiques par groupe")
-                    st.dataframe(final_stats)
-
-                    quantile_viz_type = st.selectbox("Type de visualisation", ["Boîte à moustaches", "Violin plot", "Box plot avec points"], key="quantile_viz_type")
-                    with st.expander("Options avancées"):
-                        title = st.text_input("Titre du graphique", f"Distribution de {var}", key="title_adv")
-                        y_axis = st.text_input("Titre de l'axe Y", var, key="y_axis_adv")
-                        color_scheme = st.selectbox("Palette de couleurs", list(COLOR_PALETTES.keys()), key="color_scheme_quantile")
-                    
-                    fig = plot_quantile_distribution(plot_data, title, y_axis, COLOR_PALETTES[color_scheme], quantile_viz_type, is_integer_variable)
-                    st.plotly_chart(fig, use_container_width=True)
-                
-                elif grouping_method == "Manuelle":
-                    n_groups = st.number_input("Nombre de groupes", min_value=2, value=3, key="n_groups")
-                    breaks = []
-                    if is_integer_variable:
-                        for i in range(n_groups + 1):
-                            if i == 0:
-                                val = int(plot_data.min())
-                            elif i == n_groups:
-                                val = int(plot_data.max())
-                            else:
-                                suggested_val = int(plot_data.min() + (i/n_groups)*(plot_data.max()-plot_data.min()))
-                                val = st.number_input(f"Seuil {i}", value=suggested_val, step=1, key=f"threshold_{i}")
-                            breaks.append(val)
-                    else:
-                        for i in range(n_groups + 1):
-                            if i == 0:
-                                val = plot_data.min()
-                            elif i == n_groups:
-                                val = plot_data.max()
-                            else:
-                                val = st.number_input(f"Seuil {i}", value=float(plot_data.min() + (i/n_groups)*(plot_data.max()-plot_data.min())), key=f"threshold_{i}")
-                            breaks.append(val)
-                    
-                    grouped_data = pd.cut(plot_data, bins=breaks)
-                    value_counts = grouped_data.value_counts().reset_index()
-                    value_counts.columns = ['Groupe', 'Effectif']
-                    value_counts = value_counts.sort_values('Groupe', key=lambda x: x.map(lambda y: y.left))
-                    value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100)
-                    if is_integer_variable:
-                        value_counts['Effectif'] = value_counts['Effectif'].astype(int)
-                        value_counts['Taux (%)'] = value_counts['Taux (%)'].apply(lambda x: int(x) if x.is_integer() else round(x, 1))
-                    
-                    st.write("### Répartition des groupes")
-                    st.dataframe(value_counts)
-                
-            else:
-                value_counts = plot_data.value_counts().reset_index()
-                value_counts.columns = ['Modalité', 'Effectif']
-                value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
-                st.dataframe(value_counts)
-            
-            st.write("### Configuration de la visualisation")
-            viz_col1, viz_col2 = st.columns([1, 2])
-            with viz_col1:
-                if is_numeric:
-                    if grouping_method == "Aucune":
-                        graph_type = st.selectbox("Type de graphique", ["Histogramme", "Density plot"], key="graph_type_no_group")
-                    else:
-                        graph_type = st.selectbox("Type de graphique", ["Bar plot", "Lollipop plot", "Treemap"], key="graph_type_group")
-                else:
-                    graph_type = st.selectbox("Type de graphique", ["Bar plot", "Lollipop plot", "Treemap"], key="graph_type_qual")
-            
-            with viz_col2:
-                color_scheme = st.selectbox("Palette de couleurs", list(COLOR_PALETTES.keys()), key="color_scheme")
-            
-            with st.expander("Options avancées"):
-                adv_col1, adv_col2 = st.columns(2)
-                with adv_col1:
-                    title = st.text_input("Titre du graphique", f"Distribution de {var}", key="title_adv")
-                    x_axis = st.text_input("Titre de l'axe X", var, key="x_axis_adv")
-                    y_axis = st.text_input("Titre de l'axe Y", "Valeur", key="y_axis_adv")
-                with adv_col2:
-                    source = st.text_input("Source des données", "", key="source_adv")
-                    note = st.text_input("Note de lecture", "", key="note_adv")
-                    show_values = st.checkbox("Afficher les valeurs", True, key="show_values_adv")
-                    
-                    if is_numeric and grouping_method != "Aucune":
-                        if grouping_method == "Quantile":
-                            value_to_display = st.radio("Valeur à afficher", ["Maximum", "Moyenne"], index=0, key="value_type_quant")
-                        elif grouping_method == "Manuelle":
-                            value_to_display = st.radio("Valeur à afficher", ["Effectif", "Taux (%)"], key="value_type_manual")
-
-            if st.button("Générer la visualisation"):
-                try:
-                    annotations = []
-                    current_y = -0.15
-            
-                    if source:
-                        annotations.append(dict(
-                            text=f"Source : {source}",
-                            xref="paper",
-                            yref="paper",
-                            x=0,
-                            y=current_y,
-                            showarrow=False,
-                            font=dict(size=10),
-                            align="left"
-                        ))
-                        current_y -= 0.05
-            
-                    if note:
-                        annotations.append(dict(
-                            text=f"Note : {note}",
-                            xref="paper",
-                            yref="paper",
-                            x=0,
-                            y=current_y,
-                            showarrow=False,
-                            font=dict(size=10),
-                            align="left"
-                        ))
-            
-                    if not is_numeric:
-                        data_to_plot = value_counts.copy()
-                        if value_to_display == "Taux (%)":
-                            data_to_plot['Effectif'] = data_to_plot['Taux (%)']
-                            y_axis = "Taux (%)" if y_axis == "Valeur" else y_axis
-            
-                        data_to_plot['Modalité'] = data_to_plot['Modalité'].astype(str)
-            
-                        if graph_type == "Bar plot":
-                            fig = plot_qualitative_bar(data_to_plot, title, x_axis, y_axis, COLOR_PALETTES[color_scheme], show_values)
-                        elif graph_type == "Lollipop plot":
-                            fig = plot_qualitative_lollipop(data_to_plot, title, x_axis, y_axis, COLOR_PALETTES[color_scheme], show_values)
-                        elif graph_type == "Treemap":
-                            fig = plot_qualitative_treemap(data_to_plot, title, COLOR_PALETTES[color_scheme])
-            
-                    else:
-                        if grouping_method == "Aucune":
-                            if graph_type == "Histogramme":
-                                fig = px.histogram(plot_data, title=title, color_discrete_sequence=COLOR_PALETTES[color_scheme])
-                                if show_values:
-                                    fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
-                            else:
-                                fig = plot_density(plot_data, var, title, x_axis, y_axis)
-                        else:
-                            data_to_plot = pd.DataFrame({'Modalité': value_counts['Groupe'].astype(str)})
-                            
-                            if grouping_method == "Quantile":
-                                fig = plot_quantile_distribution(plot_data, title, y_axis, COLOR_PALETTES[color_scheme], quantile_viz_type, is_integer_variable)
-                            elif grouping_method == "Manuelle":
-                                if value_to_display == "Effectif":
-                                    data_to_plot['Effectif'] = value_counts['Effectif']
-                                else:
-                                    data_to_plot['Effectif'] = value_counts['Taux (%)']
-                            
-                                if graph_type == "Bar plot":
-                                    fig = plot_qualitative_bar(data_to_plot, title, x_axis, y_axis, COLOR_PALETTES[color_scheme], show_values)
-                                elif graph_type == "Lollipop plot":
-                                    fig = plot_qualitative_lollipop(data_to_plot, title, x_axis, y_axis, COLOR_PALETTES[color_scheme], show_values)
-                                else:
-                                    fig = plot_qualitative_treemap(data_to_plot, title, COLOR_PALETTES[color_scheme])
-            
-                    if annotations and isinstance(fig, go.Figure):
-                        fig.update_layout(annotations=annotations)
-
-                    fig.update_layout(
-                        title=title,
-                        xaxis_title=x_axis,
-                        yaxis_title=y_axis,
-                    )
-            
-                    st.plotly_chart(fig, use_container_width=True)
-            
-                except Exception as e:
-                    st.error(f"Erreur lors de la génération du graphique : {str(e)}")
-                    st.error(f"Détails : {str(type(e).__name__)}")
+        text_parts = []
+        if groupby_col:
+            text_parts.append(f"<b>{groupby_col}</b>: {row[groupby_col]}")
+        text_parts.extend([
+            f"<b>{var_x}</b>: {row[var_x]:,.2f}",
+            f"<b>{var_y}</b>: {row[var_y]:,.2f}"
+        ])
+        hover_text.append("<br>".join(text_parts))
     
-        else:
-            st.warning("Aucune donnée valide disponible pour cette variable")
+    fig.add_trace(go.Scatter(
+        x=df[var_x],
+        y=df[var_y],
+        mode='markers',
+        name='Observations',
+        marker=dict(
+            color=color_scheme[0],
+            size=10,
+            opacity=0.7
+        ),
+        hovertext=hover_text,
+        hoverinfo='text',
+        hoverlabel=dict(
+            bgcolor='white',
+            font_size=12,
+            font_family="Arial"
+        )
+    ))
+    
+    # Ligne de régression
+    if regression_success:
+        x_range = np.linspace(df[var_x].min(), df[var_x].max(), 100)
+        y_range = regression_coeffs[0] * x_range + regression_coeffs[1]
+        
+        fig.add_trace(go.Scatter(
+            x=x_range,
+            y=y_range,
+            mode='lines',
+            name=f'Régression (y = {regression_coeffs[0]:.2f}x + {regression_coeffs[1]:.2f})',
+            line=dict(
+                color=color_scheme[0],
+                dash='dash'
+            )
+        ))
+    
+    # Configuration du layout
+    title = plot_options['title']
+    if groupby_col and agg_method:
+        title += f"<br><sup>Données agrégées par {groupby_col} ({agg_method})</sup>"
+    
+    fig.update_layout(
+        title=dict(text=title, x=0.5, xanchor='center'),
+        xaxis_title=plot_options['x_label'],
+        yaxis_title=plot_options['y_label'],
+        hovermode='closest',
+        plot_bgcolor='white',
+        width=900,
+        height=600,
+        margin=dict(t=100, b=100),
+        showlegend=True,
+        legend=dict(
+            yanchor="top",
+            y=0.99,
+            xanchor="left",
+            x=0.01
+        )
+    )
+    
+    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
+    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
+    
+    return fig
+
+# Fonctions d'analyse bivariée
+def analyze_qualitative_bivariate(df, var_x, var_y, exclude_missing=True):
+    """Analyse bivariée pour deux variables qualitatives."""
+    data = df.copy()
+    missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr', 'NR', 'Non-réponse']
+    
+    data[var_x] = data[var_x].replace(missing_values, np.nan)
+    data[var_y] = data[var_y].replace(missing_values, np.nan)
+    
+    if exclude_missing:
+        data = data.dropna(subset=[var_x, var_y])
+        response_rate_x = (df[var_x].notna().sum() / len(df)) * 100
+        response_rate_y = (df[var_y].notna().sum() / len(df)) * 100
+        response_stats = {
+            f"{var_x}": f"{response_rate_x:.1f}%",
+            f"{var_y}": f"{response_rate_y:.1f}%"
+        }
+    
+    crosstab_n = pd.crosstab(data[var_x], data[var_y])
+    crosstab_pct = pd.crosstab(data[var_x], data[var_y], normalize='index') * 100
+    col_means = crosstab_pct.mean()
+    
+    combined_table = pd.DataFrame(index=crosstab_n.index, columns=crosstab_n.columns)
+    
+    for idx in crosstab_n.index:
+        for col in crosstab_n.columns:
+            n = crosstab_n.loc[idx, col]
+            pct = crosstab_pct.loc[idx, col]
+            combined_table.loc[idx, col] = f"{pct:.1f}% ({n})"
+    
+    row_totals = crosstab_n.sum(axis=1)
+    combined_table['Total'] = [f"100% ({n})" for n in row_totals]
+    
+    mean_row = []
+    for col in crosstab_n.columns:
+        mean_val = col_means[col]
+        total_n = crosstab_n[col].sum()
+        mean_row.append(f"{mean_val:.1f}% ({total_n})")
+    mean_row.append(f"100% ({crosstab_n.values.sum()})")
+    
+    combined_table.loc['Moyenne'] = mean_row
+    
+    return (combined_table, response_stats) if exclude_missing else combined_table
+
+def analyze_mixed_bivariate(df, qual_var, quant_var):
+    """Analyse bivariée pour une variable qualitative et une quantitative."""
+    data = df.copy()
+    missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr', 'NR', 'Non-réponse']
+    data[qual_var] = data[qual_var].replace(missing_values, np.nan)
+    data[quant_var] = data[quant_var].replace(missing_values, np.nan)
+    data = data.dropna(subset=[qual_var, quant_var])
+    
+    stats_df = data.groupby(qual_var)[quant_var].agg([
+        ('Effectif', 'count'),
+        ('Total', lambda x: x.sum()),
+        ('Moyenne', 'mean'),
+        ('Médiane', 'median'),
+        ('Écart-type', 'std'),
+        ('Minimum', 'min'),
+        ('Maximum', 'max')
+    ]).round(2)
+    
+    total_stats = pd.DataFrame({
+        'Effectif': data[quant_var].count(),
+        'Total': data[quant_var].sum(),
+        'Moyenne': data[quant_var].mean(),
+        'Médiane': data[quant_var].median(),
+        'Écart-type': data[quant_var].std(),
+        'Minimum': data[quant_var].min(),
+        'Maximum': data[quant_var].max()
+    }, index=['Total']).round(2)
+    
+    stats_df = pd.concat([stats_df, total_stats])
+    response_rate = (data[qual_var].count() / len(df)) * 100
+    
+    return stats_df, response_rate
+
+def analyze_quantitative_bivariate(df, var_x, var_y, groupby_col=None, agg_method='sum'):
+    """Analyse bivariée pour deux variables quantitatives."""
+    data = df.copy()
+    missing_values = [None, np.nan, '', 'nan', 'NaN', 'Non réponse', 'NA', 'nr', 'NR', 'Non-réponse']
+    
+    data[var_x] = data[var_x].replace(missing_values, np.nan)
+    data[var_y] = data[var_y].replace(missing_values, np.nan)
+    if groupby_col:
+        data[groupby_col] = data[groupby_col].replace(missing_values, np.nan)
+    
+    if groupby_col is not None:
+        data = data.dropna(subset=[var_x, var_y, groupby_col])
+        data = data.groupby(groupby_col).agg({
+            var_x: agg_method,
+            var_y: agg_method
+        }).reset_index()
     else:
-        st.info("Veuillez sélectionner une variable à analyser")
-        
-def display_comparison_stats(data, var, groupby_col):
-    agg_method = st.radio(
-        "Méthode d'agrégation",
-        ['sum', 'mean', 'median'],
-        format_func=lambda x: {
-            'sum': 'Somme',
-            'mean': 'Moyenne',
-            'median': 'Médiane'
-        }[x],
-        key="agg_method_univ"
-    )
+        data = data.dropna(subset=[var_x, var_y])
     
-    # Calcul des statistiques
-    detailed_stats, agg_stats, agg_data = calculate_grouped_stats(
-        data, var, groupby_col, agg_method
-    )
+    # Test de normalité et corrélation
+    is_normal_x = check_normality(data, var_x)
+    is_normal_y = check_normality(data, var_y)
     
-    # Affichage des résultats
-    col1, col2 = st.columns(2)
+    if is_normal_x and is_normal_y:
+        correlation_method = "Pearson"
+        correlation, p_value = stats.pearsonr(data[var_x], data[var_y])
+    else:
+        correlation_method = "Spearman"
+        correlation, p_value = stats.spearmanr(data[var_x], data[var_y])
     
-    with col1:
-        st.write("Statistiques au niveau détaillé")
-        st.write(f"Somme: {detailed_stats['sum']:,.2f}")
-        st.write(f"Moyenne: {detailed_stats['mean']:,.2f}")
-        st.write(f"Médiane: {detailed_stats['median']:,.2f}")
-        st.write(f"Écart-type: {detailed_stats['std']:,.2f}")
-        st.write(f"Nombre d'observations: {detailed_stats['count']}")
+    results_dict = {
+        "Test de corrélation": [correlation_method],
+        "Coefficient": [round(correlation, 3)],
+        "P-value": [round(p_value, 3)],
+        "Interprétation": ["Significatif" if p_value < 0.05 else "Non significatif"],
+        "Nombre d'observations": [len(data)]
+    }
     
-    with col2:
-        st.write("Statistiques après agrégation")
-        st.write(f"Somme: {agg_stats['sum']:,.2f}")
-        st.write(f"Moyenne: {agg_stats['mean']:,.2f}")
-        st.write(f"Médiane: {agg_stats['median']:,.2f}")
-        st.write(f"Écart-type: {agg_stats['std']:,.2f}")
-        st.write(f"Nombre de groupes: {agg_stats['count']}")
-        
-    return agg_data
+    if groupby_col is not None:
+        results_dict["Note"] = [f"Données agrégées par {groupby_col} ({agg_method})"]
+    
+    results_df = pd.DataFrame(results_dict)
+    response_rate_x = (df[var_x].count() / len(df)) * 100
+    response_rate_y = (df[var_y].count() / len(df)) * 100
+    
+    return results_df, response_rate_x, response_rate_y
 
-def create_interactive_stats_table(stats_df):
-    """
-    Crée un tableau de statistiques interactif avec des fonctionnalités avancées.
-    """
-    gb = GridOptionsBuilder.from_dataframe(stats_df)
-    
-    # Fonctionnalités de base
-    gb.configure_default_column(
-        sorteable=True,
-        filterable=True,
-        resizable=True,
-        draggable=True
-    )
-    
-    # Fonctionnalités de groupe
-    gb.configure_grid_options(
-        enableRangeSelection=True,
-        groupable=True,
-        groupDefaultExpanded=1
-    )
-    
-    # Configuration des agrégations par groupe
-    gb.configure_columns(
-        stats_df.columns.tolist(),
-        groupable=True,
-        value=True,
-        aggFunc='sum',
-        enableValue=True
-    )
-    
-    gridOptions = gb.build()
-    
-    return AgGrid(
-        stats_df,
-        gridOptions=gridOptions,
-        enable_enterprise_modules=True,
-        allow_unsafe_jscode=True,
-        update_mode='VALUE_CHANGED',
-        fit_columns_on_grid_load=True,
-        theme='streamlit'
-    )
-
+# Fonctions de gestion des indicateurs
 def show_indicator_form(statistics, analysis_type, variables_info):
-    """
-    Version test simplifiée avec 3 champs.
-    """
+    """Interface de création d'indicateur."""
     st.write("### Test création d'indicateur")
     
     with st.form("test_indicator_form"):
@@ -1248,27 +675,20 @@ def show_indicator_form(statistics, analysis_type, variables_info):
         description = st.text_input("Description")
         creation_date = datetime.now().strftime("%Y-%m-%d")
         
-        submit = st.form_submit_button("Enregistrer")
-        
-        if submit:
-            test_data = {
-                "name": name,
-                "description": description,
-                "creation_date": creation_date
-            }
-            
+        if st.form_submit_button("Enregistrer"):
             try:
-                save_test_indicator(test_data)
+                save_test_indicator({
+                    "name": name,
+                    "description": description,
+                    "creation_date": creation_date
+                })
                 st.success("✅ Test d'enregistrement réussi!")
             except Exception as e:
                 st.error(f"Erreur : {str(e)}")
 
 def save_test_indicator(test_data):
-    """
-    Version test simplifiée de la sauvegarde.
-    """
+    """Sauvegarde un indicateur de test."""
     try:
-        # Préparation des données
         grist_data = {
             "records": [
                 {
@@ -1281,25 +701,180 @@ def save_test_indicator(test_data):
             ]
         }
         
-        # Debug : afficher les données avant envoi
-        st.write("Données à envoyer:", grist_data)
-        
-        # Appel API
-        response = grist_api_request(
-            "4",
-            method="POST",
-            data=grist_data
-        )
-        
-        # Debug : afficher la réponse
-        st.write("Réponse reçue:", response)
-        
+        response = grist_api_request("4", method="POST", data=grist_data)
         return response
-        
     except Exception as e:
         raise Exception(f"Erreur test : {str(e)}")
 
-# Fonctions pour les différentes pages
+# Structure principale de l'application
+def display_univariate_analysis(data, var):
+    """Gère l'affichage de l'analyse univariée."""
+    plot_data = data[var].dropna()
+    is_numeric = pd.api.types.is_numeric_dtype(plot_data)
+    
+    st.write(f"### Statistiques principales de la variable {var}")
+    
+    if is_numeric:
+        # Statistiques numériques
+        stats_df = pd.DataFrame({
+            'Statistique': ['Effectif total', 'Somme', 'Moyenne', 'Médiane', 'Écart-type', 'Minimum', 'Maximum'],
+            'Valeur': [
+                len(plot_data),
+                plot_data.sum().round(2),
+                plot_data.mean().round(2),
+                plot_data.median().round(2),
+                plot_data.std().round(2),
+                plot_data.min(),
+                plot_data.max()
+            ]
+        })
+        create_interactive_stats_table(stats_df)
+
+        is_integer_variable = all(float(x).is_integer() for x in plot_data)
+        
+        # Options de regroupement
+        grouping_method = st.selectbox(
+            "Méthode de regroupement",
+            ["Aucune", "Quantile", "Manuelle"]
+        )
+        
+        if grouping_method != "Aucune":
+            if grouping_method == "Quantile":
+                quantile_type = st.selectbox(
+                    "Type de regroupement",
+                    ["Quartile (4 groupes)", "Quintile (5 groupes)", "Décile (10 groupes)"]
+                )
+                n_groups = {"Quartile (4 groupes)": 4, "Quintile (5 groupes)": 5, "Décile (10 groupes)": 10}[quantile_type]
+                labels = [f"{i}er {quantile_type.split(' ')[0].lower()}" if i == 1 else f"{i}ème {quantile_type.split(' ')[0].lower()}" 
+                         for i in range(1, n_groups + 1)]
+                grouped_data = pd.qcut(plot_data, q=n_groups, labels=labels)
+                
+            else:  # Manuelle
+                n_groups = st.number_input("Nombre de groupes", min_value=2, value=3)
+                breaks = []
+                for i in range(n_groups + 1):
+                    if i == 0:
+                        val = plot_data.min()
+                    elif i == n_groups:
+                        val = plot_data.max()
+                    else:
+                        val = st.number_input(
+                            f"Seuil {i}",
+                            value=float(plot_data.min() + (i/n_groups)*(plot_data.max()-plot_data.min())),
+                            step=1 if is_integer_variable else 0.1
+                        )
+                    breaks.append(val)
+                grouped_data = pd.cut(plot_data, bins=breaks)
+    else:
+        # Statistiques qualitatives
+        value_counts = plot_data.value_counts().reset_index()
+        value_counts.columns = ['Modalité', 'Effectif']
+        value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
+        st.dataframe(value_counts)
+        grouped_data = None
+
+    # Configuration de la visualisation
+    st.write("### Configuration de la visualisation")
+    col1, col2 = st.columns([1, 2])
+    
+    with col1:
+        if is_numeric:
+            if grouping_method == "Aucune":
+                graph_type = st.selectbox("Type de graphique", ["Histogramme", "Density plot"])
+            else:
+                graph_type = st.selectbox("Type de graphique", ["Bar plot", "Lollipop plot", "Treemap"])
+        else:
+            graph_type = st.selectbox("Type de graphique", ["Bar plot", "Lollipop plot", "Treemap"])
+
+    with col2:
+        color_scheme = st.selectbox("Palette de couleurs", list(COLOR_PALETTES.keys()))
+
+    # Options avancées
+    with st.expander("Options avancées"):
+        adv_col1, adv_col2 = st.columns(2)
+        with adv_col1:
+            title = st.text_input("Titre du graphique", f"Distribution de {var}")
+            x_axis = st.text_input("Titre de l'axe X", var)
+            y_axis = st.text_input("Titre de l'axe Y", "Valeur")
+        with adv_col2:
+            source = st.text_input("Source des données", "")
+            note = st.text_input("Note de lecture", "")
+            show_values = st.checkbox("Afficher les valeurs", True)
+            if not is_numeric or (is_numeric and grouping_method != "Aucune"):
+                value_type = st.radio("Type de valeur à afficher", ["Effectif", "Taux (%)"])
+
+    # Génération du graphique
+    if st.button("Générer la visualisation"):
+        try:
+            # Préparation des données
+            if not is_numeric:
+                data_to_plot = value_counts.copy()
+                if value_type == "Taux (%)":
+                    data_to_plot['Effectif'] = data_to_plot['Taux (%)']
+                    y_axis = "Taux (%)" if y_axis == "Valeur" else y_axis
+            else:
+                if grouping_method == "Aucune":
+                    data_to_plot = plot_data
+                else:
+                    value_counts = grouped_data.value_counts().reset_index()
+                    value_counts.columns = ['Modalité', 'Effectif']
+                    data_to_plot = value_counts.copy()
+                    if value_type == "Taux (%)":
+                        data_to_plot['Effectif'] = (data_to_plot['Effectif'] / len(plot_data) * 100).round(2)
+                        y_axis = "Taux (%)"
+
+            # Création du graphique
+            if is_numeric and grouping_method == "Aucune":
+                if graph_type == "Histogramme":
+                    fig = px.histogram(data_to_plot, title=title,
+                                     color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                else:
+                    fig = plot_density(data_to_plot, var, title, x_axis, y_axis)
+            else:
+                if graph_type == "Bar plot":
+                    fig = plot_qualitative_bar(data_to_plot, title, x_axis, y_axis,
+                                             COLOR_PALETTES[color_scheme], show_values)
+                elif graph_type == "Lollipop plot":
+                    fig = plot_qualitative_lollipop(data_to_plot, title, x_axis, y_axis,
+                                                  COLOR_PALETTES[color_scheme], show_values)
+                else:
+                    fig = plot_qualitative_treemap(data_to_plot, title, COLOR_PALETTES[color_scheme])
+
+            # Ajout des annotations
+            if source or note:
+                annotations = []
+                current_y = -0.15
+                
+                if source:
+                    annotations.append(dict(
+                        text=f"Source : {source}",
+                        xref="paper", yref="paper",
+                        x=0, y=current_y,
+                        showarrow=False,
+                        font=dict(size=10),
+                        align="left"
+                    ))
+                    current_y -= 0.05
+                
+                if note:
+                    annotations.append(dict(
+                        text=f"Note : {note}",
+                        xref="paper", yref="paper",
+                        x=0, y=current_y,
+                        showarrow=False,
+                        font=dict(size=10),
+                        align="left"
+                    ))
+                
+                if annotations and isinstance(fig, go.Figure):
+                    fig.update_layout(annotations=annotations)
+
+            st.plotly_chart(fig, use_container_width=True)
+            
+        except Exception as e:
+            st.error(f"Erreur lors de la génération du graphique : {str(e)}")
+            st.error(f"Détails : {str(type(e).__name__)}")
+
 def page_analyse():
     st.title("Analyse des données ESR")
     
@@ -1386,41 +961,34 @@ def main():
         key="analysis_type_selector"
     )
     
-    # Analyse univariée
     if analysis_type == "Analyse univariée":
-        # Sélection de la variable avec une option vide
+        # Sélection de la variable
         var = st.selectbox(
             "Sélectionnez la variable:", 
             options=["---"] + list(st.session_state.merged_data.columns)
         )
         
-        # Ne continuer que si une variable réelle est sélectionnée
         if var != "---":
-            # Nettoyage des données pour la variable sélectionnée
+            # Préparation des données
             plot_data = st.session_state.merged_data[var].copy()
             plot_data = plot_data.dropna()
             
             if plot_data is not None and not plot_data.empty:
-                # Détecter le type de variable
+                # Détection du type de variable
                 is_numeric = pd.api.types.is_numeric_dtype(plot_data)
-                
-                # Affichage des statistiques de base
                 st.write(f"### Statistiques principales de la variable {var}")
                 
                 if is_numeric:
-                    # Gestion des variables numériques
+                    # Gestion des doublons pour variables numériques
                     has_duplicates = st.session_state.merged_data.duplicated(subset=[var]).any()
-                    
                     if has_duplicates:
                         st.warning("⚠️ Certaines observations sont répétées dans le jeu de données. "
-                                  "Vous pouvez choisir d'agréger les données avant l'analyse.")
-                        
+                                 "Vous pouvez choisir d'agréger les données avant l'analyse.")
                         do_aggregate = st.checkbox("Agréger les données avant l'analyse")
                         
                         if do_aggregate:
                             groupby_cols = [col for col in st.session_state.merged_data.columns if col != var]
                             groupby_col = st.selectbox("Sélectionner la colonne d'agrégation", groupby_cols)
-                            
                             agg_method = st.radio(
                                 "Méthode d'agrégation", 
                                 ['sum', 'mean', 'median'],
@@ -1430,12 +998,11 @@ def main():
                                     'median': 'Médiane'
                                 }[x]
                             )
-                            
                             clean_data = st.session_state.merged_data.dropna(subset=[var, groupby_col])
                             agg_data = clean_data.groupby(groupby_col).agg({var: agg_method}).reset_index()
                             plot_data = agg_data[var]
-                    
-                    # Statistiques pour variable quantitative
+    
+                    # Statistiques descriptives
                     stats_df = pd.DataFrame({
                         'Statistique': ['Effectif total', 'Somme', 'Moyenne', 'Médiane', 'Écart-type', 'Minimum', 'Maximum'],
                         'Valeur': [
@@ -1448,125 +1015,73 @@ def main():
                             plot_data.max()
                         ]
                     })
-                    
-                    grid_response = create_interactive_stats_table(stats_df)
-                    
-                    if do_aggregate:
+                    create_interactive_stats_table(stats_df)
+    
+                    if 'do_aggregate' in locals() and do_aggregate:
                         st.info("Note : Les statistiques sont calculées à l'échelle de la variable d'agrégation sélectionnée.")
-
-                    if is_numeric:
-                        is_integer_variable = all(float(x).is_integer() for x in plot_data)
-                        
+    
                     # Options de regroupement
                     st.write("### Options de regroupement")
-                    grouping_method = st.selectbox(
-                        "Méthode de regroupement",
-                        ["Aucune", "Quantile", "Manuelle"]
-                    )
-                    
+                    grouping_method = st.selectbox("Méthode de regroupement", ["Aucune", "Quantile", "Manuelle"])
+                    is_integer_variable = all(float(x).is_integer() for x in plot_data)
+    
                     if grouping_method == "Quantile":
                         quantile_type = st.selectbox(
                             "Type de regroupement",
                             ["Quartile (4 groupes)", "Quintile (5 groupes)", "Décile (10 groupes)"]
                         )
-                        
                         n_groups = {
-                            "Quartile (4 groupes)": 4, 
-                            "Quintile (5 groupes)": 5, 
+                            "Quartile (4 groupes)": 4,
+                            "Quintile (5 groupes)": 5,
                             "Décile (10 groupes)": 10
                         }[quantile_type]
-                        
-                        # Création des labels personnalisés selon le type de quantile
-                        if quantile_type == "Quartile (4 groupes)":
-                            labels = [f"{i}er quartile" if i == 1 else f"{i}ème quartile" 
-                                     for i in range(1, 5)]
-                        elif quantile_type == "Quintile (5 groupes)":
-                            labels = [f"{i}er quintile" if i == 1 else f"{i}ème quintile" 
-                                     for i in range(1, 6)]
-                        else:  # Déciles
-                            labels = [f"{i}er décile" if i == 1 else f"{i}ème décile" 
-                                     for i in range(1, 11)]
-                        
-                        # Création des groupes avec les labels personnalisés
-                        grouped_data = pd.qcut(plot_data, q=n_groups, labels=labels)
-                        value_counts = pd.DataFrame({
-                            'Groupe': labels,
-                            'Effectif': grouped_data.value_counts().reindex(labels)
-                        })
-                        
-                        # Calcul des taux avec entiers si approprié
-                        value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100)
-                        value_counts['Taux (%)'] = value_counts['Taux (%)'].apply(
-                            lambda x: int(x) if x.is_integer() else round(x, 1)
-                        )
-                        
-                        # Calcul des statistiques par groupe
-                        group_stats = plot_data.groupby(grouped_data).agg(['sum', 'mean', 'max'])
-                        if is_integer_variable:
-                            group_stats = group_stats.applymap(lambda x: int(x) if float(x).is_integer() else round(x, 2))
-                        else:
-                            group_stats = group_stats.round(2)
+    
+                        grouped_data = pd.qcut(plot_data, q=n_groups)
+                        value_counts = grouped_data.value_counts().reset_index()
+                        value_counts.columns = ['Groupe', 'Effectif']
+                        value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
+    
+                        # Statistiques par groupe
+                        group_stats = plot_data.groupby(grouped_data).agg(['sum', 'mean', 'max']).round(2)
                         group_stats.columns = ['Somme', 'Moyenne', 'Maximum']
-                
+                        
+                        st.write("### Statistiques par groupe")
+                        st.dataframe(pd.concat([value_counts.set_index('Groupe'), group_stats], axis=1))
+    
                     elif grouping_method == "Manuelle":
                         n_groups = st.number_input("Nombre de groupes", min_value=2, value=3)
                         breaks = []
+                        for i in range(n_groups + 1):
+                            if i == 0:
+                                val = plot_data.min()
+                            elif i == n_groups:
+                                val = plot_data.max()
+                            else:
+                                val = st.number_input(
+                                    f"Seuil {i}", 
+                                    value=float(plot_data.min() + (i/n_groups)*(plot_data.max()-plot_data.min())),
+                                    step=1 if is_integer_variable else 0.1
+                                )
+                            breaks.append(val)
                         
-                        # Si variable entière, proposer des seuils entiers
-                        if is_integer_variable:
-                            for i in range(n_groups + 1):
-                                if i == 0:
-                                    val = int(plot_data.min())
-                                elif i == n_groups:
-                                    val = int(plot_data.max())
-                                else:
-                                    suggested_val = int(plot_data.min() + (i/n_groups)*(plot_data.max()-plot_data.min()))
-                                    val = st.number_input(f"Seuil {i}", 
-                                        value=suggested_val,
-                                        step=1  # Permet uniquement des valeurs entières
-                                    )
-                                breaks.append(val)
-                        else:
-                            # Code existant pour les variables non entières
-                            for i in range(n_groups + 1):
-                                if i == 0:
-                                    val = plot_data.min()
-                                elif i == n_groups:
-                                    val = plot_data.max()
-                                else:
-                                    val = st.number_input(f"Seuil {i}", 
-                                        value=float(plot_data.min() + (i/n_groups)*(plot_data.max()-plot_data.min())))
-                                breaks.append(val)
-                        
-                        # Création des groupes
                         grouped_data = pd.cut(plot_data, bins=breaks)
                         value_counts = grouped_data.value_counts().reset_index()
                         value_counts.columns = ['Groupe', 'Effectif']
-                        
-                        # Tri et formatage
-                        value_counts = value_counts.sort_values('Groupe', key=lambda x: x.map(lambda y: y.left))
-                        value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100)
-                        
-                        if is_integer_variable:
-                            value_counts['Effectif'] = value_counts['Effectif'].astype(int)
-                            value_counts['Taux (%)'] = value_counts['Taux (%)'].apply(
-                                lambda x: int(x) if x.is_integer() else round(x, 1)
-                            )
+                        value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
                         
                         st.write("### Répartition des groupes")
                         st.dataframe(value_counts)
-                
+    
                 else:
                     # Statistiques pour variable qualitative
                     value_counts = plot_data.value_counts().reset_index()
                     value_counts.columns = ['Modalité', 'Effectif']
                     value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
                     st.dataframe(value_counts)
-                
+    
                 # Configuration de la visualisation
                 st.write("### Configuration de la visualisation")
                 
-                # Sélection du type de graphique et de la palette de couleurs
                 viz_col1, viz_col2 = st.columns([1, 2])
                 with viz_col1:
                     if is_numeric:
@@ -1585,274 +1100,110 @@ def main():
                             "Type de graphique",
                             ["Bar plot", "Lollipop plot", "Treemap"]
                         )
-                
+    
                 with viz_col2:
                     color_scheme = st.selectbox(
                         "Palette de couleurs",
                         list(COLOR_PALETTES.keys())
                     )
-                
+    
                 # Options avancées
                 with st.expander("Options avancées"):
                     adv_col1, adv_col2 = st.columns(2)
                     with adv_col1:
-                        title = st.text_input("Titre du graphique", f"Distribution de {var}", key="title_adv")
-                        x_axis = st.text_input("Titre de l'axe X", var, key="x_axis_adv")
-                        y_axis = st.text_input("Titre de l'axe Y", "Valeur", key="y_axis_adv")
+                        title = st.text_input("Titre du graphique", f"Distribution de {var}")
+                        x_axis = st.text_input("Titre de l'axe X", var)
+                        y_axis = st.text_input("Titre de l'axe Y", "Valeur")
                     with adv_col2:
-                        source = st.text_input("Source des données", "", key="source_adv")
-                        note = st.text_input("Note de lecture", "", key="note_adv")
-                        show_values = st.checkbox("Afficher les valeurs", True, key="show_values_adv")
-                        
-                        # Option spécifique selon le type de regroupement
-                        if is_numeric and grouping_method != "Aucune":
-                            if grouping_method == "Quantile":
-                                value_to_display = st.radio(
-                                    "Valeur à afficher",
-                                    ["Maximum", "Moyenne"],
-                                    index=0,  # Maximum par défaut
-                                    key="value_type_quant"
-                                )
-                            elif grouping_method == "Manuelle":
-                                value_to_display = st.radio(
-                                    "Valeur à afficher",
-                                    ["Effectif", "Taux (%)"],
-                                    key="value_type_manual"
-                                )
+                        source = st.text_input("Source des données", "")
+                        note = st.text_input("Note de lecture", "")
+                        show_values = st.checkbox("Afficher les valeurs", True)
+                        if not is_numeric or (is_numeric and grouping_method != "Aucune"):
+                            value_type = st.radio("Type de valeur à afficher", ["Effectif", "Taux (%)"])
     
                 # Génération du graphique
                 if st.button("Générer la visualisation"):
                     try:
-                        # Préparation des annotations
-                        annotations = []
-                        current_y = -0.15
-                
-                        if source:
-                            annotations.append(dict(
-                                text=f"Source : {source}",
-                                xref="paper",
-                                yref="paper",
-                                x=0,
-                                y=current_y,
-                                showarrow=False,
-                                font=dict(size=10),
-                                align="left"
-                            ))
-                            current_y -= 0.05
-                
-                        if note:
-                            annotations.append(dict(
-                                text=f"Note : {note}",
-                                xref="paper",
-                                yref="paper",
-                                x=0,
-                                y=current_y,
-                                showarrow=False,
-                                font=dict(size=10),
-                                align="left"
-                            ))
-                
-                        # Création du graphique selon le type de variable
-                        if not is_numeric:  # Pour les variables qualitatives
+                        # Préparation des données pour la visualisation
+                        if not is_numeric:  # Variables qualitatives
                             data_to_plot = value_counts.copy()
                             if value_type == "Taux (%)":
                                 data_to_plot['Effectif'] = data_to_plot['Taux (%)']
                                 y_axis = "Taux (%)" if y_axis == "Valeur" else y_axis
-
-                            # Convertir les objets Interval en chaînes de caractères
-                            data_to_plot['Modalité'] = data_to_plot['Modalité'].astype(str)
-                
+                        else:  # Variables numériques
+                            if grouping_method == "Aucune":
+                                data_to_plot = plot_data
+                            else:
+                                data_to_plot = pd.DataFrame({
+                                    'Modalité': value_counts['Groupe'],
+                                    'Effectif': value_counts['Effectif' if value_type == "Effectif" else 'Taux (%)']
+                                })
+    
+                        # Création du graphique selon le type choisi
+                        if is_numeric and grouping_method == "Aucune":
+                            if graph_type == "Histogramme":
+                                fig = px.histogram(
+                                    data_to_plot,
+                                    title=title,
+                                    color_discrete_sequence=COLOR_PALETTES[color_scheme]
+                                )
+                                if show_values:
+                                    fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
+                            else:  # Density plot
+                                fig = plot_density(data_to_plot, var, title, x_axis, y_axis)
+                        else:
                             if graph_type == "Bar plot":
                                 fig = plot_qualitative_bar(
                                     data_to_plot,
-                                    title,
-                                    x_axis,
-                                    y_axis,
+                                    title, x_axis, y_axis,
                                     COLOR_PALETTES[color_scheme],
                                     show_values
                                 )
                             elif graph_type == "Lollipop plot":
                                 fig = plot_qualitative_lollipop(
                                     data_to_plot,
-                                    title,
-                                    x_axis,
-                                    y_axis,
+                                    title, x_axis, y_axis,
                                     COLOR_PALETTES[color_scheme],
                                     show_values
                                 )
-                            elif graph_type == "Treemap":
+                            else:  # Treemap
                                 fig = plot_qualitative_treemap(
                                     data_to_plot,
                                     title,
                                     COLOR_PALETTES[color_scheme]
                                 )
-                
-                        else:  # Pour les variables numériques
-                            if grouping_method == "Aucune":
-                                if graph_type == "Histogramme":
-                                    fig = px.histogram(
-                                        plot_data, 
-                                        title=title,
-                                        color_discrete_sequence=COLOR_PALETTES[color_scheme]
-                                    )
-                                    if show_values:
-                                        fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
-                                else:  # Density plot
-                                    fig = plot_density(plot_data, var, title, x_axis, y_axis)
-
-                            else:  # Pour les données groupées
-                                data_to_plot = pd.DataFrame({
-                                    'Modalité': value_counts['Groupe'].astype(str)
-                                })
-                                
-                                if grouping_method == "Quantile":
-                                    # 1. Choix du type de visualisation spécifique aux quantiles
-                                    quantile_viz_type = st.selectbox(
-                                        "Type de visualisation",
-                                        ["Boîte à moustaches", "Violin plot", "Box plot avec points"],
-                                        key="quantile_viz_type"
-                                    )
-                                
-                                    def plot_quantile_distribution(data, title, x_label, y_label, color_palette, plot_type):
-                                        fig = go.Figure()
-                                        
-                                        # 2. Configuration selon le type de graphique choisi
-                                        if plot_type == "Boîte à moustaches":
-                                            fig.add_trace(go.Box(
-                                                y=data,
-                                                name='',
-                                                boxpoints=False,  # pas de points aberrants
-                                                marker_color=color_palette[0],
-                                                showlegend=False
-                                            ))
-                                            
-                                        elif plot_type == "Violin plot":
-                                            fig.add_trace(go.Violin(
-                                                y=data,
-                                                name='',
-                                                box_visible=True,  # mini boîte à moustaches intégrée
-                                                meanline_visible=True,  # ligne de moyenne visible
-                                                marker_color=color_palette[0],
-                                                showlegend=False
-                                            ))
-                                            
-                                        elif plot_type == "Box plot avec points":
-                                            fig.add_trace(go.Box(
-                                                y=data,
-                                                name='',
-                                                boxpoints='all',  # affiche tous les points
-                                                jitter=0.3,  # dispersion horizontale des points
-                                                pointpos=-1.8,  # position des points par rapport à la boîte
-                                                marker_color=color_palette[0],
-                                                showlegend=False
-                                            ))
-                                        
-                                        # 3. Calcul et affichage des quantiles
-                                        quartiles = np.percentile(data, [0, 25, 50, 75, 100])
-                                        annotations = []
-                                        positions = [-0.2, -0.1, 0, 0.1, 0.2]  # positions pour les étiquettes
-                                        
-                                        # 4. Création des annotations pour chaque quantile
-                                        for q, pos, label in zip(quartiles, positions, 
-                                                               ['Min', 'Q1', 'Médiane', 'Q3', 'Max']):
-                                            # Formatage des valeurs selon le type (entier ou décimal)
-                                            if is_integer_variable:
-                                                q_value = int(q)
-                                            else:
-                                                q_value = round(q, 2)
-                                                
-                                            annotations.append(dict(
-                                                x=pos,
-                                                y=q,
-                                                xref="paper",
-                                                yref="y",
-                                                text=f"{label}: {q_value}",
-                                                showarrow=True,
-                                                ax=40,
-                                                ay=0
-                                            ))
-                                        
-                                        # 5. Configuration finale du graphique
-                                        fig.update_layout(
-                                            title=title,
-                                            yaxis_title=y_label,
-                                            height=600,
-                                            showlegend=False,
-                                            annotations=annotations,
-                                            plot_bgcolor='white',
-                                            yaxis=dict(
-                                                gridcolor='lightgray',
-                                                zeroline=True,
-                                                zerolinewidth=1,
-                                                zerolinecolor='lightgray'
-                                            )
-                                        )
-                                        
-                                        return fig
-                                
-                                    # 6. Options de personnalisation du graphique
-                                    with st.expander("Options avancées"):
-                                        title = st.text_input("Titre du graphique", f"Distribution de {var}")
-                                        y_axis = st.text_input("Titre de l'axe Y", var)
-                                        color_scheme = st.selectbox("Palette de couleurs", list(COLOR_PALETTES.keys()))
-                                
-                                    # 7. Création et affichage du graphique
-                                    fig = plot_quantile_distribution(
-                                        data=plot_data,
-                                        title=title,
-                                        x_label="",
-                                        y_label=y_axis,
-                                        color_palette=COLOR_PALETTES[color_scheme],
-                                        plot_type=quantile_viz_type
-                                    )
-                                    st.plotly_chart(fig, use_container_width=True)
-                                else:  # Groupement manuel
-                                    if value_to_display == "Taux (%)":
-                                        data_to_plot['Effectif'] = value_counts['Taux (%)']
-                                        y_axis = "Taux (%)"
-                                    else:
-                                        data_to_plot['Effectif'] = value_counts['Effectif']
-                                        y_axis = "Effectif"
+    
+                        # Ajout des annotations si nécessaire
+                        if (source or note) and isinstance(fig, go.Figure):
+                            annotations = []
+                            current_y = -0.15
                             
-                                if graph_type == "Bar plot":
-                                    fig = plot_qualitative_bar(
-                                        data_to_plot,
-                                        title,
-                                        x_axis,
-                                        y_axis,
-                                        COLOR_PALETTES[color_scheme],
-                                        show_values
-                                    )
-                                elif graph_type == "Lollipop plot":
-                                    fig = plot_qualitative_lollipop(
-                                        data_to_plot,
-                                        title,
-                                        x_axis,
-                                        y_axis,
-                                        COLOR_PALETTES[color_scheme],
-                                        show_values
-                                    )
-                                else:  # Treemap
-                                    fig = plot_qualitative_treemap(
-                                        data_to_plot,
-                                        title,
-                                        COLOR_PALETTES[color_scheme]
-                                    )
-                
-                        # Ajout des annotations au graphique
-                        if annotations and isinstance(fig, go.Figure):
+                            if source:
+                                annotations.append(dict(
+                                    text=f"Source : {source}",
+                                    xref="paper", yref="paper",
+                                    x=0, y=current_y,
+                                    showarrow=False,
+                                    font=dict(size=10),
+                                    align="left"
+                                ))
+                                current_y -= 0.05
+                            
+                            if note:
+                                annotations.append(dict(
+                                    text=f"Note : {note}",
+                                    xref="paper", yref="paper",
+                                    x=0, y=current_y,
+                                    showarrow=False,
+                                    font=dict(size=10),
+                                    align="left"
+                                ))
+                            
                             fig.update_layout(annotations=annotations)
-
-                        # Configuration des axes et du titre
-                        fig.update_layout(
-                            title=title,
-                            xaxis_title=x_axis,
-                            yaxis_title=y_axis,
-                        )
-                
+    
                         # Affichage du graphique
                         st.plotly_chart(fig, use_container_width=True)
-                
+    
                     except Exception as e:
                         st.error(f"Erreur lors de la génération du graphique : {str(e)}")
                         st.error(f"Détails : {str(type(e).__name__)}")
