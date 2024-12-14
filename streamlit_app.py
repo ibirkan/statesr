@@ -1159,10 +1159,11 @@ def main():
                         if grouping_method == "Aucune":
                             graph_type = st.selectbox("Type de graphique", ["Histogramme", "Density plot"], key="graph_type_no_group")
                         elif grouping_method == "Quantile":
-                            quantile_viz_type = st.selectbox(
+                            # Changé la clé pour éviter les doublons
+                            graph_type = st.selectbox(
                                 "Type de graphique",
                                 ["Boîte à moustaches", "Violin plot", "Box plot avec points"],
-                                key="quantile_viz_type"
+                                key="graph_type_quantile"  # Nouvelle clé unique
                             )
                         else:
                             graph_type = st.selectbox("Type de graphique", ["Bar plot", "Lollipop plot", "Treemap"], key="graph_type_group")
@@ -1250,7 +1251,7 @@ def main():
                                     title=title,
                                     y_label=y_axis,
                                     color_palette=COLOR_PALETTES[color_scheme],
-                                    plot_type=quantile_viz_type,
+                                    plot_type=graph_type,  # Utilisez graph_type au lieu de quantile_viz_type
                                     is_integer_variable=is_integer_variable
                                 )
                             
