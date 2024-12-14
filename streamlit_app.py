@@ -1419,8 +1419,106 @@ def main():
                                 })
                                 
                                 if grouping_method == "Quantile":
-                                    data_to_plot['Effectif'] = group_stats['Maximum'] if value_to_display == "Maximum" else group_stats['Moyenne']
-                                    y_axis = f"{y_axis} ({value_to_display.lower()})"
+                                    # 1. Choix du type de visualisation spécifique aux quantiles
+                                    quantile_viz_type = st.selectbox(
+                                        "Type de visualisation",
+                                        ["Boîte à moustaches", "Violin plot", "Box plot avec points"],
+                                        key="quantile_viz_type"
+                                    )
+                                
+                                    def plot_quantile_distribution(data, title, x_label, y_label, color_palette, plot_type):
+                                        fig = go.Figure()
+                                        
+                                        # 2. Configuration selon le type de graphique choisi
+                                        if plot_type == "Boîte à moustaches":
+                                            fig.add_trace(go.Box(
+                                                y=data,
+                                                name='',
+                                                boxpoints=False,  # pas de points aberrants
+                                                marker_color=color_palette[0],
+                                                showlegend=False
+                                            ))
+                                            
+                                        elif plot_type == "Violin plot":
+                                            fig.add_trace(go.Violin(
+                                                y=data,
+                                                name='',
+                                                box_visible=True,  # mini boîte à moustaches intégrée
+                                                meanline_visible=True,  # ligne de moyenne visible
+                                                marker_color=color_palette[0],
+                                                showlegend=False
+                                            ))
+                                            
+                                        elif plot_type == "Box plot avec points":
+                                            fig.add_trace(go.Box(
+                                                y=data,
+                                                name='',
+                                                boxpoints='all',  # affiche tous les points
+                                                jitter=0.3,  # dispersion horizontale des points
+                                                pointpos=-1.8,  # position des points par rapport à la boîte
+                                                marker_color=color_palette[0],
+                                                showlegend=False
+                                            ))
+                                        
+                                        # 3. Calcul et affichage des quantiles
+                                        quartiles = np.percentile(data, [0, 25, 50, 75, 100])
+                                        annotations = []
+                                        positions = [-0.2, -0.1, 0, 0.1, 0.2]  # positions pour les étiquettes
+                                        
+                                        # 4. Création des annotations pour chaque quantile
+                                        for q, pos, label in zip(quartiles, positions, 
+                                                               ['Min', 'Q1', 'Médiane', 'Q3', 'Max']):
+                                            # Formatage des valeurs selon le type (entier ou décimal)
+                                            if is_integer_variable:
+                                                q_value = int(q)
+                                            else:
+                                                q_value = round(q, 2)
+                                                
+                                            annotations.append(dict(
+                                                x=pos,
+                                                y=q,
+                                                xref="paper",
+                                                yref="y",
+                                                text=f"{label}: {q_value}",
+                                                showarrow=True,
+                                                ax=40,
+                                                ay=0
+                                            ))
+                                        
+                                        # 5. Configuration finale du graphique
+                                        fig.update_layout(
+                                            title=title,
+                                            yaxis_title=y_label,
+                                            height=600,
+                                            showlegend=False,
+                                            annotations=annotations,
+                                            plot_bgcolor='white',
+                                            yaxis=dict(
+                                                gridcolor='lightgray',
+                                                zeroline=True,
+                                                zerolinewidth=1,
+                                                zerolinecolor='lightgray'
+                                            )
+                                        )
+                                        
+                                        return fig
+                                
+                                    # 6. Options de personnalisation du graphique
+                                    with st.expander("Options avancées"):
+                                        title = st.text_input("Titre du graphique", f"Distribution de {var}")
+                                        y_axis = st.text_input("Titre de l'axe Y", var)
+                                        color_scheme = st.selectbox("Palette de couleurs", list(COLOR_PALETTES.keys()))
+                                
+                                    # 7. Création et affichage du graphique
+                                    fig = plot_quantile_distribution(
+                                        data=plot_data,
+                                        title=title,
+                                        x_label="",
+                                        y_label=y_axis,
+                                        color_palette=COLOR_PALETTES[color_scheme],
+                                        plot_type=quantile_viz_type
+                                    )
+                                    st.plotly_chart(fig, use_container_width=True)
                                 else:  # Groupement manuel
                                     if value_to_display == "Taux (%)":
                                         data_to_plot['Effectif'] = value_counts['Taux (%)']
