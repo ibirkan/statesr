@@ -1184,11 +1184,20 @@ def main():
                             if grouping_method == "Aucune":
                                 data_to_plot = plot_data
                             else:
+                                if grouping_method == "Manuelle":
+                                    # Création de labels plus lisibles pour les intervalles
+                                    def format_interval(interval):
+                                        left = int(interval.left) if is_integer_variable else round(interval.left, 2)
+                                        right = int(interval.right) if is_integer_variable else round(interval.right, 2)
+                                        return f"[{left} - {right}]"
+                                    
+                                    value_counts['Groupe'] = value_counts['Groupe'].apply(format_interval)
+                                
                                 data_to_plot = pd.DataFrame({
                                     'Modalité': value_counts['Groupe'],
                                     'Effectif': value_counts['Effectif' if value_type == "Effectif" else 'Taux (%)']
                                 })
-    
+                
                         # Création du graphique selon le type choisi
                         if is_numeric and grouping_method == "Aucune":
                             if graph_type == "Histogramme":
@@ -1222,7 +1231,7 @@ def main():
                                     title,
                                     COLOR_PALETTES[color_scheme]
                                 )
-    
+
                         # Ajout des annotations si nécessaire
                         if (source or note) and isinstance(fig, go.Figure):
                             annotations = []
