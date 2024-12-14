@@ -1153,12 +1153,17 @@ def main():
                 # Configuration de la visualisation
                 st.write("### Configuration de la visualisation")
                 viz_col1, viz_col2 = st.columns([1, 2])
+                
                 with viz_col1:
                     if is_numeric:
                         if grouping_method == "Aucune":
                             graph_type = st.selectbox("Type de graphique", ["Histogramme", "Density plot"], key="graph_type_no_group")
                         elif grouping_method == "Quantile":
-                            graph_type = "Quantile"  # Type spécial pour les quantiles
+                            quantile_viz_type = st.selectbox(
+                                "Type de graphique",
+                                ["Boîte à moustaches", "Violin plot", "Box plot avec points"],
+                                key="quantile_viz_type"
+                            )
                         else:
                             graph_type = st.selectbox("Type de graphique", ["Bar plot", "Lollipop plot", "Treemap"], key="graph_type_group")
                     else:
