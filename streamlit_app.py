@@ -1210,28 +1210,34 @@ def main():
                                     fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
                             else:  # Density plot
                                 fig = plot_density(data_to_plot, var, title, x_axis, y_axis)
-                        else:
-                            if graph_type == "Bar plot":
-                                fig = plot_qualitative_bar(
-                                    data_to_plot,
-                                    title, x_axis, y_axis,
-                                    COLOR_PALETTES[color_scheme],
-                                    show_values
+                                
+                        if grouping_method == "Quantile":
+                            # Configuration des options de visualisation des quantiles
+                            st.write("### Visualisation des quantiles")
+                            
+                            if is_numeric:
+                                quantile_viz_type = st.selectbox(
+                                    "Type de visualisation",
+                                    ["Boîte à moustaches", "Violin plot", "Box plot avec points"],
+                                    key="quantile_viz_type"
                                 )
-                            elif graph_type == "Lollipop plot":
-                                fig = plot_qualitative_lollipop(
-                                    data_to_plot,
-                                    title, x_axis, y_axis,
-                                    COLOR_PALETTES[color_scheme],
-                                    show_values
-                                )
-                            else:  # Treemap
-                                fig = plot_qualitative_treemap(
-                                    data_to_plot,
-                                    title,
-                                    COLOR_PALETTES[color_scheme]
-                                )
-
+                                
+                                with st.expander("Options avancées"):
+                                    title = st.text_input("Titre du graphique", f"Distribution de {var}", key="title_quantile")
+                                    y_axis = st.text_input("Titre de l'axe Y", var, key="y_axis_quantile")
+                                    color_scheme = st.selectbox("Palette de couleurs", list(COLOR_PALETTES.keys()), key="color_scheme_quantile")
+                                
+                                if st.button("Générer le graphique de distribution", key="gen_quantile_viz"):
+                                    fig = plot_quantile_distribution(
+                                        data=plot_data,
+                                        title=title,
+                                        y_label=y_axis,
+                                        color_palette=COLOR_PALETTES[color_scheme],
+                                        plot_type=quantile_viz_type,
+                                        is_integer_variable=is_integer_variable
+                                    )
+                                    st.plotly_chart(fig, use_container_width=True)
+            
                         # Ajout des annotations si nécessaire
                         if (source or note) and isinstance(fig, go.Figure):
                             annotations = []
