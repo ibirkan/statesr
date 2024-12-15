@@ -919,59 +919,99 @@ def main():
 
     # Sélection des tables
     tables = get_grist_tables()
+def main():
+    st.sidebar.title("Navigation")
+    page = st.sidebar.radio("Aller à", ["Analyse des données ESR", "Page 1", "Page 2"])
+
+    if page == "Analyse des données ESR":
+        page_analyse()
+    elif page == "Page 1":
+        page_1()
+    elif page == "Page 2":
+        page_2()
+
+    # Initialisation de l'état de session pour les données fusionnées
+    if 'merged_data' not in st.session_state:
+        st.session_state.merged_data = None
+
+    # Sélection des tables
+    tables = get_grist_tables()
     if not tables:
         st.error("Aucune table disponible.")
         return
 
-    table_selections = st.multiselect(
-        "Sélectionnez une ou plusieurs tables à analyser", 
-        tables
+    # Choix du mode de sélection
+    selection_mode = st.radio(
+        "Mode de sélection des tables",
+        ["Une seule table", "Plusieurs tables"],
+        key="selection_mode"
     )
-    
-    if not table_selections:
-        st.warning("Veuillez sélectionner au moins une table pour l'analyse.")
-        return
 
-    # Chargement et fusion des données
-    if len(table_selections) == 1:
-        df = get_grist_data(table_selections[0])
-        if df is not None:
-            st.session_state.merged_data = df
-        else:
-            st.error("Impossible de charger la table sélectionnée.")
-            return
-    else:
-        dataframes = []
-        merge_configs = []
-
-        for table_id in table_selections:
-            df = get_grist_data(table_id)
+    if selection_mode == "Une seule table":
+        # Sélection d'une seule table avec selectbox
+        table_selection = st.selectbox(
+            "Sélectionnez la table à analyser",
+            tables
+        )
+        
+        if table_selection:
+            df = get_grist_data(table_selection)
             if df is not None:
-                dataframes.append(df)
-
-        if len(dataframes) < 2:
-            st.warning("Impossible de charger les tables sélectionnées.")
+                st.session_state.merged_data = df
+            else:
+                st.error("Impossible de charger la table sélectionnée.")
+                return
+    else:
+        # Sélection multiple avec multiselect
+        table_selections = st.multiselect(
+            "Sélectionnez les tables à analyser", 
+            tables
+        )
+        
+        if not table_selections:
+            st.warning("Veuillez sélectionner au moins une table pour l'analyse.")
             return
 
-        # Configuration de la fusion
-        st.write("### Configuration de la fusion")
-        for i in range(len(dataframes) - 1):
-            col1, col2 = st.columns(2)
-            with col1:
-                left_col = st.selectbox(
-                    f"Colonne de fusion pour {table_selections[i]}", 
-                    dataframes[i].columns.tolist(),
-                    key=f"left_{i}"
-                )
-            with col2:
-                right_col = st.selectbox(
-                    f"Colonne de fusion pour {table_selections[i + 1]}", 
-                    dataframes[i + 1].columns.tolist(),
-                    key=f"right_{i}"
-                )
-            merge_configs.append({"left": left_col, "right": right_col})
+        if len(table_selections) == 1:
+            df = get_grist_data(table_selections[0])
+            if df is not None:
+                st.session_state.merged_data = df
+            else:
+                st.error("Impossible de charger la table sélectionnée.")
+                return
+        else:
+            # Code pour la fusion des tables
+            dataframes = []
+            merge_configs = []
 
-        st.session_state.merged_data = merge_multiple_tables(dataframes, merge_configs)
+            for table_id in table_selections:
+                df = get_grist_data(table_id)
+                if df is not None:
+                    dataframes.append(df)
+
+            if len(dataframes) < 2:
+                st.warning("Impossible de charger les tables sélectionnées.")
+                return
+
+            # Configuration de la fusion
+            st.write("### Configuration de la fusion")
+            for i in range(len(dataframes) - 1):
+                col1, col2 = st.columns(2)
+                with col1:
+                    left_col = st.selectbox(
+                        f"Colonne de fusion pour {table_selections[i]}", 
+                        dataframes[i].columns.tolist(),
+                        key=f"left_{i}"
+                    )
+                with col2:
+                    right_col = st.selectbox(
+                        f"Colonne de fusion pour {table_selections[i + 1]}", 
+                        dataframes[i + 1].columns.tolist(),
+                        key=f"right_{i}"
+                    )
+                merge_configs.append({"left": left_col, "right": right_col})
+
+            st.session_state.merged_data = merge_multiple_tables(dataframes, merge_configs)
 
     # Vérification des données fusionnées
     if st.session_state.merged_data is None:
@@ -984,7 +1024,7 @@ def main():
         ["Analyse univariée", "Analyse bivariée"],
         key="analysis_type_selector"
     )
-    
+        
     if analysis_type == "Analyse univariée":
         # Sélection de la variable
         var = st.selectbox(
