@@ -738,6 +738,9 @@ def display_univariate_analysis(data, var):
     
     st.write(f"### Statistiques principales de la variable {var}")
     
+    # Initialize value_type with a default value
+    value_type = "Effectif"
+    
     if is_numeric:
         # Statistiques numériques
         stats_df = pd.DataFrame({
