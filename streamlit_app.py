@@ -899,36 +899,8 @@ def display_univariate_analysis(data, var):
             st.error(f"Erreur lors de la génération du graphique : {str(e)}")
             st.error(f"Détails : {str(type(e).__name__)}")
 
-def page_analyse():
+def main():
     st.title("Analyse des données ESR")
-    
-def main():
-    st.sidebar.title("Navigation")
-    page = st.sidebar.radio("Aller à", ["Analyse des données ESR", "Page 1", "Page 2"])
-
-    if page == "Analyse des données ESR":
-        page_analyse()
-    elif page == "Page 1":
-        page_1()
-    elif page == "Page 2":
-        page_2()
-
-    # Initialisation de l'état de session pour les données fusionnées
-    if 'merged_data' not in st.session_state:
-        st.session_state.merged_data = None
-
-    # Sélection des tables
-    tables = get_grist_tables()
-def main():
-    st.sidebar.title("Navigation")
-    page = st.sidebar.radio("Aller à", ["Analyse des données ESR", "Page 1", "Page 2"])
-
-    if page == "Analyse des données ESR":
-        page_analyse()
-    elif page == "Page 1":
-        page_1()
-    elif page == "Page 2":
-        page_2()
 
     # Initialisation de l'état de session pour les données fusionnées
     if 'merged_data' not in st.session_state:
@@ -943,15 +915,14 @@ def main():
     # Choix du mode de sélection
     selection_mode = st.radio(
         "Mode de sélection des tables",
-        ["Une seule table", "Plusieurs tables"],
-        key="selection_mode"
+        ["Une seule table", "Plusieurs tables"]
     )
 
     if selection_mode == "Une seule table":
         # Sélection d'une seule table avec selectbox
         table_selection = st.selectbox(
             "Sélectionnez la table à analyser",
-            tables
+            options=tables
         )
         
         if table_selection:
@@ -980,7 +951,6 @@ def main():
                 st.error("Impossible de charger la table sélectionnée.")
                 return
         else:
-            # Code pour la fusion des tables
             dataframes = []
             merge_configs = []
 
