@@ -827,6 +827,10 @@ def display_univariate_analysis(data, var):
             if not is_numeric or (is_numeric and grouping_method != "Aucune"):
                 value_type = st.radio("Type de valeur à afficher", ["Effectif", "Taux (%)"])
 
+    # Définition de value_type en dehors des options avancées pour les variables qualitatives
+    if not is_numeric:
+        value_type = st.radio("Type de valeur à afficher", ["Effectif", "Taux (%)"])
+    
     # Génération du graphique
     if st.button("Générer la visualisation"):
         try:
