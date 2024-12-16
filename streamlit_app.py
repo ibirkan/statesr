@@ -1149,69 +1149,75 @@ def save_grouping_to_grist(table_id, original_column, grouped_data, new_column_n
         grouped_data: Series pandas contenant le mapping {valeur_originale: nouvelle_valeur}
         new_column_name: nom de la nouvelle colonne à créer
     """
-    # 1. Créer la nouvelle colonne
-    column_data = {
-        "columns": [
-            {
-                "id": new_column_name,
-                "fields": {
-                    "label": new_column_name,
-                    "type": "Text"
+    try:
+        # 1. Créer la nouvelle colonne
+        column_data = {
+            "columns": [
+                {
+                    "id": new_column_name,
+                    "fields": {
+                        "label": new_column_name,
+                        "type": "Text"
+                    }
                 }
-            }
-        ]
-    }
-    
-    response = grist_api_request(
-        f"tables/{table_id}/columns",
-        method="POST",
-        data=column_data
-    )
-    
-    if response:
-        st.success(f"Colonne '{new_column_name}' créée avec succès!")
+            ]
+        }
         
-        # 2. Récupérer les données existantes de la table
-        existing_records = grist_api_request(f"tables/{table_id}/records", method="GET")
+        response = grist_api_request(
+            f"tables/{table_id}/columns",
+            method="POST",
+            data=column_data
+        )
         
-        if existing_records and 'records' in existing_records:
-            # Préparer les mises à jour
-            records = []
-            mapping_dict = grouped_data.to_dict()
+        if response:
+            st.success(f"Colonne '{new_column_name}' créée avec succès!")
             
-            # Pour chaque enregistrement dans la table
-            for record in existing_records['records']:
-                old_value = record['fields'].get(original_column)
-                # Si la valeur existe dans le mapping, créer un nouvel enregistrement
-                if old_value is not None and old_value in mapping_dict:
-                    records.append({
-                        "id": record['id'],  # Conserver l'ID pour mettre à jour la bonne ligne
-                        "fields": {
-                            new_column_name: str(mapping_dict[old_value])
-                        }
-                    })
+            # 2. Récupérer les données existantes
+            existing_records = grist_api_request(f"tables/{table_id}/records", method="GET")
             
-            if records:
-                # Utiliser PATCH pour mettre à jour les enregistrements existants
-                update_data = {"records": records}
-                update_response = grist_api_request(
-                    f"tables/{table_id}/records",
-                    method="PATCH",  # PATCH au lieu de POST/PUT car on met à jour des enregistrements existants
-                    data=update_data
-                )
+            if existing_records and 'records' in existing_records:
+                # Préparer les mises à jour en lot
+                updates = []
+                mapping_dict = grouped_data.to_dict()
                 
-                if update_response is not None:
-                    st.success(f"{len(records)} enregistrements mis à jour avec succès!")
+                for record in existing_records['records']:
+                    record_id = record['id']
+                    old_value = record['fields'].get(original_column)
+                    
+                    if old_value in mapping_dict:
+                        updates.append({
+                            "id": record_id,
+                            "fields": {
+                                new_column_name: mapping_dict[old_value]
+                            }
+                        })
+                
+                if updates:
+                    # Envoyer les mises à jour en lot
+                    update_data = {"records": updates}
+                    update_response = grist_api_request(
+                        f"tables/{table_id}/records",
+                        method="PATCH",
+                        data=update_data
+                    )
+                    
+                    if update_response is not None:
+                        st.success(f"✅ {len(updates)} enregistrements mis à jour avec succès!")
+                        # Afficher un exemple de mise à jour pour vérification
+                        if len(updates) > 0:
+                            st.write("Exemple de mise à jour:")
+                            st.write(f"Ancienne valeur: {updates[0]['fields'][new_column_name]}")
+                    else:
+                        st.error("Erreur lors de la mise à jour des données")
                 else:
-                    st.error("Erreur lors de la mise à jour des données")
+                    st.warning("Aucune donnée à mettre à jour")
             else:
-                st.error("Aucune correspondance trouvée entre les données existantes et le mapping")
-                st.write("Premier enregistrement pour vérification:", 
-                        existing_records['records'][0] if existing_records['records'] else "Aucun enregistrement")
+                st.error("Impossible de récupérer les enregistrements existants")
         else:
-            st.error("Impossible de récupérer les enregistrements existants")
-    else:
-        st.error("Erreur lors de la création de la colonne")
+            st.error("Erreur lors de la création de la colonne")
+            
+    except Exception as e:
+        st.error(f"Erreur lors de la sauvegarde : {str(e)}")
     
 def display_univariate_analysis(data, var):
     """Gère l'affichage de l'analyse univariée."""
