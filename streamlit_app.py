@@ -978,11 +978,12 @@ def create_interactive_qualitative_table(data_series, var_name):
                         cell_text = final_df.values.astype(str)
                         
                         # Création du tableau
+                        # Création du tableau
                         table = ax.table(
                             cellText=cell_text,
                             colLabels=final_df.columns,
                             loc='center',
-                            cellLoc='center',
+                            cellLoc='center',  # Alignement par défaut centré
                             bbox=[0, 0.1, 1, 0.9]
                         )
                         
@@ -1008,16 +1009,16 @@ def create_interactive_qualitative_table(data_series, var_name):
                             cell.set_edgecolor('#e6e6e6')
         
                         # Style des cellules
-                        for i in range(len(final_df) + 1):
+                        for i in range(len(final_df) + 1):  # +1 pour inclure l'en-tête
                             for j in range(len(final_df.columns)):
                                 cell = table._cells[(i, j)]
                                 cell.set_edgecolor('#e6e6e6')
                                 
                                 # Alignement du texte
-                                if j == 0:  # Modalité
-                                    cell._loc = 'left'
-                                else:  # Colonnes numériques
-                                    cell._loc = 'center'
+                                if j == 0 and i > 0:  # Première colonne (Modalités) mais pas l'en-tête
+                                    cell.get_text().set_horizontalalignment('left')
+                                    # Ajouter un peu d'espace à gauche
+                                    cell.get_text().set_x(0.1)  # Ajuster cette valeur entre 0 et 1 pour le padding gauche
                                 
                                 # Lignes alternées
                                 if i > 0:  # Exclure l'en-tête
