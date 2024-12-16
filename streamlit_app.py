@@ -156,36 +156,43 @@ def get_grist_tables():
         return {}
 
 def get_grist_data(table_id):
-    """Récupère les données d'une table Grist avec les noms originaux des colonnes."""
+    """Récupère les données d'une table Grist avec les noms lisibles des colonnes."""
     try:
         # Récupérer les données
         result = grist_api_request(f"tables/{table_id}/records")
-        if result and 'records' in result:
-            # Récupérer les métadonnées des colonnes
-            metadata = grist_api_request(f"tables/{table_id}/columns")
+        # Récupérer les métadonnées des colonnes
+        columns_metadata = grist_api_request(f"tables/{table_id}/columns")
+        
+        if result and 'records' in result and columns_metadata and 'columns' in columns_metadata:
+            # Créer un dictionnaire de mapping id -> label
+            column_mapping = {
+                col['id']: col['fields']['label'] 
+                for col in columns_metadata['columns']
+                if 'fields' in col and 'label' in col['fields']
+            }
             
-            # Debug : afficher les métadonnées des colonnes
-            with st.expander(f"Métadonnées des colonnes pour {table_id}"):
-                st.json(metadata)
-
             records = []
             for record in result['records']:
                 if 'fields' in record:
-                    # Garder les noms originaux des colonnes
                     fields = record['fields']
                     records.append(fields)
             
             if records:
                 df = pd.DataFrame(records)
-                # Afficher les noms des colonnes pour debug
-                with st.expander(f"Noms des colonnes pour {table_id}"):
-                    st.write(df.columns.tolist())
+                # Renommer les colonnes avec leurs labels lisibles
+                df = df.rename(columns=column_mapping)
+                
+                # Debug : afficher le mapping des colonnes
+                with st.expander(f"Mapping des noms de colonnes pour {table_id}"):
+                    st.write("Original -> Lisible")
+                    for orig, new in column_mapping.items():
+                        st.write(f"{orig} -> {new}")
+                
                 return df
         return None
     except Exception as e:
         st.error(f"Erreur lors de la récupération des données : {str(e)}")
         return None
-
 # Fonctions de gestion des données
 def merge_multiple_tables(dataframes, merge_configs):
     """Fusionne plusieurs DataFrames selon les configurations spécifiées."""
