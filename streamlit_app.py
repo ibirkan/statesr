@@ -295,10 +295,21 @@ def calculate_regression(x, y):
 # Fonctions de visualisation univariée
 def plot_qualitative_bar(data, title, x_label, y_label, color_palette, show_values=True):
     """Crée un graphique en barres pour une variable qualitative."""
+    if not isinstance(data, pd.DataFrame):
+        st.error("Les données ne sont pas dans le format attendu")
+        return None
+    
+    # Obtenir les noms des colonnes actuels
+    columns = data.columns.tolist()
+    
+    # La première colonne sera toujours celle des modalités (quel que soit son nom)
+    category_col = columns[0]  # Première colonne (nom dynamique)
+    value_col = 'Effectif'     # Deuxième colonne (fixe)
+    
     fig = go.Figure(data=[
         go.Bar(
-            x=data['Modalité'],
-            y=data['Effectif'],
+            x=data[category_col],
+            y=data[value_col],
             marker_color=color_palette[0]
         )
     ])
@@ -327,7 +338,7 @@ def plot_qualitative_bar(data, title, x_label, y_label, color_palette, show_valu
 
     if show_values:
         fig.update_traces(
-            text=data['Effectif'].round(1),
+            text=data[value_col].round(1),
             textposition='outside',
             texttemplate='%{text:.1f}'
         )
@@ -336,13 +347,22 @@ def plot_qualitative_bar(data, title, x_label, y_label, color_palette, show_valu
 
 def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show_values=True):
     """Crée un graphique lollipop pour une variable qualitative."""
+    if not isinstance(data, pd.DataFrame):
+        st.error("Les données ne sont pas dans le format attendu")
+        return None
+    
+    # Obtenir les noms des colonnes actuels
+    columns = data.columns.tolist()
+    category_col = columns[0]  # Première colonne (nom dynamique)
+    value_col = 'Effectif'     # Deuxième colonne (fixe)
+    
     fig = go.Figure()
     
     # Lignes verticales
     for i in range(len(data)):
         fig.add_trace(go.Scatter(
-            x=[data['Modalité'].iloc[i], data['Modalité'].iloc[i]],
-            y=[0, data['Effectif'].iloc[i]],
+            x=[data[category_col].iloc[i], data[category_col].iloc[i]],
+            y=[0, data[value_col].iloc[i]],
             mode='lines',
             line=dict(color=color_palette[0], width=2),
             showlegend=False,
@@ -351,24 +371,23 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
     
     # Points
     fig.add_trace(go.Scatter(
-        x=data['Modalité'],
-        y=data['Effectif'],
+        x=data[category_col],
+        y=data[value_col],
         mode='markers',
         marker=dict(color=color_palette[0], size=10),
         name='Valeurs',
         showlegend=False
     ))
 
-    # Valeurs
     if show_values:
-        max_y = data['Effectif'].max()
-        text_y = data['Effectif'] + (max_y * 0.2)
+        max_y = data[value_col].max()
+        text_y = data[value_col] + (max_y * 0.2)
         
         fig.add_trace(go.Scatter(
-            x=data['Modalité'],
+            x=data[category_col],
             y=text_y,
             mode='text',
-            text=data['Effectif'].round(1).astype(str),
+            text=data[value_col].round(1).astype(str),
             textposition='middle center',
             textfont=dict(size=12),
             showlegend=False
@@ -386,7 +405,7 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
             zerolinewidth=1,
             zerolinecolor='lightgray',
             gridcolor='lightgray',
-            range=[0, max(data['Effectif']) * 1.5]
+            range=[0, data[value_col].max() * 1.5]
         ),
         xaxis=dict(
             gridcolor='lightgray',
@@ -398,12 +417,21 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
 
 def plot_qualitative_treemap(data, title, color_palette):
     """Crée un treemap pour une variable qualitative."""
+    if not isinstance(data, pd.DataFrame):
+        st.error("Les données ne sont pas dans le format attendu")
+        return None
+    
+    # Obtenir les noms des colonnes actuels
+    columns = data.columns.tolist()
+    category_col = columns[0]  # Première colonne (nom dynamique)
+    value_col = 'Effectif'     # Deuxième colonne (fixe)
+    
     fig = px.treemap(
         data,
-        path=['Modalité'],
-        values='Effectif',
+        path=[category_col],
+        values=value_col,
         title=title,
-        color='Effectif',
+        color=value_col,
         color_continuous_scale=[color_palette[0]] * 2
     )
 
@@ -415,7 +443,7 @@ def plot_qualitative_treemap(data, title, color_palette):
     )
 
     return fig
-
+    
 def plot_density(plot_data, var, title, x_axis, y_axis):
     """Crée un graphique de densité."""
     fig = ff.create_distplot(
@@ -1625,13 +1653,14 @@ def main():
                             ))
                 
                         # Création du graphique selon le type
-                        if not is_numeric:  # Variables qualitatives
+                        if not is_numeric:
                             data_to_plot = value_counts.copy()
                             if value_type == "Taux (%)":
-                                data_to_plot['Effectif'] = data_to_plot['Taux (%)']
-                                y_axis = "Taux (%)" if y_axis == "Valeur" else y_axis
-                            
-                            data_to_plot['Modalité'] = data_to_plot['Modalité'].astype(str)
+                                # Créer une copie du DataFrame avec la bonne structure
+                                data_to_plot = pd.DataFrame({
+                                    data_to_plot.columns[0]: data_to_plot[data_to_plot.columns[0]],  # Garde le nom dynamique de la première colonne
+                                    'Effectif': data_to_plot['Taux (%)']  # Utilise toujours 'Effectif' comme nom de colonne pour les valeurs
+                                })
                             
                             if graph_type == "Bar plot":
                                 fig = plot_qualitative_bar(data_to_plot, title, x_axis, y_axis, COLOR_PALETTES[color_scheme], show_values)
