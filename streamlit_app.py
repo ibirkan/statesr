@@ -1121,8 +1121,8 @@ def create_interactive_qualitative_table(data_series, var_name):
                     height=150
                 )
     
-    return final_df
-    
+    return final_df, var_name_display  # Return the DataFrame and the dynamic column name
+
 def display_univariate_analysis(data, var):
     """Gère l'affichage de l'analyse univariée."""
     plot_data = data[var].dropna()
@@ -1185,7 +1185,6 @@ def display_univariate_analysis(data, var):
                     breaks.append(val)
                 grouped_data = pd.cut(plot_data, bins=breaks)
     else:
-
         # Statistiques qualitatives
         value_counts = create_interactive_qualitative_table(data, var)
         grouped_data = None
@@ -1252,14 +1251,17 @@ def display_univariate_analysis(data, var):
                 else:
                     fig = plot_density(data_to_plot, var, title, x_axis, y_axis)
             else:
+                # Dynamically find the column name for 'Modalité'
+                modality_col = 'Modalité' if 'Modalité' in data_to_plot.columns else data_to_plot.columns[0]
+                
                 if graph_type == "Bar plot":
-                    fig = plot_qualitative_bar(data_to_plot, title, x_axis, y_axis,
+                    fig = plot_qualitative_bar(data_to_plot.rename(columns={modality_col: 'Modalité'}), title, x_axis, y_axis,
                                              COLOR_PALETTES[color_scheme], show_values)
                 elif graph_type == "Lollipop plot":
-                    fig = plot_qualitative_lollipop(data_to_plot, title, x_axis, y_axis,
+                    fig = plot_qualitative_lollipop(data_to_plot.rename(columns={modality_col: 'Modalité'}), title, x_axis, y_axis,
                                                   COLOR_PALETTES[color_scheme], show_values)
                 else:
-                    fig = plot_qualitative_treemap(data_to_plot, title, COLOR_PALETTES[color_scheme])
+                    fig = plot_qualitative_treemap(data_to_plot.rename(columns={modality_col: 'Modalité'}), title, COLOR_PALETTES[color_scheme])
 
             # Ajout des annotations
             if source or note:
@@ -1295,7 +1297,7 @@ def display_univariate_analysis(data, var):
         except Exception as e:
             st.error(f"Erreur lors de la génération du graphique : {str(e)}")
             st.error(f"Détails : {str(type(e).__name__)}")
-
+            
 def main():
     st.title("Analyse des données ESR")
 
