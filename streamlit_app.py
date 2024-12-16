@@ -986,7 +986,6 @@ def create_interactive_qualitative_table(data_series, var_name):
                         cell_text = final_df.values.astype(str)
                         
                         # Création du tableau
-                        # Création du tableau
                         table = ax.table(
                             cellText=cell_text,
                             colLabels=[var_name_display, 'Effectif', 'Taux (%)'],  # Utiliser le nom personnalisé ici
