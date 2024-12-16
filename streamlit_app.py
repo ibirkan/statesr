@@ -855,6 +855,10 @@ def create_interactive_qualitative_table(data_series, var_name):
     final_df['Modalité'] = final_df['Nouvelle modalité']
     final_df = final_df.drop('Nouvelle modalité', axis=1)
 
+    # Calcul de la largeur maximale pour la colonne Modalité
+    max_modalite_length = max(len(str(x)) for x in final_df['Modalité'])
+    modalite_width = min(max(max_modalite_length * 10, 100), 400)  # entre 100 et 400px
+    
     # Style personnalisé pour le tableau avec police Marianne
     styled_df = final_df.style\
         .format({
@@ -862,23 +866,46 @@ def create_interactive_qualitative_table(data_series, var_name):
             'Taux (%)': '{:.1f}%'
         })\
         .set_properties(**{
-            'text-align': 'left',
             'font-size': '14px',
             'padding': '10px',
             'border': '1px solid #e6e6e6',
             'font-family': 'Marianne, sans-serif'
         })\
         .set_table_styles([
+            # Style pour le tableau entier
+            {'selector': '',
+             'props': [('width', 'auto'),
+                      ('margin', '0 auto')]},
+            # Style pour les en-têtes
             {'selector': 'th',
              'props': [
                  ('background-color', '#f0f2f6'),
                  ('color', '#262730'),
                  ('font-weight', 'bold'),
-                 ('text-align', 'left'),
                  ('padding', '10px'),
                  ('font-size', '14px'),
                  ('border', '1px solid #e6e6e6'),
-                 ('font-family', 'Marianne, sans-serif')
+                 ('font-family', 'Marianne, sans-serif'),
+                 ('text-align', 'center')  # Centrer les en-têtes
+             ]},
+            # Style spécifique pour chaque colonne
+            {'selector': 'td:nth-child(1)',  # Colonne Modalité
+             'props': [
+                 ('text-align', 'left'),
+                 ('width', f'{modalite_width}px'),
+                 ('max-width', '400px'),
+                 ('white-space', 'normal'),  # Permet le retour à la ligne
+                 ('padding-right', '20px')
+             ]},
+            {'selector': 'td:nth-child(2)',  # Colonne Effectif
+             'props': [
+                 ('text-align', 'center'),
+                 ('width', '100px')
+             ]},
+            {'selector': 'td:nth-child(3)',  # Colonne Taux
+             'props': [
+                 ('text-align', 'center'),
+                 ('width', '100px')
              ]},
             {'selector': 'caption',
              'props': [
