@@ -1060,30 +1060,34 @@ def create_interactive_qualitative_table(data_series, var_name):
 
         with col2:
             if st.button("Copier pour Excel"):
+                # Préparation des données pour Excel
                 excel_data = []
                 if table_title:
-                    excel_data.append([table_title])
-                    excel_data.append([])  # Ligne vide
-                
+                    excel_data.append(table_title)
+                    excel_data.append("")  # Ligne vide
+
                 # En-têtes et données
-                excel_data.append(final_df.columns.tolist())
-                excel_data.extend(final_df.values.tolist())
-                
+                excel_data.append("\t".join(final_df.columns))
+                for _, row in final_df.iterrows():
+                    excel_data.append("\t".join(str(val) for val in row))
+
                 # Métadonnées
                 if table_source or table_note:
-                    excel_data.append([])  # Ligne vide
+                    excel_data.append("")  # Ligne vide
                     if table_source:
-                        excel_data.append([f"Source : {table_source}"])
+                        excel_data.append(f"Source : {table_source}")
                     if table_note:
-                        excel_data.append([f"Note : {table_note}"])
-                
-                # Conversion en texte tabulé
-                copy_text = '\n'.join(['\t'.join(map(str, row)) for row in excel_data])
-                
-                # Copie dans le presse-papiers
-                st.code(copy_text, language=None)
-                st.info("Copiez le texte ci-dessus pour Excel")
+                        excel_data.append(f"Note : {table_note}")
 
+                # Conversion en texte tabulé
+                copy_text = "\n".join(excel_data)
+
+                # Affichage dans un textarea pour faciliter la copie
+                st.text_area(
+                    "Copiez le texte ci-dessous pour Excel :",
+                    value=copy_text,
+                    height=150
+                )
     return final_df
     
 def display_univariate_analysis(data, var):
