@@ -128,24 +128,38 @@ def grist_api_request(endpoint, method="GET", data=None):
         st.error(f"Erreur API Grist : {str(e)}")
         return None
 
+def get_table_metadata(table_id):
+    """Récupère les métadonnées détaillées d'une table."""
+    try:
+        result = grist_api_request(f"tables/{table_id}")
+        return result
+    except Exception as e:
+        st.error(f"Erreur lors de la récupération des métadonnées : {str(e)}")
+        return None
+
 def get_grist_tables():
     """Récupère la liste des tables disponibles dans Grist."""
     try:
         result = grist_api_request("tables")
         if result and 'tables' in result:
-            # Afficher toutes les informations disponibles pour debug
-            print("Données complètes des tables:", result)
-            
             tables_dict = {}
             for table in result['tables']:
-                # Essayer d'obtenir le meilleur nom possible
-                display_name = (
-                    table.get('title') or  # essayer d'abord le titre
-                    table.get('displayName') or  # puis le nom d'affichage
-                    table.get('name') or  # puis le nom
-                    table['id']  # en dernier recours, l'ID
-                )
-                tables_dict[display_name] = table['id']
+                table_id = table['id']
+                # Récupérer les métadonnées détaillées de la table
+                metadata = get_table_metadata(table_id)
+                if metadata:
+                    # Debug: afficher les métadonnées complètes
+                    if 'tableId' in metadata:
+                        display_name = metadata.get('tableName', table_id)
+                    else:
+                        display_name = table_id
+                    tables_dict[display_name] = table_id
+            
+            # Debug: afficher le dictionnaire final
+            with st.expander("Détails des tables"):
+                st.write("Correspondance noms/IDs :")
+                st.json(tables_dict)
+            
             return tables_dict
         return {}
     except Exception as e:
