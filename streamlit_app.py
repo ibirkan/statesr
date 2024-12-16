@@ -180,6 +180,28 @@ def get_grist_data(table_id):
     except Exception as e:
         st.error(f"Erreur lors de la récupération des données : {str(e)}")
         return None
+
+def test_simple_update():
+    # Structure de données pour Grist
+    update_data = {
+        "records": [
+            {
+                "id": 1,
+                "fields": {
+                    "Paris_Province_14": "Test d'écriture"
+                }
+            }
+        ]
+    }
+    
+    # Requête PATCH avec la structure exacte
+    result = grist_api_request(
+        "tables/MonMaster_2023/records",
+        method="PATCH",
+        data=update_data
+    )
+    
+    return result
         
 # Fonctions de gestion des données
 def merge_multiple_tables(dataframes, merge_configs):
@@ -1411,6 +1433,14 @@ def display_univariate_analysis(data, var):
 
 def main():
     st.title("Analyse des données ESR")
+
+    if st.button("Test écriture Grist"):
+    result = test_simple_update()
+    if result is not None:
+        st.success("Test d'écriture réussi!")
+        st.write("Réponse de l'API:", result)
+    else:
+        st.error("Échec du test d'écriture")
 
     # Initialisation de l'état de session pour les données fusionnées
     if 'merged_data' not in st.session_state:
