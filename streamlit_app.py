@@ -816,7 +816,7 @@ def save_test_indicator(test_data):
         raise Exception(f"Erreur test : {str(e)}")
 
 # Structure principale de l'application
-def create_interactive_qualitative_table(data_series, var_name):
+def create_interactive_qualitative_table(data_series, var_name, table_id):
     """Crée un tableau statistique interactif pour les variables qualitatives."""
     # Création du DataFrame initial
     value_counts = data_series.value_counts().reset_index()
@@ -1670,7 +1670,11 @@ def main():
     
                 else:
                     # Statistiques pour variable qualitative
-                    value_counts = create_interactive_qualitative_table(plot_data, var)
+                    value_counts = create_interactive_qualitative_table(
+                        plot_data,  # était data_series
+                        var,  # était var_name
+                        table_id  # nouveau paramètre à ajouter
+                    )
                 
                 # Configuration de la visualisation
                 st.write("### Configuration de la visualisation")
