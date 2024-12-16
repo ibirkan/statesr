@@ -856,7 +856,7 @@ def create_interactive_qualitative_table(data_series, var_name):
     final_df = final_df.drop('Nouvelle modalité', axis=1)
     
     # Renommer la première colonne avec le nom de variable personnalisé
-    final_df.rename(columns={'Modalité': var_name_display}, inplace=True)
+    final_df = final_df.rename(columns={'Modalité': var_name_display})  # Renommer avant le style
 
     # Création du tableau final
     final_df = value_counts.copy()
