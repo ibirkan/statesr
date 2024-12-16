@@ -842,13 +842,22 @@ def create_interactive_qualitative_table(data_series, var_name):
                 )
         
         with col2:
-            st.write("##### Paramètres du tableau")
-            table_title = st.text_input("Titre du tableau", 
-                                      value=f"Distribution de la variable {var_name}")
-            table_source = st.text_input("Source", placeholder="Ex: Enquête XX, 2023")
-            table_note = st.text_area("Note de lecture", 
-                                   placeholder="Ex: Lecture : XX% des répondants...", 
-                                   height=100)
+                    st.write("##### Paramètres du tableau")
+                    table_title = st.text_input("Titre du tableau", 
+                                              value=f"Distribution de la variable {var_name}")
+                    var_name_display = st.text_input("Nom de la variable :",  # Ajout du champ
+                                                   value="Modalités")
+                    table_source = st.text_input("Source", placeholder="Ex: Enquête XX, 2023")
+                    table_note = st.text_input("Note de lecture",  # Changé de text_area à text_input
+                                            placeholder="Ex: Lecture : XX% des répondants...")
+        
+            # Création du tableau final avec le nouveau nom de variable
+            final_df = value_counts.copy()
+            final_df['Modalité'] = final_df['Nouvelle modalité']
+            final_df = final_df.drop('Nouvelle modalité', axis=1)
+            
+            # Renommer la première colonne avec le nom de variable personnalisé
+            final_df.rename(columns={'Modalité': var_name_display}, inplace=True)
 
     # Création du tableau final
     final_df = value_counts.copy()
