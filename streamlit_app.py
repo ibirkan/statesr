@@ -974,9 +974,12 @@ def create_interactive_qualitative_table(data_series, var_name):
                         plt.rcParams['font.family'] = 'sans-serif'
                         plt.rcParams['font.sans-serif'] = ['Arial']
                         
+                        # Préparation des données pour l'affichage
+                        cell_text = final_df.values.astype(str)
+                        
                         # Création du tableau
                         table = ax.table(
-                            cellText=final_df.values,
+                            cellText=cell_text,
                             colLabels=final_df.columns,
                             loc='center',
                             cellLoc='center',
@@ -990,6 +993,7 @@ def create_interactive_qualitative_table(data_series, var_name):
                         # Largeurs des colonnes
                         col_widths = [0.6, 0.2, 0.2]
                         for idx, width in enumerate(col_widths):
+                            table.auto_set_column_width([idx])
                             for cell in table._cells:
                                 if cell[1] == idx:
                                     table._cells[cell].set_width(width)
@@ -1012,7 +1016,6 @@ def create_interactive_qualitative_table(data_series, var_name):
                                 # Alignement du texte
                                 if j == 0:  # Modalité
                                     cell._loc = 'left'
-                                    cell.set_padding(0.1, 0, 0, 0.05)
                                 else:  # Colonnes numériques
                                     cell._loc = 'center'
                                 
@@ -1022,6 +1025,9 @@ def create_interactive_qualitative_table(data_series, var_name):
                                         cell.set_facecolor('#f9f9f9')
                                     else:
                                         cell.set_facecolor('white')
+        
+                                # Ajustement de la hauteur des cellules
+                                cell.set_height(0.05)
         
                         # Titre
                         if table_title:
@@ -1036,6 +1042,9 @@ def create_interactive_qualitative_table(data_series, var_name):
                         
                         if footer_text:
                             plt.figtext(0.1, 0.02, '\n'.join(footer_text), fontsize=8)
+                        
+                        # Ajustement de la mise en page
+                        plt.tight_layout()
                         
                         # Sauvegarde avec fond blanc
                         buf = BytesIO()
