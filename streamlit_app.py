@@ -189,13 +189,15 @@ def test_add_column(table_id, column_name):
     """
     # Données pour la création de la colonne
     column_data = {
-        "fields": {
-            "label": column_name,
-            "type": "Text",
-            "parentId": table_id,
-            "isFormula": False
-        }
+        "field": column_name,  # Le nom technique de la colonne
+        "type": "Text",       # Le type de données
+        "label": column_name, # Le nom affiché
+        "formula": "",        # Pas de formule
+        "widgetOptions": ""   # Pas d'options spéciales
     }
+    
+    # Debug : afficher les données que nous allons envoyer
+    st.write("Données à envoyer:", column_data)
     
     # Créer la colonne
     response = grist_api_request(
@@ -212,7 +214,7 @@ def test_add_column(table_id, column_name):
 
 # Test dans votre interface
 if st.button("Tester l'ajout d'une colonne"):
-    test_table_id = "MonMaster_2023"  # ou une autre table de votre choix
+    test_table_id = "MonMaster_2023"
     test_column_name = "Test_Colonne"
     test_add_column(test_table_id, test_column_name)
         
