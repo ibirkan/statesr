@@ -180,49 +180,7 @@ def get_grist_data(table_id):
     except Exception as e:
         st.error(f"Erreur lors de la récupération des données : {str(e)}")
         return None
-
-def test_simple_update():
-    try:
-        update_data = {
-            "records": [
-                {
-                    "require": {
-                        "id": "2"
-                    },
-                    "fields": {
-                        "Paris_Province_14": "Test d'écriture"
-                    }
-                }
-            ]
-        }
-        
-        # Debug: afficher les données envoyées
-        st.write("Données envoyées:", update_data)
-        
-        # Envoi de la requête PUT
-        url = f"{BASE_URL}/{st.secrets['grist_doc_id']}/tables/MonMaster_2023/records"
-        headers = {
-            "Authorization": f"Bearer {st.secrets['grist_key']}",
-            "Content-Type": "application/json"
-        }
-        
-        response = requests.put(url, headers=headers, json=update_data)
-        
-        # Afficher les détails de la réponse
-        st.write("Status code:", response.status_code)
-        st.write("Headers:", dict(response.headers))
-        st.write("Response text:", response.text)
-        
-        if response.ok:
-            return response.json()
-        else:
-            st.error(f"Error {response.status_code}: {response.text}")
-            return None
-            
-    except Exception as e:
-        st.error(f"Erreur détaillée: {str(e)}")
-        return None
-        
+      
 # Fonctions de gestion des données
 def merge_multiple_tables(dataframes, merge_configs):
     """Fusionne plusieurs DataFrames selon les configurations spécifiées."""
@@ -1163,120 +1121,7 @@ def create_interactive_qualitative_table(data_series, var_name, table_id):
                     height=150
                 )
 
-    # Options de sauvegarde Grist
-    with st.expander("Options de sauvegarde Grist"):
-        st.write("##### Sauvegarder le regroupement dans Grist")
-        new_column_name = st.text_input(
-            "Nom de la nouvelle colonne",
-            value=f"{var_name}_regroupé"
-        )
-        
-        # Créer le mapping entre valeurs originales et nouvelles modalités
-        mapping_dict = {}
-        for idx, row in value_counts.iterrows():
-            old_value = row['Modalité']
-            new_value = row['Nouvelle modalité']  # Cette colonne est créée plus tôt dans la fonction
-            mapping_dict[old_value] = new_value
-        
-        # Convertir en Series pour l'envoi
-        grouped_series = pd.Series(mapping_dict)
-        
-        # Debug: afficher le mapping avant envoi
-        st.write("Mapping qui sera envoyé à Grist:")
-        st.write(grouped_series)
-        
-        if st.button("Sauvegarder dans Grist"):
-            save_grouping_to_grist(
-                table_id="MonMaster_2023",
-                original_column=var_name,
-                grouped_data=grouped_series,
-                new_column_name=new_column_name
-            )
-    
     return final_df
-
-def save_grouping_to_grist(table_id, original_column, grouped_data, new_column_name):
-    """
-    Sauvegarde les données regroupées dans une nouvelle colonne Grist.
-    """
-    try:
-        # 1. Créer la nouvelle colonne
-        column_data = {
-            "columns": [
-                {
-                    "id": new_column_name,
-                    "fields": {
-                        "label": new_column_name,
-                        "type": "Text"
-                    }
-                }
-            ]
-        }
-        
-        column_response = grist_api_request(
-            f"tables/{table_id}/columns",
-            method="POST",
-            data=column_data
-        )
-        
-        if column_response:
-            st.success(f"Colonne '{new_column_name}' créée avec succès!")
-            
-            # 2. Récupérer les données existantes
-            existing_records = grist_api_request(f"tables/{table_id}/records")
-            
-            if existing_records and 'records' in existing_records:
-                mapping_dict = {str(k): str(v) for k, v in grouped_data.to_dict().items()}
-                
-                # Préparer les mises à jour avec le format exact requis par Grist
-                records_to_update = []
-                added_ids = set()  # Pour éviter les doublons d'ID
-                
-                for record in existing_records['records']:
-                    record_id = record.get('id')
-                    old_value = str(record['fields'].get(original_column, ''))
-                    
-                    # Ne traiter que les enregistrements avec un ID valide et non déjà traités
-                    if record_id and old_value in mapping_dict and record_id not in added_ids:
-                        new_value = mapping_dict[old_value]
-                        # Ne pas ajouter si la nouvelle valeur est vide
-                        if new_value.strip():
-                            records_to_update.append({
-                                "id": record_id,
-                                "fields": {
-                                    new_column_name: new_value
-                                }
-                            })
-                            added_ids.add(record_id)
-                
-                if records_to_update:
-                    # Structure exacte requise par l'API Grist
-                    update_payload = {
-                        "records": records_to_update
-                    }
-                    
-                    # Debug pour vérifier la structure exacte
-                    st.write("Données envoyées à Grist:")
-                    st.json(update_payload)
-                    
-                    # Envoi des données à Grist
-                    update_response = grist_api_request(
-                        f"tables/{table_id}/records",
-                        method="PATCH",
-                        data=update_payload
-                    )
-                    
-                    if update_response is not None:
-                        st.success(f"{len(records_to_update)} enregistrements mis à jour avec succès!")
-                    else:
-                        st.error("Erreur lors de la mise à jour des données")
-                        st.write("Réponse de l'API:", update_response)
-                else:
-                    st.warning("Aucun enregistrement valide à mettre à jour")
-            else:
-                st.error("Impossible de récupérer les enregistrements existants")
-    except Exception as e:
-        st.error(f"Erreur lors de la sauvegarde : {str(e)}")
     
 def display_univariate_analysis(data, var):
     """Gère l'affichage de l'analyse univariée."""
@@ -1453,14 +1298,6 @@ def display_univariate_analysis(data, var):
 
 def main():
     st.title("Analyse des données ESR")
-
-    if st.button("Test écriture Grist"):
-        result = test_simple_update()
-        if result is not None:
-            st.success("Test d'écriture réussi!")
-            st.write("Réponse de l'API:", result)
-        else:
-            st.error("Échec du test d'écriture")
 
     # Initialisation de l'état de session pour les données fusionnées
     if 'merged_data' not in st.session_state:
@@ -1720,11 +1557,7 @@ def main():
     
                 else:
                     # Statistiques pour variable qualitative
-                    value_counts = create_interactive_qualitative_table(
-                        plot_data,  # était data_series
-                        var,  # était var_name
-                        table_id  # nouveau paramètre à ajouter
-                    )
+                    value_counts = create_interactive_qualitative_table(plot_data)
                 
                 # Configuration de la visualisation
                 st.write("### Configuration de la visualisation")
