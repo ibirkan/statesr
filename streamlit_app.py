@@ -130,25 +130,33 @@ def grist_api_request(endpoint, method="GET", data=None):
         return None
 
 def get_grist_tables():
-    """Récupère la liste des tables disponibles dans Grist."""
+    """Récupère la liste des tables disponibles dans Grist avec leurs noms originaux."""
     try:
         result = grist_api_request("tables")
         if result and 'tables' in result:
-            return [table['id'] for table in result['tables']]
-        return []
+            # Retourner un dictionnaire avec les IDs comme clés et les noms comme valeurs
+            return {table['id']: table.get('name', table['id']) for table in result['tables']}
+        return {}
     except Exception as e:
         st.error(f"Erreur lors de la récupération des tables : {str(e)}")
-        return []
+        return {}
 
 def get_grist_data(table_id):
-    """Récupère les données d'une table Grist."""
+    """Récupère les données d'une table Grist avec les noms de colonnes originaux."""
     try:
         result = grist_api_request(table_id)
         if result and 'records' in result and result['records']:
+            # Récupérer les métadonnées de la table pour avoir les noms originaux des colonnes
+            table_info = grist_api_request(f"tables/{table_id}")
+            column_names = {col['id']: col.get('name', col['id']) 
+                          for col in table_info.get('columns', [])} if table_info else {}
+            
             records = []
             for record in result['records']:
                 if 'fields' in record:
-                    fields = {k.lstrip('$'): v for k, v in record['fields'].items()}
+                    # Utiliser les noms originaux des colonnes
+                    fields = {column_names.get(k.lstrip('$'), k.lstrip('$')): v 
+                            for k, v in record['fields'].items()}
                     records.append(fields)
             
             if records:
@@ -1271,8 +1279,8 @@ def main():
         st.session_state.merged_data = None
 
     # Sélection des tables
-    tables = get_grist_tables()
-    if not tables:
+    tables_dict = get_grist_tables()
+    if not tables_dict:
         st.error("Aucune table disponible.")
         return
 
@@ -1284,13 +1292,14 @@ def main():
 
     if selection_mode == "Une seule table":
         # Sélection d'une seule table avec selectbox
-        table_selection = st.selectbox(
+        table_id = st.selectbox(
             "Sélectionnez la table à analyser",
-            options=tables
+            options=list(tables_dict.keys()),
+            format_func=lambda x: tables_dict[x]  # Affiche le nom original
         )
         
-        if table_selection:
-            df = get_grist_data(table_selection)
+        if table_id:
+            df = get_grist_data(table_id)
             if df is not None:
                 st.session_state.merged_data = df
             else:
@@ -1298,17 +1307,18 @@ def main():
                 return
     else:
         # Sélection multiple avec multiselect
-        table_selections = st.multiselect(
+        table_ids = st.multiselect(
             "Sélectionnez les tables à analyser", 
-            tables
+            options=list(tables_dict.keys()),
+            format_func=lambda x: tables_dict[x]  # Affiche le nom original
         )
         
-        if not table_selections:
+        if not table_ids:
             st.warning("Veuillez sélectionner au moins une table pour l'analyse.")
             return
 
-        if len(table_selections) == 1:
-            df = get_grist_data(table_selections[0])
+        if len(table_ids) == 1:
+            df = get_grist_data(table_ids[0])
             if df is not None:
                 st.session_state.merged_data = df
             else:
@@ -1318,7 +1328,7 @@ def main():
             dataframes = []
             merge_configs = []
 
-            for table_id in table_selections:
+            for table_id in table_ids:
                 df = get_grist_data(table_id)
                 if df is not None:
                     dataframes.append(df)
