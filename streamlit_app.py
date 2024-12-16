@@ -795,22 +795,13 @@ def create_interactive_qualitative_table(data_series, var_name):
     final_df = value_counts.copy()
     final_df['Modalité'] = final_df['Nouvelle modalité']
     final_df = final_df.drop('Nouvelle modalité', axis=1)
-    
-    # Appliquer des styles au DataFrame
-    def highlight_alternating_rows(x):
-        return pd.DataFrame(
-            np.where(x.index % 2, 'background-color: #f9f9f9', 'background-color: white'),
-            index=x.index,
-            columns=x.columns
-        )
-    
+
     # Style personnalisé pour le tableau
     styled_df = final_df.style\
         .format({
             'Effectif': '{:,.0f}',
             'Taux (%)': '{:.1f}%'
         })\
-        .apply(highlight_alternating_rows, axis=None)\
         .set_properties(**{
             'text-align': 'left',
             'font-size': '14px',
@@ -838,8 +829,13 @@ def create_interactive_qualitative_table(data_series, var_name):
              ]},
             {'selector': 'td',
              'props': [('border', '1px solid #e6e6e6')]},
+            # Ajout du style pour les lignes alternées
+            {'selector': 'tr:nth-child(even)',
+             'props': [('background-color', '#f9f9f9')]},
+            {'selector': 'tr:nth-child(odd)',
+             'props': [('background-color', 'white')]}
         ])
-    
+
     # Affichage du titre si défini
     if table_title:
         st.write(f"### {table_title}")
