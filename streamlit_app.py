@@ -1289,6 +1289,12 @@ def main():
         st.error("Aucune table disponible.")
         return
 
+    # Choix du mode de sélection - Cette ligne doit être avant d'utiliser selection_mode
+    selection_mode = st.radio(
+        "Mode de sélection des tables",
+        ["Une seule table", "Plusieurs tables"]
+    )
+
     if selection_mode == "Une seule table":
         # Sélection d'une seule table avec selectbox
         table_name = st.selectbox(
