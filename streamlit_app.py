@@ -1121,7 +1121,7 @@ def create_interactive_qualitative_table(data_series, var_name):
                     height=150
                 )
 
-    # Ajouter l'expander pour Grist après les options d'export
+    # Options de sauvegarde Grist
     with st.expander("Options de sauvegarde Grist"):
         st.write("##### Sauvegarder le regroupement dans Grist")
         new_column_name = st.text_input(
@@ -1129,12 +1129,25 @@ def create_interactive_qualitative_table(data_series, var_name):
             value=f"{var_name}_regroupé"
         )
         
+        # Créer le mapping entre valeurs originales et nouvelles modalités
+        mapping_dict = {}
+        for idx, row in value_counts.iterrows():
+            old_value = row['Modalité']
+            new_value = row['Nouvelle modalité']  # Cette colonne est créée plus tôt dans la fonction
+            mapping_dict[old_value] = new_value
+        
+        # Convertir en Series pour l'envoi
+        grouped_series = pd.Series(mapping_dict)
+        
+        # Debug: afficher le mapping avant envoi
+        st.write("Mapping qui sera envoyé à Grist:")
+        st.write(grouped_series)
+        
         if st.button("Sauvegarder dans Grist"):
-            # Utiliser la Series créée plus haut
             save_grouping_to_grist(
                 table_id="MonMaster_2023",
                 original_column=var_name,
-                grouped_data=grouped_series,  # Passer la Series de mapping
+                grouped_data=grouped_series,
                 new_column_name=new_column_name
             )
     
