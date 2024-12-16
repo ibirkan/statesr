@@ -127,20 +127,29 @@ def grist_api_request(endpoint, method="GET", data=None):
     except Exception as e:
         st.error(f"Erreur API Grist : {str(e)}")
         return None
+        
 def get_grist_tables():
-    """Récupère la liste des tables disponibles dans Grist."""
+    """Récupère la liste des tables disponibles dans Grist avec leurs noms lisibles."""
     try:
         result = grist_api_request("tables")
         if result and 'tables' in result:
             tables_dict = {}
             for table in result['tables']:
-                tables_dict[table['id']] = table['id']  # On garde l'ID comme clé et valeur
+                # Récupérer les métadonnées de la table pour avoir le nom lisible
+                metadata = grist_api_request(f"tables/{table['id']}/columns")
+                if metadata and 'tableId' in metadata:
+                    # On utilise le nom lisible de la table comme clé, et l'ID comme valeur
+                    table_name = metadata.get('tableName', table['id'])
+                else:
+                    # Si pas de nom lisible, on utilise l'ID
+                    table_name = table['id']
+                tables_dict[table_name] = table['id']
             return tables_dict
         return {}
     except Exception as e:
         st.error(f"Erreur lors de la récupération des tables : {str(e)}")
         return {}
-
+        
 def get_grist_data(table_id):
     """Récupère les données d'une table Grist avec les noms lisibles des colonnes."""
     try:
