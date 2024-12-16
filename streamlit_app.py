@@ -128,37 +128,26 @@ def grist_api_request(endpoint, method="GET", data=None):
         st.error(f"Erreur API Grist : {str(e)}")
         return None
 
-def get_table_metadata(table_id):
-    """Récupère les métadonnées détaillées d'une table."""
-    try:
-        result = grist_api_request(f"tables/{table_id}")
-        return result
-    except Exception as e:
-        st.error(f"Erreur lors de la récupération des métadonnées : {str(e)}")
-        return None
-
 def get_grist_tables():
     """Récupère la liste des tables disponibles dans Grist."""
     try:
         result = grist_api_request("tables")
         if result and 'tables' in result:
+            # Afficher les données brutes pour debug
+            with st.expander("Données brutes des tables"):
+                st.json(result)
+            
+            # Essayons d'obtenir plus d'informations sur la structure
+            metadata_result = grist_api_request("")  # Requête à la racine de l'API
+            with st.expander("Métadonnées du document"):
+                st.json(metadata_result)
+            
+            # Pour l'instant, créons un dictionnaire avec les IDs
             tables_dict = {}
             for table in result['tables']:
-                table_id = table['id']
-                # Récupérer les métadonnées détaillées de la table
-                metadata = get_table_metadata(table_id)
-                if metadata:
-                    # Debug: afficher les métadonnées complètes
-                    if 'tableId' in metadata:
-                        display_name = metadata.get('tableName', table_id)
-                    else:
-                        display_name = table_id
-                    tables_dict[display_name] = table_id
-            
-            # Debug: afficher le dictionnaire final
-            with st.expander("Détails des tables"):
-                st.write("Correspondance noms/IDs :")
-                st.json(tables_dict)
+                # Convertir l'ID en nom plus lisible
+                display_name = table['id'].replace('_', ' ')  # Remplacer les underscores par des espaces
+                tables_dict[display_name] = table['id']
             
             return tables_dict
         return {}
