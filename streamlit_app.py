@@ -1144,6 +1144,9 @@ def save_grouping_to_grist(table_id, original_column, grouped_data, new_column_n
     """
     Sauvegarde les données regroupées dans une nouvelle colonne Grist.
     """
+    # Corriger le nom de la colonne pour correspondre au format Grist
+    original_column = "Region_academique_de_leetablissement"  # Format correct de la colonne
+    
     # 1. Créer la nouvelle colonne
     column_data = {
         "columns": [
@@ -1170,25 +1173,24 @@ def save_grouping_to_grist(table_id, original_column, grouped_data, new_column_n
         existing_records = grist_api_request(f"tables/{table_id}/records", method="GET")
         
         if existing_records and 'records' in existing_records:
+            # Debug pour voir la structure complète du premier enregistrement
+            st.write("Structure complète du premier enregistrement:", existing_records['records'][0])
+            
             # Préparer les mises à jour
             records = []
             mapping_dict = grouped_data.to_dict()
             
-            st.write("Nom de la colonne recherchée:", original_column)
-            st.write("Colonnes disponibles:", list(existing_records['records'][0]['fields'].keys()))
-            
             for record in existing_records['records']:
-                # Récupérer la valeur de la colonne originale dans fields
+                # Vérifier la structure complète des champs
+                st.write(f"Champs de l'enregistrement {record['id']}:", record['fields'])
+                
                 old_value = record['fields'].get(original_column)
                 
-                st.write(f"ID: {record['id']}, Valeur originale trouvée: {old_value}")
-                
-                if old_value is not None:  # Si la valeur existe
-                    new_value = mapping_dict.get(old_value)  # Obtenir la nouvelle valeur
-                    if new_value is not None:  # Si une correspondance existe
+                if old_value is not None:
+                    new_value = mapping_dict.get(old_value)
+                    if new_value is not None:
                         records.append({
                             "fields": {
-                                original_column: str(old_value),
                                 new_column_name: str(new_value)
                             }
                         })
@@ -1198,7 +1200,7 @@ def save_grouping_to_grist(table_id, original_column, grouped_data, new_column_n
                 st.write("Données à envoyer:", records[:5])
                 st.write(f"Nombre total d'enregistrements: {len(records)}")
                 
-                # Utiliser POST au lieu de PUT
+                # Utiliser POST
                 update_data = {"records": records}
                 update_response = grist_api_request(
                     f"tables/{table_id}/records",
@@ -1210,10 +1212,9 @@ def save_grouping_to_grist(table_id, original_column, grouped_data, new_column_n
                     st.success(f"{len(records)} enregistrements mis à jour avec succès!")
                 else:
                     st.error("Erreur lors de la mise à jour des données")
-                    st.write("Réponse de l'API:", update_response)
             else:
                 st.error("Aucune donnée à mettre à jour - Vérifiez le mapping")
-                st.write("Structure d'un enregistrement:", existing_records['records'][0])
+                st.write("Mapping disponible:", mapping_dict)
         else:
             st.error("Impossible de récupérer les enregistrements existants")
     else:
