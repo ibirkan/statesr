@@ -132,10 +132,6 @@ def get_grist_tables():
     """Récupère la liste des tables disponibles dans Grist."""
     try:
         result = grist_api_request("tables")
-        if result and 'tables' in result:
-            # Afficher les données brutes pour debug
-            with st.expander("Données brutes des tables"):
-                st.json(result)
                         
             # Pour l'instant, créons un dictionnaire avec les IDs
             tables_dict = {}
