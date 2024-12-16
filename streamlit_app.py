@@ -794,7 +794,7 @@ def save_test_indicator(test_data):
 
 # Structure principale de l'application
 def create_interactive_qualitative_table(data_series, var_name):
-    """Crée un tableau statistique interactif pour les variables qualitatives avec possibilité de modification."""
+    """Crée un tableau statistique interactif pour les variables qualitatives."""
     # Création du DataFrame initial
     value_counts = data_series.value_counts().reset_index()
     value_counts.columns = ['Modalité', 'Effectif']
@@ -855,40 +855,54 @@ def create_interactive_qualitative_table(data_series, var_name):
     final_df['Modalité'] = final_df['Nouvelle modalité']
     final_df = final_df.drop('Nouvelle modalité', axis=1)
 
-    # Style personnalisé pour le tableau
-    def format_number(x):
-        if pd.isna(x):
-            return ""
-        elif isinstance(x, (int, float)):
-            if isinstance(x, int) or x.is_integer():
-                return f"{int(x):,}"
-            return f"{x:,.2f}"
-        return x
+    # CSS personnalisé pour le tableau
+    st.markdown("""
+        <style>
+        /* Style pour le conteneur du tableau */
+        [data-testid="stDataFrame"] > div {
+            width: auto !important;
+            max-width: 800px !important;
+            margin: 0 auto;
+        }
+        
+        /* Style pour le tableau lui-même */
+        .dataframe {
+            width: 100% !important;
+            margin: 0 !important;
+        }
+        
+        /* Style pour les cellules */
+        .dataframe td, .dataframe th {
+            text-align: center !important;
+            white-space: nowrap !important;
+            padding: 8px !important;
+        }
+        
+        /* Alignement à gauche pour la première colonne (Modalité) */
+        .dataframe td:first-child {
+            text-align: left !important;
+        }
+        
+        /* Largeurs de colonnes */
+        .dataframe td:first-child { width: 60% !important; }
+        .dataframe td:nth-child(2) { width: 20% !important; }
+        .dataframe td:nth-child(3) { width: 20% !important; }
+        </style>
+    """, unsafe_allow_html=True)
 
+    # Style du tableau
     styled_df = final_df.style\
         .format({
-            'Effectif': format_number,
-            'Taux (%)': lambda x: f"{x:.1f}%"
+            'Effectif': '{:,.0f}',
+            'Taux (%)': '{:.1f}%'
         })\
         .set_properties(**{
             'font-family': 'Marianne, sans-serif',
             'font-size': '14px',
-            'padding': '8px',
-            'border': '1px solid #e6e6e6',
-            'white-space': 'nowrap',
-            'overflow': 'hidden',
-            'text-overflow': 'ellipsis'
+            'padding': '8px'
         })\
         .set_table_styles([
-            # Style pour le tableau entier
-            {'selector': 'table',
-             'props': [
-                 ('width', 'auto'),
-                 ('margin', '0 auto'),
-                 ('border-collapse', 'collapse'),
-                 ('table-layout', 'fixed')
-             ]},
-            # Style pour les en-têtes
+            # En-têtes
             {'selector': 'th',
              'props': [
                  ('background-color', '#f0f2f6'),
@@ -896,52 +910,55 @@ def create_interactive_qualitative_table(data_series, var_name):
                  ('font-weight', 'bold'),
                  ('text-align', 'center'),
                  ('padding', '10px'),
-                 ('border', '1px solid #e6e6e6')
+                 ('font-size', '14px')
              ]},
-            # Styles spécifiques pour chaque colonne
-            {'selector': 'td:nth-child(1)', # Modalité
+            # Première colonne (Modalité)
+            {'selector': 'td:nth-child(1)',
              'props': [
-                 ('width', '60%'),
                  ('text-align', 'left'),
+                 ('width', '60%'),
                  ('padding-left', '15px')
              ]},
-            {'selector': 'td:nth-child(2)', # Effectif
+            # Deuxième colonne (Effectif)
+            {'selector': 'td:nth-child(2)',
              'props': [
-                 ('width', '20%'),
-                 ('text-align', 'center')
+                 ('text-align', 'center'),
+                 ('width', '20%')
              ]},
-            {'selector': 'td:nth-child(3)', # Taux
+            # Troisième colonne (Taux)
+            {'selector': 'td:nth-child(3)',
              'props': [
-                 ('width', '20%'),
-                 ('text-align', 'center')
+                 ('text-align', 'center'),
+                 ('width', '20%')
              ]},
-            # Style pour les lignes alternées
+            # Lignes alternées
             {'selector': 'tbody tr:nth-child(even)',
              'props': [('background-color', '#f9f9f9')]},
             {'selector': 'tbody tr:nth-child(odd)',
              'props': [('background-color', 'white')]}
         ])
 
-    # Création du conteneur pour le tableau et ses métadonnées
-    table_container = st.container()
-    
-    with table_container:
-        if table_title:
-            st.markdown(f"### {table_title}")
-        
-        st.dataframe(
-            styled_df,
-            hide_index=True,
-            height=min(35 * (len(final_df) + 1), 400),  # Hauteur adaptative
-            use_container_width=False  # Important pour le contrôle de la largeur
-        )
-        
-        if table_source or table_note:
-            st.markdown("<div style='margin-top: 5px;'>", unsafe_allow_html=True)
-            if table_source:
-                st.caption(f"Source : {table_source}")
-            if table_note:
-                st.caption(f"Note : {table_note}")
+    # Affichage du tableau et des métadonnées
+    if table_title:
+        st.markdown(f"### {table_title}")
+
+    # Conteneur personnalisé pour le tableau
+    st.markdown('<div style="max-width: 800px; margin: 0 auto;">', unsafe_allow_html=True)
+    st.dataframe(
+        styled_df,
+        hide_index=True,
+        height=min(35 * (len(final_df) + 1), 400)
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # Source et note
+    if table_source or table_note:
+        st.markdown('<div style="max-width: 800px; margin: 5px auto;">', unsafe_allow_html=True)
+        if table_source:
+            st.caption(f"Source : {table_source}")
+        if table_note:
+            st.caption(f"Note : {table_note}")
+        st.markdown('</div>', unsafe_allow_html=True)
 
     # Options d'export
     with st.expander("Options d'export"):
@@ -949,22 +966,59 @@ def create_interactive_qualitative_table(data_series, var_name):
         
         with col1:
             if st.button("Exporter en image"):
-                # Code pour l'export en image
+                # Création d'une figure matplotlib avec style amélioré
+                plt.style.use('seaborn')
                 fig, ax = plt.subplots(figsize=(12, len(final_df) + 2))
                 ax.axis('off')
                 
-                # Création du tableau pour l'image
+                # Création du tableau
                 table = ax.table(
                     cellText=final_df.values,
                     colLabels=final_df.columns,
-                    cellLoc='center',
                     loc='center',
-                    bbox=[0, 0, 1, 1]
+                    cellLoc='center',
+                    bbox=[0, 0.1, 1, 0.9]  # Ajustement de la position du tableau
                 )
                 
-                if table_title:
-                    plt.title(table_title, pad=20)
+                # Style du tableau pour l'export
+                table.auto_set_font_size(False)
+                table.set_fontsize(9)
                 
+                # Largeurs des colonnes
+                col_widths = [0.6, 0.2, 0.2]
+                for idx, width in enumerate(col_widths):
+                    for cell in table._cells:
+                        if cell[1] == idx:
+                            table._cells[cell].set_width(width)
+
+                # Style des en-têtes
+                for j, cell in enumerate(table._cells[(0, j)] for j in range(len(final_df.columns))):
+                    cell.set_facecolor('#f0f2f6')
+                    cell.set_text_props(weight='bold', color='#262730')
+                    cell.set_height(0.1)
+
+                # Style des cellules
+                for i in range(len(final_df) + 1):  # +1 pour inclure l'en-tête
+                    for j in range(len(final_df.columns)):
+                        cell = table._cells[(i, j)]
+                        cell.set_edgecolor('#e6e6e6')
+                        
+                        # Alignement du texte
+                        if j == 0:  # Première colonne (Modalité)
+                            cell._loc = 'left'
+                            cell.set_padding(0.1, 0, 0, 0.05)  # Padding à gauche
+                        else:  # Colonnes numériques
+                            cell._loc = 'center'
+                        
+                        # Lignes alternées
+                        if i > 0 and i % 2 == 0:
+                            cell.set_facecolor('#f9f9f9')
+
+                # Titre
+                if table_title:
+                    plt.title(table_title, pad=20, fontsize=12, fontweight='bold')
+                
+                # Notes de bas de page
                 footer_text = []
                 if table_source:
                     footer_text.append(f"Source : {table_source}")
@@ -974,32 +1028,43 @@ def create_interactive_qualitative_table(data_series, var_name):
                 if footer_text:
                     plt.figtext(0.1, 0.02, '\n'.join(footer_text), fontsize=8)
                 
-                # Sauvegarde de l'image
+                # Sauvegarde
                 buf = BytesIO()
-                plt.savefig(buf, format='png', bbox_inches='tight', dpi=300)
+                plt.savefig(buf, format='png', bbox_inches='tight', dpi=300, 
+                          facecolor='white', edgecolor='none')
                 plt.close()
                 
-                # Bouton de téléchargement
+                # Téléchargement
                 st.download_button(
                     label="Télécharger l'image",
                     data=buf.getvalue(),
                     file_name="tableau_statistique.png",
                     mime="image/png"
                 )
-        
+
         with col2:
             if st.button("Copier pour Excel"):
-                # Préparation des données pour Excel
-                excel_data = [table_title] if table_title else []
-                excel_data.extend([f"Source : {table_source}"] if table_source else [])
-                excel_data.extend([f"Note : {table_note}"] if table_note else [])
-                excel_data.append("\t".join(final_df.columns))
+                excel_data = []
+                if table_title:
+                    excel_data.append([table_title])
+                    excel_data.append([])  # Ligne vide
                 
-                for _, row in final_df.iterrows():
-                    excel_data.append("\t".join(str(x) for x in row))
+                # En-têtes et données
+                excel_data.append(final_df.columns.tolist())
+                excel_data.extend(final_df.values.tolist())
+                
+                # Métadonnées
+                if table_source or table_note:
+                    excel_data.append([])  # Ligne vide
+                    if table_source:
+                        excel_data.append([f"Source : {table_source}"])
+                    if table_note:
+                        excel_data.append([f"Note : {table_note}"])
+                
+                # Conversion en texte tabulé
+                copy_text = '\n'.join(['\t'.join(map(str, row)) for row in excel_data])
                 
                 # Copie dans le presse-papiers
-                copy_text = "\n".join(excel_data)
                 st.code(copy_text, language=None)
                 st.info("Copiez le texte ci-dessus pour Excel")
 
