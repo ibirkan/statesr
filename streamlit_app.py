@@ -104,10 +104,8 @@ BASE_URL = "https://grist.numerique.gouv.fr/api/docs"
 # Fonctions API Grist
 def grist_api_request(endpoint, method="GET", data=None):
     """Fonction utilitaire pour les requêtes API Grist"""
-    if endpoint == "tables":
-        url = f"{BASE_URL}/{DOC_ID}/tables"
-    else:
-        url = f"{BASE_URL}/{DOC_ID}/tables/{endpoint}/records"
+    # L'endpoint contient déjà le chemin complet, pas besoin d'ajouter "tables"
+    url = f"{BASE_URL}/{DOC_ID}/{endpoint}"
     
     headers = {
         "Authorization": f"Bearer {API_KEY}",
@@ -130,17 +128,24 @@ def grist_api_request(endpoint, method="GET", data=None):
         st.error(f"Erreur API Grist : {str(e)}")
         return None
 
-def get_grist_tables():
-    """Récupère la liste des tables disponibles dans Grist avec leurs noms originaux."""
+def get_grist_data(table_id):
+    """Récupère les données d'une table Grist."""
     try:
-        result = grist_api_request("tables")
-        if result and 'tables' in result:
-            # Retourner un dictionnaire avec les IDs comme clés et les noms comme valeurs
-            return {table['id']: table.get('name', table['id']) for table in result['tables']}
-        return {}
+        # Ajouter "tables/" avant l'ID de la table
+        result = grist_api_request(f"tables/{table_id}/records")
+        if result and 'records' in result and result['records']:
+            records = []
+            for record in result['records']:
+                if 'fields' in record:
+                    fields = {k.lstrip('$'): v for k, v in record['fields'].items()}
+                    records.append(fields)
+            
+            if records:
+                return pd.DataFrame(records)
+        return None
     except Exception as e:
-        st.error(f"Erreur lors de la récupération des tables : {str(e)}")
-        return {}
+        st.error(f"Erreur lors de la récupération des données : {str(e)}")
+        return None
 
 def get_grist_data(table_id):
     """Récupère les données d'une table Grist avec les noms de colonnes originaux."""
