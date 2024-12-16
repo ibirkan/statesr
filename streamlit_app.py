@@ -104,9 +104,10 @@ BASE_URL = "https://grist.numerique.gouv.fr/api/docs"
 # Fonctions API Grist
 def grist_api_request(endpoint, method="GET", data=None):
     """Fonction utilitaire pour les requêtes API Grist"""
-    url = f"{BASE_URL}/{DOC_ID}/tables"
-    if endpoint != "tables":
-        url = f"{url}/{endpoint}/records"
+    if endpoint == "tables":
+        url = f"{BASE_URL}/{DOC_ID}/tables"
+    else:
+        url = f"{BASE_URL}/{DOC_ID}/tables/{endpoint}/records"
     
     headers = {
         "Authorization": f"Bearer {API_KEY}",
