@@ -12,10 +12,16 @@ import matplotlib.pyplot as plt
 import squarify
 import seaborn as sns
 from scipy import stats
-from st_aggrid import AgGrid, GridOptionsBuilder
-from st_aggrid.grid_options_builder import GridOptionsBuilder
 
-# Configuration de la police Marianne pour toute l'application
+# Configuration de la page Streamlit - DOIT ÊTRE LA PREMIÈRE COMMANDE STREAMLIT
+st.set_page_config(
+    page_title="Indicateurs ESR",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Configuration de la police Marianne et des styles
 st.markdown("""
     <style>
         @import url('https://cdn.jsdelivr.net/npm/@gouvfr/dsfr@1.7.2/dist/fonts/Marianne-Light.woff2');
@@ -78,14 +84,6 @@ st.markdown("""
 # Configuration de base
 sns.set_theme()
 sns.set_style("whitegrid")
-
-# Configuration de la page Streamlit
-st.set_page_config(
-    page_title="Indicateurs ESR",
-    page_icon="📊",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
 
 # Palettes de couleurs prédéfinies
 COLOR_PALETTES = {
