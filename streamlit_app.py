@@ -1160,29 +1160,36 @@ def save_grouping_to_grist(table_id, original_column, grouped_data, new_column_n
     if response:
         st.success(f"Colonne '{new_column_name}' créée avec succès!")
         
-        # 2. Mettre à jour les données avec le bon format
-        records = []
-        for idx, val in enumerate(grouped_data, start=1):
-            record = {
-                "id": idx,
-                "fields": {
-                    new_column_name: str(val)
-                }
-            }
-            records.append(record)
+        # 2. Récupérer les records existants pour avoir les bons IDs
+        existing_records = grist_api_request(f"tables/{table_id}/records", method="GET")
+        
+        if existing_records and 'records' in existing_records:
+            # Créer la liste des mises à jour en utilisant les IDs existants
+            records = []
+            for record, new_value in zip(existing_records['records'], grouped_data):
+                record_id = record['id']
+                records.append({
+                    "id": record_id,
+                    "fields": {
+                        new_column_name: str(new_value)
+                    }
+                })
             
-        update_data = {"records": records}
-        
-        update_response = grist_api_request(
-            f"tables/{table_id}/records",
-            method="POST",  # Changé de PATCH à POST
-            data=update_data
-        )
-        
-        if update_response:
-            st.success("Données mises à jour avec succès!")
+            update_data = {"records": records}
+            
+            # 3. Mettre à jour les données
+            update_response = grist_api_request(
+                f"tables/{table_id}/records",
+                method="PATCH",  # Revenir à PATCH pour la mise à jour
+                data=update_data
+            )
+            
+            if update_response:
+                st.success("Données mises à jour avec succès!")
+            else:
+                st.error("Erreur lors de la mise à jour des données")
         else:
-            st.error("Erreur lors de la mise à jour des données")
+            st.error("Impossible de récupérer les IDs existants")
     else:
         st.error("Erreur lors de la création de la colonne")
     
