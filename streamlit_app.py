@@ -1143,11 +1143,6 @@ def create_interactive_qualitative_table(data_series, var_name):
 def save_grouping_to_grist(table_id, original_column, grouped_data, new_column_name):
     """
     Sauvegarde les données regroupées dans une nouvelle colonne Grist.
-    Params:
-        table_id: l'ID de la table où se trouvent les données
-        original_column: le nom de la colonne sur laquelle on a fait le regroupement
-        grouped_data: Series pandas contenant le mapping {valeur_originale: nouvelle_valeur}
-        new_column_name: nom de la nouvelle colonne à créer
     """
     try:
         # 1. Créer la nouvelle colonne
@@ -1163,37 +1158,35 @@ def save_grouping_to_grist(table_id, original_column, grouped_data, new_column_n
             ]
         }
         
-        response = grist_api_request(
+        column_response = grist_api_request(
             f"tables/{table_id}/columns",
             method="POST",
             data=column_data
         )
         
-        if response:
-            st.success(f"Colonne '{new_column_name}' créée avec succès!")
+        if column_response:
+            st.success(f"✅ Colonne '{new_column_name}' créée")
             
             # 2. Récupérer les données existantes
-            existing_records = grist_api_request(f"tables/{table_id}/records", method="GET")
+            existing_records = grist_api_request(f"tables/{table_id}/records")
             
             if existing_records and 'records' in existing_records:
-                # Préparer les mises à jour en lot
-                updates = []
+                # Créer la liste des mises à jour
                 mapping_dict = grouped_data.to_dict()
+                updates = []
                 
                 for record in existing_records['records']:
-                    record_id = record['id']
                     old_value = record['fields'].get(original_column)
-                    
                     if old_value in mapping_dict:
                         updates.append({
-                            "id": record_id,
+                            "id": record['id'],
                             "fields": {
                                 new_column_name: mapping_dict[old_value]
                             }
                         })
                 
                 if updates:
-                    # Envoyer les mises à jour en lot
+                    # Mettre à jour les enregistrements
                     update_data = {"records": updates}
                     update_response = grist_api_request(
                         f"tables/{table_id}/records",
@@ -1202,22 +1195,16 @@ def save_grouping_to_grist(table_id, original_column, grouped_data, new_column_n
                     )
                     
                     if update_response is not None:
-                        st.success(f"✅ {len(updates)} enregistrements mis à jour avec succès!")
-                        # Afficher un exemple de mise à jour pour vérification
-                        if len(updates) > 0:
-                            st.write("Exemple de mise à jour:")
-                            st.write(f"Ancienne valeur: {updates[0]['fields'][new_column_name]}")
+                        st.success(f"✅ {len(updates)} enregistrements mis à jour")
                     else:
-                        st.error("Erreur lors de la mise à jour des données")
-                else:
-                    st.warning("Aucune donnée à mettre à jour")
+                        st.error("❌ Erreur lors de la mise à jour")
             else:
-                st.error("Impossible de récupérer les enregistrements existants")
+                st.error("❌ Impossible de récupérer les enregistrements")
         else:
-            st.error("Erreur lors de la création de la colonne")
+            st.error("❌ Impossible de créer la colonne")
             
     except Exception as e:
-        st.error(f"Erreur lors de la sauvegarde : {str(e)}")
+        st.error(f"❌ Erreur : {str(e)}")
     
 def display_univariate_analysis(data, var):
     """Gère l'affichage de l'analyse univariée."""
