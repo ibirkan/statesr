@@ -898,28 +898,29 @@ def create_interactive_qualitative_table(data_series, var_name):
         </style>
     """, unsafe_allow_html=True)
 
-    # Style du tableau
-    styled_df = final_df.style\
-        .format({
-            'Effectif': '{:,.0f}',
-            'Taux (%)': '{:.1f}%'
-        })\
-        .set_properties(**{
-            'font-family': 'Marianne, sans-serif',
-            'font-size': '14px',
-            'padding': '8px'
-        })\
-        .set_table_styles([
-            # En-têtes
-            {'selector': 'th',
-             'props': [
-                 ('background-color', '#f0f2f6'),
-                 ('color', '#262730'),
-                 ('font-weight', 'bold'),
-                 ('text-align', 'center'),
-                 ('padding', '10px'),
-                 ('font-size', '14px')
-             ]},
+
+        # Style du tableau
+        styled_df = final_df.style\
+            .format({
+                'Effectif': '{:,.0f}',
+                'Taux (%)': '{:.1f}%'
+            })\
+            .set_properties(**{
+                'font-family': 'Marianne, sans-serif',
+                'font-size': '14px',
+                'padding': '8px'
+            })\
+            .set_table_styles([
+                # En-têtes
+                {'selector': 'th',
+                 'props': [
+                     ('background-color', '#f0f2f6'),
+                     ('color', '#262730'),
+                     ('font-weight', 'bold'),
+                     ('text-align', 'center'),
+                     ('padding', '10px'),
+                     ('font-size', '14px')
+                 ]},
             # Première colonne (Modalité)
             {'selector': 'td:nth-child(1)',
              'props': [
