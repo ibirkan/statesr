@@ -128,6 +128,18 @@ def grist_api_request(endpoint, method="GET", data=None):
         st.error(f"Erreur API Grist : {str(e)}")
         return None
 
+def get_grist_tables():
+    """Récupère la liste des tables disponibles dans Grist avec leurs noms originaux."""
+    try:
+        result = grist_api_request("tables")
+        if result and 'tables' in result:
+            # Retourner un dictionnaire avec les IDs comme clés et les noms comme valeurs
+            return {table['id']: table.get('name', table['id']) for table in result['tables']}
+        return {}
+    except Exception as e:
+        st.error(f"Erreur lors de la récupération des tables : {str(e)}")
+        return {}
+
 def get_grist_data(table_id):
     """Récupère les données d'une table Grist."""
     try:
@@ -138,31 +150,6 @@ def get_grist_data(table_id):
             for record in result['records']:
                 if 'fields' in record:
                     fields = {k.lstrip('$'): v for k, v in record['fields'].items()}
-                    records.append(fields)
-            
-            if records:
-                return pd.DataFrame(records)
-        return None
-    except Exception as e:
-        st.error(f"Erreur lors de la récupération des données : {str(e)}")
-        return None
-
-def get_grist_data(table_id):
-    """Récupère les données d'une table Grist avec les noms de colonnes originaux."""
-    try:
-        result = grist_api_request(table_id)
-        if result and 'records' in result and result['records']:
-            # Récupérer les métadonnées de la table pour avoir les noms originaux des colonnes
-            table_info = grist_api_request(f"tables/{table_id}")
-            column_names = {col['id']: col.get('name', col['id']) 
-                          for col in table_info.get('columns', [])} if table_info else {}
-            
-            records = []
-            for record in result['records']:
-                if 'fields' in record:
-                    # Utiliser les noms originaux des colonnes
-                    fields = {column_names.get(k.lstrip('$'), k.lstrip('$')): v 
-                            for k, v in record['fields'].items()}
                     records.append(fields)
             
             if records:
