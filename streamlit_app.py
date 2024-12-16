@@ -218,37 +218,39 @@ def calculate_grouped_stats(data, var, groupby_col, agg_method='mean'):
 
 def create_interactive_stats_table(stats_df):
     """Crée un tableau de statistiques interactif."""
-    gb = GridOptionsBuilder.from_dataframe(stats_df)
+    # Style personnalisé pour le tableau
+    styled_df = stats_df.style\
+        .set_properties(**{
+            'font-size': '14px',
+            'padding': '10px',
+            'border': '1px solid #e6e6e6',
+            'font-family': 'Marianne, sans-serif',
+            'text-align': 'left'
+        })\
+        .set_table_styles([
+            {'selector': '',
+             'props': [('margin', '0 auto')]},
+            {'selector': 'th',
+             'props': [
+                 ('background-color', '#f0f2f6'),
+                 ('color', '#262730'),
+                 ('font-weight', 'bold'),
+                 ('padding', '10px'),
+                 ('font-size', '14px'),
+                 ('border', '1px solid #e6e6e6'),
+                 ('font-family', 'Marianne, sans-serif'),
+                 ('text-align', 'left')
+             ]},
+            {'selector': 'tr:nth-child(even)',
+             'props': [('background-color', '#f9f9f9')]},
+            {'selector': 'tr:nth-child(odd)',
+             'props': [('background-color', 'white')]}
+        ])
     
-    gb.configure_default_column(
-        sorteable=True,
-        filterable=True,
-        resizable=True,
-        draggable=True
-    )
-    
-    gb.configure_grid_options(
-        enableRangeSelection=True,
-        groupable=True,
-        groupDefaultExpanded=1
-    )
-    
-    gb.configure_columns(
-        stats_df.columns.tolist(),
-        groupable=True,
-        value=True,
-        aggFunc='sum',
-        enableValue=True
-    )
-    
-    return AgGrid(
-        stats_df,
-        gridOptions=gb.build(),
-        enable_enterprise_modules=True,
-        allow_unsafe_jscode=True,
-        update_mode='VALUE_CHANGED',
-        fit_columns_on_grid_load=True,
-        theme='streamlit'
+    return st.dataframe(
+        styled_df,
+        use_container_width=True,
+        hide_index=True
     )
 
 def calculate_regression(x, y):
