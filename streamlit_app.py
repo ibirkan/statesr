@@ -187,10 +187,10 @@ def test_simple_update():
             "records": [
                 {
                     "require": {
-                        "pet": "cat"  # Utilisation de la colonne pet exactement comme dans l'exemple
+                        "pet": "cat"
                     },
                     "fields": {
-                        "Paris_Province_14": "Test d'écriture"  # La nouvelle colonne à écrire
+                        "Paris_Province_14": "Test d'écriture"
                     }
                 }
             ]
@@ -199,10 +199,10 @@ def test_simple_update():
         # Debug: afficher les données envoyées
         st.write("Données envoyées:", update_data)
         
-        # Requête PATCH 
+        # Requête PUT au lieu de PATCH
         result = grist_api_request(
-            "tables/MonMaster_2023/records",
-            method="PATCH",
+            f"tables/MonMaster_2023/records",
+            method="PUT",
             data=update_data
         )
         
