@@ -156,21 +156,31 @@ def get_grist_tables():
         return {}
 
 def get_grist_data(table_id):
-    """Récupère les données d'une table Grist."""
+    """Récupère les données d'une table Grist avec les noms originaux des colonnes."""
     try:
-        # Pour le debug, afficher l'ID de la table
-        print(f"Tentative d'accès à la table avec l'ID: {table_id}")
-        
+        # Récupérer les données
         result = grist_api_request(f"tables/{table_id}/records")
-        if result and 'records' in result and result['records']:
+        if result and 'records' in result:
+            # Récupérer les métadonnées des colonnes
+            metadata = grist_api_request(f"tables/{table_id}/columns")
+            
+            # Debug : afficher les métadonnées des colonnes
+            with st.expander(f"Métadonnées des colonnes pour {table_id}"):
+                st.json(metadata)
+
             records = []
             for record in result['records']:
                 if 'fields' in record:
-                    fields = {k.lstrip('$'): v for k, v in record['fields'].items()}
+                    # Garder les noms originaux des colonnes
+                    fields = record['fields']
                     records.append(fields)
             
             if records:
-                return pd.DataFrame(records)
+                df = pd.DataFrame(records)
+                # Afficher les noms des colonnes pour debug
+                with st.expander(f"Noms des colonnes pour {table_id}"):
+                    st.write(df.columns.tolist())
+                return df
         return None
     except Exception as e:
         st.error(f"Erreur lors de la récupération des données : {str(e)}")
