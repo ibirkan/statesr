@@ -133,12 +133,12 @@ def get_grist_tables():
     try:
         result = grist_api_request("tables")
         if result and 'tables' in result:
-            # Utiliser le champ 'name' au lieu de 'id' si disponible
-            return [table.get('name', table['id']) for table in result['tables']]
-        return []
+            # Créer un dictionnaire avec le nom comme clé et l'ID comme valeur
+            return {table.get('name', table['id']): table['id'] for table in result['tables']}
+        return {}
     except Exception as e:
         st.error(f"Erreur lors de la récupération des tables : {str(e)}")
-        return []
+        return {}
 
 def get_grist_data(table_id):
     """Récupère les données d'une table Grist."""
@@ -1289,21 +1289,15 @@ def main():
         st.error("Aucune table disponible.")
         return
 
-    # Choix du mode de sélection
-    selection_mode = st.radio(
-        "Mode de sélection des tables",
-        ["Une seule table", "Plusieurs tables"]
-    )
-
     if selection_mode == "Une seule table":
         # Sélection d'une seule table avec selectbox
-        table_id = st.selectbox(
+        table_name = st.selectbox(
             "Sélectionnez la table à analyser",
-            options=list(tables_dict.keys()),
-            format_func=lambda x: tables_dict[x]  # Affiche le nom original
+            options=list(tables_dict.keys())  # Les clés sont maintenant les noms affichables
         )
         
-        if table_id:
+        if table_name:
+            table_id = tables_dict[table_name]  # Obtenir l'ID correspondant au nom
             df = get_grist_data(table_id)
             if df is not None:
                 st.session_state.merged_data = df
@@ -1312,18 +1306,18 @@ def main():
                 return
     else:
         # Sélection multiple avec multiselect
-        table_ids = st.multiselect(
+        table_names = st.multiselect(
             "Sélectionnez les tables à analyser", 
-            options=list(tables_dict.keys()),
-            format_func=lambda x: tables_dict[x]  # Affiche le nom original
+            options=list(tables_dict.keys())  # Les clés sont les noms affichables
         )
         
-        if not table_ids:
+        if not table_names:
             st.warning("Veuillez sélectionner au moins une table pour l'analyse.")
             return
 
-        if len(table_ids) == 1:
-            df = get_grist_data(table_ids[0])
+        if len(table_names) == 1:
+            table_id = tables_dict[table_names[0]]
+            df = get_grist_data(table_id)
             if df is not None:
                 st.session_state.merged_data = df
             else:
@@ -1333,7 +1327,8 @@ def main():
             dataframes = []
             merge_configs = []
 
-            for table_id in table_ids:
+            for table_name in table_names:
+                table_id = tables_dict[table_name]
                 df = get_grist_data(table_id)
                 if df is not None:
                     dataframes.append(df)
@@ -1341,7 +1336,7 @@ def main():
             if len(dataframes) < 2:
                 st.warning("Impossible de charger les tables sélectionnées.")
                 return
-
+        
             # Configuration de la fusion
             st.write("### Configuration de la fusion")
             for i in range(len(dataframes) - 1):
