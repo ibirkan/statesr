@@ -178,6 +178,43 @@ def get_grist_data(table_id):
     except Exception as e:
         st.error(f"Erreur lors de la récupération des données : {str(e)}")
         return None
+
+def test_add_column(table_id, column_name):
+    """
+    Teste l'ajout d'une nouvelle colonne dans une table Grist.
+    
+    Args:
+        table_id: ID de la table
+        column_name: Nom de la nouvelle colonne
+    """
+    # Données pour la création de la colonne
+    column_data = {
+        "fields": {
+            "label": column_name,
+            "type": "Text",
+            "parentId": table_id,
+            "isFormula": False
+        }
+    }
+    
+    # Créer la colonne
+    response = grist_api_request(
+        f"tables/{table_id}/columns",
+        method="POST",
+        data=column_data
+    )
+    
+    if response:
+        st.success(f"Colonne '{column_name}' créée avec succès!")
+        st.write("Réponse de l'API:", response)
+    else:
+        st.error("Échec de la création de la colonne")
+
+# Test dans votre interface
+if st.button("Tester l'ajout d'une colonne"):
+    test_table_id = "MonMaster_2023"  # ou une autre table de votre choix
+    test_column_name = "Test_Colonne"
+    test_add_column(test_table_id, test_column_name)
         
 # Fonctions de gestion des données
 def merge_multiple_tables(dataframes, merge_configs):
