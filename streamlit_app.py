@@ -731,6 +731,87 @@ def save_test_indicator(test_data):
         raise Exception(f"Erreur test : {str(e)}")
 
 # Structure principale de l'application
+def create_interactive_qualitative_table(data, var):
+    """Crée un tableau statistique interactif pour les variables qualitatives avec possibilité de modification."""
+    # Création du DataFrame initial
+    value_counts = data[var].value_counts().reset_index()
+    value_counts.columns = ['Modalité', 'Effectif']
+    value_counts['Taux (%)'] = (value_counts['Effectif'] / len(data) * 100).round(2)
+    value_counts['Nouvelle modalité'] = value_counts['Modalité']
+    
+    # Configuration de l'interface d'édition
+    st.write("### Édition des modalités")
+    st.write("Vous pouvez modifier les noms des modalités et les regrouper.")
+    
+    # Création d'un DataFrame pour stocker les modifications
+    edited_df = value_counts.copy()
+    
+    # Interface de regroupement
+    if st.checkbox("Regrouper des modalités"):
+        modalities_to_group = st.multiselect(
+            "Sélectionnez les modalités à regrouper",
+            options=edited_df['Modalité'].unique()
+        )
+        
+        if modalities_to_group:
+            new_name = st.text_input(
+                "Nom du nouveau groupe",
+                value=f"Groupe {', '.join(modalities_to_group)}"
+            )
+            
+            if st.button("Appliquer le regroupement"):
+                # Mise à jour des modalités
+                mask = edited_df['Modalité'].isin(modalities_to_group)
+                total_effectif = edited_df[mask]['Effectif'].sum()
+                
+                # Suppression des anciennes modalités
+                edited_df = edited_df[~mask]
+                
+                # Ajout de la nouvelle modalité groupée
+                new_row = pd.DataFrame({
+                    'Modalité': [new_name],
+                    'Effectif': [total_effectif],
+                    'Taux (%)': [(total_effectif / len(data) * 100).round(2)],
+                    'Nouvelle modalité': [new_name]
+                })
+                edited_df = pd.concat([edited_df, new_row], ignore_index=True)
+                edited_df = edited_df.sort_values('Effectif', ascending=False)
+    
+    # Edition manuelle des noms de modalités
+    st.write("### Édition manuelle des modalités")
+    for idx, row in edited_df.iterrows():
+        edited_df.at[idx, 'Nouvelle modalité'] = st.text_input(
+            f"Renommer '{row['Modalité']}'",
+            value=row['Nouvelle modalité'],
+            key=f"modal_{idx}"
+        )
+    
+    # Création du tableau final avec les nouvelles modalités
+    final_df = edited_df.copy()
+    final_df['Modalité'] = final_df['Nouvelle modalité']
+    final_df = final_df.drop('Nouvelle modalité', axis=1)
+    
+    # Affichage du tableau avec AgGrid
+    gb = GridOptionsBuilder.from_dataframe(final_df)
+    gb.configure_default_column(
+        sorteable=True,
+        filterable=True,
+        resizable=True
+    )
+    
+    grid_options = gb.build()
+    
+    st.write("### Tableau final")
+    grid_table = AgGrid(
+        final_df,
+        gridOptions=grid_options,
+        enable_enterprise_modules=True,
+        allow_unsafe_jscode=True,
+        update_mode='VALUE_CHANGED'
+    )
+    
+    return grid_table['data']
+
 def display_univariate_analysis(data, var):
     """Gère l'affichage de l'analyse univariée."""
     plot_data = data[var].dropna()
@@ -794,10 +875,8 @@ def display_univariate_analysis(data, var):
                 grouped_data = pd.cut(plot_data, bins=breaks)
     else:
         # Statistiques qualitatives
-        value_counts = plot_data.value_counts().reset_index()
-        value_counts.columns = ['Modalité', 'Effectif']
-        value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
-        st.dataframe(value_counts)
+        # Statistiques qualitatives
+        value_counts = create_interactive_qualitative_table(data, var)
         grouped_data = None
 
     # Configuration de la visualisation
