@@ -185,53 +185,40 @@ def test_simple_update():
     try:
         current_time = datetime.now().strftime("%H:%M:%S")
         
-        # 1. D'abord récupérer tous les enregistrements pour trouver l'ID correspondant
+        # Récupérer les IDs disponibles
+        url = f"{BASE_URL}/{st.secrets['grist_doc_id']}/tables/MonMaster_2023/records"
         headers = {
             "Authorization": f"Bearer {st.secrets['grist_key']}",
             "Content-Type": "application/json"
         }
         
-        # Ajout d'un sélecteur de colonne identifiante
-        get_url = f"{BASE_URL}/{st.secrets['grist_doc_id']}/tables/MonMaster_2023/records"
-        response = requests.get(get_url, headers=headers)
+        response = requests.get(url, headers=headers)
         records = response.json()
         
         if records and 'records' in records:
-            # Récupérer la liste des colonnes disponibles
-            columns = set()
-            for record in records['records']:
-                columns.update(record['fields'].keys())
+            # Récupérer la liste des IDs
+            ids = [record['id'] for record in records['records']]
+            selected_id = st.selectbox("Sélectionner l'ID à mettre à jour", ids)
             
-            # Sélectionner la colonne identifiante
-            id_column = st.selectbox("Sélectionner la colonne identifiante", list(columns))
-            
-            # Sélectionner la valeur pour cette colonne
-            if id_column:
-                values = set(record['fields'].get(id_column) for record in records['records'])
-                selected_value = st.selectbox(f"Sélectionner la valeur de {id_column}", list(values))
-                
-                if st.button("Mettre à jour"):
-                    # 2. Faire la mise à jour pour l'enregistrement correspondant
-                    update_data = {
-                        "records": [
-                            {
-                                "require": {
-                                    id_column: selected_value
-                                },
-                                "fields": {
-                                    "Paris_Province_14": f"Test d'écriture à {current_time}"
-                                }
+            if st.button("Mettre à jour"):
+                update_data = {
+                    "records": [
+                        {
+                            "id": selected_id,
+                            "fields": {
+                                "Paris_Province_14": f"Test à {current_time}"
                             }
-                        ]
-                    }
-                    
-                    st.write("Données envoyées:", update_data)
-                    update_response = requests.put(get_url, headers=headers, json=update_data)
-                    
-                    if update_response.ok:
-                        st.success(f"Mise à jour réussie pour {id_column} = {selected_value} à {current_time}")
-                    else:
-                        st.error("Échec de la mise à jour")
+                        }
+                    ]
+                }
+                
+                st.write("Données envoyées:", update_data)
+                update_response = requests.put(url, headers=headers, json=update_data)
+                
+                if update_response.ok:
+                    st.success(f"Mise à jour réussie pour l'ID {selected_id} à {current_time}")
+                else:
+                    st.error("Échec de la mise à jour")
     
     except Exception as e:
         st.error(f"Erreur détaillée: {str(e)}")
