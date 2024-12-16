@@ -183,11 +183,13 @@ def get_grist_data(table_id):
 
 def test_simple_update():
     try:
-        # Structure de données pour Grist
+        # Structure de données pour Grist avec require
         update_data = {
             "records": [
                 {
-                    "id": 1,
+                    "require": {
+                        "id": 1
+                    },
                     "fields": {
                         "Paris_Province_14": "Test d'écriture"
                     }
