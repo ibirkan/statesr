@@ -133,22 +133,10 @@ def get_grist_tables():
     try:
         result = grist_api_request("tables")
         if result and 'tables' in result:
-            # Afficher les données brutes pour debug
-            with st.expander("Données brutes des tables"):
-                st.json(result)
-            
-            # Essayons d'obtenir plus d'informations sur la structure
-            metadata_result = grist_api_request("")  # Requête à la racine de l'API
-            with st.expander("Métadonnées du document"):
-                st.json(metadata_result)
-            
-            # Pour l'instant, créons un dictionnaire avec les IDs
             tables_dict = {}
             for table in result['tables']:
-                # Convertir l'ID en nom plus lisible
-                display_name = table['id'].replace('_', ' ')  # Remplacer les underscores par des espaces
-                tables_dict[display_name] = table['id']
-            
+                table_id = table['id']
+                tables_dict[table_id] = table_id
             return tables_dict
         return {}
     except Exception as e:
@@ -181,18 +169,12 @@ def get_grist_data(table_id):
                 df = pd.DataFrame(records)
                 # Renommer les colonnes avec leurs labels lisibles
                 df = df.rename(columns=column_mapping)
-                
-                # Debug : afficher le mapping des colonnes
-                with st.expander(f"Mapping des noms de colonnes pour {table_id}"):
-                    st.write("Original -> Lisible")
-                    for orig, new in column_mapping.items():
-                        st.write(f"{orig} -> {new}")
-                
                 return df
         return None
     except Exception as e:
         st.error(f"Erreur lors de la récupération des données : {str(e)}")
         return None
+        
 # Fonctions de gestion des données
 def merge_multiple_tables(dataframes, merge_configs):
     """Fusionne plusieurs DataFrames selon les configurations spécifiées."""
