@@ -204,9 +204,11 @@ def test_simple_update():
                 update_data = {
                     "records": [
                         {
-                            "id": selected_id,
+                            "require": {
+                                "id": 2
+                            },
                             "fields": {
-                                "Paris_Province_14": f"Test à {current_time}"
+                                "Paris_Province_14": "Test"
                             }
                         }
                     ]
