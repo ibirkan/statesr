@@ -856,8 +856,13 @@ def create_interactive_qualitative_table(data_series, var_name):
                         value_counts = value_counts.sort_values('Effectif', ascending=False)
 
             # Création du mapping entre valeurs originales et nouvelles modalités
-            mapping_dict = dict(zip(value_counts['Modalité'], value_counts['Nouvelle modalité']))
-            grouped_series = pd.Series(mapping_dict)  # Création d'une Series pour le mapping
+            mapping_dict = {}
+            for idx, row in value_counts.iterrows():
+                old_value = row['Modalité']
+                new_value = row['Nouvelle modalité']  # Cette colonne doit contenir les valeurs regroupées
+                mapping_dict[old_value] = new_value
+            
+            grouped_series = pd.Series(mapping_dict)
             
             st.write("##### Renommer les modalités")
             for idx, row in value_counts.iterrows():
@@ -1139,9 +1144,6 @@ def save_grouping_to_grist(table_id, original_column, grouped_data, new_column_n
     """
     Sauvegarde les données regroupées dans une nouvelle colonne Grist.
     """
-    # Debug initial pour voir le mapping
-    st.write("Mapping reçu:", grouped_data.to_dict())
-    
     # 1. Créer la nouvelle colonne
     column_data = {
         "columns": [
@@ -1172,19 +1174,21 @@ def save_grouping_to_grist(table_id, original_column, grouped_data, new_column_n
             records = []
             mapping_dict = grouped_data.to_dict()
             
+            st.write("Nom de la colonne recherchée:", original_column)
+            st.write("Colonnes disponibles:", list(existing_records['records'][0]['fields'].keys()))
+            
             for record in existing_records['records']:
-                # Récupérer la valeur de la colonne originale
-                old_value = record.get('fields', {}).get(original_column)
+                # Récupérer la valeur de la colonne originale dans fields
+                old_value = record['fields'].get(original_column)
                 
-                # Debug pour voir les valeurs
-                st.write(f"ID: {record['id']}, Valeur originale: {old_value}")
+                st.write(f"ID: {record['id']}, Valeur originale trouvée: {old_value}")
                 
                 if old_value is not None:  # Si la valeur existe
                     new_value = mapping_dict.get(old_value)  # Obtenir la nouvelle valeur
                     if new_value is not None:  # Si une correspondance existe
                         records.append({
-                            "id": record['id'],  # ID de l'enregistrement
                             "fields": {
+                                original_column: str(old_value),
                                 new_column_name: str(new_value)
                             }
                         })
@@ -1194,11 +1198,11 @@ def save_grouping_to_grist(table_id, original_column, grouped_data, new_column_n
                 st.write("Données à envoyer:", records[:5])
                 st.write(f"Nombre total d'enregistrements: {len(records)}")
                 
-                # Structurer la requête PUT
+                # Utiliser POST au lieu de PUT
                 update_data = {"records": records}
                 update_response = grist_api_request(
                     f"tables/{table_id}/records",
-                    method="PUT",
+                    method="POST",
                     data=update_data
                 )
                 
@@ -1209,9 +1213,7 @@ def save_grouping_to_grist(table_id, original_column, grouped_data, new_column_n
                     st.write("Réponse de l'API:", update_response)
             else:
                 st.error("Aucune donnée à mettre à jour - Vérifiez le mapping")
-                st.write("Noms des colonnes disponibles:", 
-                        list(existing_records['records'][0]['fields'].keys()) if existing_records['records'] else "Aucune")
-                st.write("Valeur de original_column:", original_column)
+                st.write("Structure d'un enregistrement:", existing_records['records'][0])
         else:
             st.error("Impossible de récupérer les enregistrements existants")
     else:
