@@ -136,12 +136,7 @@ def get_grist_tables():
             # Afficher les données brutes pour debug
             with st.expander("Données brutes des tables"):
                 st.json(result)
-            
-            # Essayons d'obtenir plus d'informations sur la structure
-            metadata_result = grist_api_request("")  # Requête à la racine de l'API
-            with st.expander("Métadonnées du document"):
-                st.json(metadata_result)
-            
+                        
             # Pour l'instant, créons un dictionnaire avec les IDs
             tables_dict = {}
             for table in result['tables']:
