@@ -854,6 +854,10 @@ def create_interactive_qualitative_table(data_series, var_name):
                         })
                         value_counts = pd.concat([value_counts, new_row], ignore_index=True)
                         value_counts = value_counts.sort_values('Effectif', ascending=False)
+
+            # Création du mapping entre valeurs originales et nouvelles modalités
+            mapping_dict = dict(zip(value_counts['Modalité'], value_counts['Nouvelle modalité']))
+            grouped_series = pd.Series(mapping_dict)  # Création d'une Series pour le mapping
             
             st.write("##### Renommer les modalités")
             for idx, row in value_counts.iterrows():
@@ -1112,7 +1116,7 @@ def create_interactive_qualitative_table(data_series, var_name):
                     height=150
                 )
 
-    # Nouvel expander pour Grist (au même niveau que "Options d'export")
+    # Ajouter l'expander pour Grist après les options d'export
     with st.expander("Options de sauvegarde Grist"):
         st.write("##### Sauvegarder le regroupement dans Grist")
         new_column_name = st.text_input(
@@ -1121,16 +1125,11 @@ def create_interactive_qualitative_table(data_series, var_name):
         )
         
         if st.button("Sauvegarder dans Grist"):
-            # Créer un dictionnaire de mapping des modalités
-            mapping_dict = dict(zip(value_counts['Modalité'], value_counts['Nouvelle modalité']))
-            
-            # Créer la série avec les nouvelles valeurs
-            grouped_series = data_series.map(mapping_dict)
-            
+            # Utiliser la Series créée plus haut
             save_grouping_to_grist(
                 table_id="MonMaster_2023",
                 original_column=var_name,
-                grouped_data=grouped_series,
+                grouped_data=grouped_series,  # Passer la Series de mapping
                 new_column_name=new_column_name
             )
     
@@ -1162,32 +1161,41 @@ def save_grouping_to_grist(table_id, original_column, grouped_data, new_column_n
     if response:
         st.success(f"Colonne '{new_column_name}' créée avec succès!")
         
-        # 2. Préparer les données pour la mise à jour
-        records = []
-        for original_value, new_value in grouped_data.items():
-            record = {
-                "require": {
-                    original_column: str(original_value)  # Utiliser la valeur originale comme identifiant
-                },
-                "fields": {
-                    new_column_name: str(new_value)
-                }
-            }
-            records.append(record)
+        # 2. Récupérer les données existantes pour avoir l'identifiant unique
+        existing_records = grist_api_request(f"tables/{table_id}/records", method="GET")
+        
+        if existing_records and 'records' in existing_records:
+            # Préparer les mises à jour
+            records = []
+            for record in existing_records['records']:
+                original_value = record['fields'].get(original_column)
+                if original_value in grouped_data.index:  # Utiliser .index car grouped_data est une Series
+                    records.append({
+                        "require": {
+                            "id": record['id']  # Utiliser l'ID comme identifiant unique
+                        },
+                        "fields": {
+                            new_column_name: str(grouped_data[original_value])
+                        }
+                    })
             
-        update_data = {"records": records}
-        
-        # 3. Mettre à jour les données avec PUT
-        update_response = grist_api_request(
-            f"tables/{table_id}/records",
-            method="PUT",
-            data=update_data
-        )
-        
-        if update_response:
-            st.success("Données mises à jour avec succès!")
+            if records:
+                # 3. Mettre à jour les données avec PUT
+                update_data = {"records": records}
+                update_response = grist_api_request(
+                    f"tables/{table_id}/records",
+                    method="PUT",
+                    data=update_data
+                )
+                
+                if update_response is not None:  # Changé la condition car PUT peut retourner None
+                    st.success("Données mises à jour avec succès!")
+                else:
+                    st.error("Erreur lors de la mise à jour des données")
+            else:
+                st.error("Aucune donnée à mettre à jour")
         else:
-            st.error("Erreur lors de la mise à jour des données")
+            st.error("Impossible de récupérer les enregistrements existants")
     else:
         st.error("Erreur lors de la création de la colonne")
     
