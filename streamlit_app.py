@@ -178,49 +178,6 @@ def get_grist_data(table_id):
     except Exception as e:
         st.error(f"Erreur lors de la récupération des données : {str(e)}")
         return None
-
-def test_add_column(table_id, column_name):
-    """
-    Teste l'ajout d'une nouvelle colonne dans une table Grist.
-    
-    Args:
-        table_id: ID de la table
-        column_name: Nom de la nouvelle colonne
-    """
-    # Données pour la création de la colonne
-    column_data = {
-        "columns": [
-            {
-                "id": column_name,
-                "fields": {
-                    "label": column_name,
-                    "type": "Text"
-                }
-            }
-        ]
-    }
-    
-    # Debug : afficher les données que nous allons envoyer
-    st.write("Données à envoyer:", column_data)
-    
-    # Créer la colonne
-    response = grist_api_request(
-        f"tables/{table_id}/columns",
-        method="POST",
-        data=column_data
-    )
-    
-    if response:
-        st.success(f"Colonne '{column_name}' créée avec succès!")
-        st.write("Réponse de l'API:", response)
-    else:
-        st.error("Échec de la création de la colonne")
-
-# Test dans votre interface
-if st.button("Tester l'ajout d'une colonne"):
-    test_table_id = "MonMaster_2023"
-    test_column_name = "Test_Colonne"
-    test_add_column(test_table_id, test_column_name)
         
 # Fonctions de gestion des données
 def merge_multiple_tables(dataframes, merge_configs):
@@ -1152,7 +1109,74 @@ def create_interactive_qualitative_table(data_series, var_name):
                     value=copy_text,
                     height=150
                 )
+
+                with st.expander("Options de sauvegarde Grist"):
+                    st.write("##### Sauvegarder le regroupement dans Grist")
+                    new_column_name = st.text_input(
+                        "Nom de la nouvelle colonne",
+                        value=f"{var_name}_regroupé"
+                    )
+                    
+                    if st.button("Sauvegarder dans Grist"):
+                        # Créer un dictionnaire de mapping des modalités
+                        mapping_dict = dict(zip(value_counts['Modalité'], value_counts['Nouvelle modalité']))
+                        
+                        # Créer la série avec les nouvelles valeurs
+                        grouped_series = data_series.map(mapping_dict)
+                        
+                        save_grouping_to_grist(
+                            table_id="MonMaster_2023",
+                            original_column=var_name,
+                            grouped_data=grouped_series,
+                            new_column_name=new_column_name
+                        )
+    
     return final_df
+
+def save_grouping_to_grist(table_id, original_column, grouped_data, new_column_name):
+    """
+    Sauvegarde les données regroupées dans une nouvelle colonne Grist.
+    """
+    column_data = {
+        "columns": [
+            {
+                "id": new_column_name,
+                "fields": {
+                    "label": new_column_name,
+                    "type": "Text"
+                }
+            }
+        ]
+    }
+    
+    response = grist_api_request(
+        f"tables/{table_id}/columns",
+        method="POST",
+        data=column_data
+    )
+    
+    if response:
+        st.success(f"Colonne '{new_column_name}' créée avec succès!")
+        
+        update_data = {
+            "records": [
+                {"id": idx, "fields": {new_column_name: str(val)}}
+                for idx, val in enumerate(grouped_data, start=1)
+            ]
+        }
+        
+        update_response = grist_api_request(
+            f"tables/{table_id}/records",
+            method="PATCH",
+            data=update_data
+        )
+        
+        if update_response:
+            st.success("Données mises à jour avec succès!")
+        else:
+            st.error("Erreur lors de la mise à jour des données")
+    else:
+        st.error("Erreur lors de la création de la colonne")
     
 def display_univariate_analysis(data, var):
     """Gère l'affichage de l'analyse univariée."""
@@ -1216,7 +1240,7 @@ def display_univariate_analysis(data, var):
                     breaks.append(val)
                 grouped_data = pd.cut(plot_data, bins=breaks)
     else:
-        # Statistiques qualitatives
+
         # Statistiques qualitatives
         value_counts = create_interactive_qualitative_table(data, var)
         grouped_data = None
