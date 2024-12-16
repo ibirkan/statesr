@@ -1559,7 +1559,7 @@ def main():
     
                 else:
                     # Statistiques pour variable qualitative
-                    value_counts = create_interactive_qualitative_table(plot_data, var)
+                    value_counts, var_name_display = create_interactive_qualitative_table(plot_data, var)
                 
                 # Configuration de la visualisation
                 st.write("### Configuration de la visualisation")
