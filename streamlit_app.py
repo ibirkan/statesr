@@ -119,6 +119,8 @@ def grist_api_request(endpoint, method="GET", data=None):
             response = requests.post(url, headers=headers, json=data)
         elif method == "PATCH":
             response = requests.patch(url, headers=headers, json=data)
+        elif method == "PUT":  # Ajout de la méthode PUT
+            response = requests.put(url, headers=headers, json=data)
         elif method == "DELETE":
             response = requests.delete(url, headers=headers)
         
@@ -1160,36 +1162,32 @@ def save_grouping_to_grist(table_id, original_column, grouped_data, new_column_n
     if response:
         st.success(f"Colonne '{new_column_name}' créée avec succès!")
         
-        # 2. Récupérer les records existants pour avoir les bons IDs
-        existing_records = grist_api_request(f"tables/{table_id}/records", method="GET")
+        # 2. Préparer les données pour la mise à jour
+        records = []
+        for original_value, new_value in grouped_data.items():
+            record = {
+                "require": {
+                    original_column: str(original_value)  # Utiliser la valeur originale comme identifiant
+                },
+                "fields": {
+                    new_column_name: str(new_value)
+                }
+            }
+            records.append(record)
+            
+        update_data = {"records": records}
         
-        if existing_records and 'records' in existing_records:
-            # Créer la liste des mises à jour en utilisant les IDs existants
-            records = []
-            for record, new_value in zip(existing_records['records'], grouped_data):
-                record_id = record['id']
-                records.append({
-                    "id": record_id,
-                    "fields": {
-                        new_column_name: str(new_value)
-                    }
-                })
-            
-            update_data = {"records": records}
-            
-            # 3. Mettre à jour les données
-            update_response = grist_api_request(
-                f"tables/{table_id}/records",
-                method="PATCH",  # Revenir à PATCH pour la mise à jour
-                data=update_data
-            )
-            
-            if update_response:
-                st.success("Données mises à jour avec succès!")
-            else:
-                st.error("Erreur lors de la mise à jour des données")
+        # 3. Mettre à jour les données avec PUT
+        update_response = grist_api_request(
+            f"tables/{table_id}/records",
+            method="PUT",
+            data=update_data
+        )
+        
+        if update_response:
+            st.success("Données mises à jour avec succès!")
         else:
-            st.error("Impossible de récupérer les IDs existants")
+            st.error("Erreur lors de la mise à jour des données")
     else:
         st.error("Erreur lors de la création de la colonne")
     
