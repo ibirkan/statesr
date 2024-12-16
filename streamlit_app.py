@@ -739,59 +739,72 @@ def create_interactive_qualitative_table(data_series, var_name):
     value_counts['Taux (%)'] = (value_counts['Effectif'] / len(data_series) * 100).round(2)
     value_counts['Nouvelle modalité'] = value_counts['Modalité']
     
-    # Configuration de l'interface d'édition
-    st.write("### Édition des modalités")
-    st.write("Vous pouvez modifier les noms des modalités et les regrouper.")
-    
-    # Création d'un DataFrame pour stocker les modifications
-    edited_df = value_counts.copy()
-    
-    # Interface de regroupement
-    if st.checkbox("Regrouper des modalités"):
-        modalities_to_group = st.multiselect(
-            "Sélectionnez les modalités à regrouper",
-            options=edited_df['Modalité'].unique()
-        )
+    # Configuration des options avancées dans un expander
+    with st.expander("Options avancées du tableau statistique"):
+        col1, col2 = st.columns(2)
         
-        if modalities_to_group:
-            new_name = st.text_input(
-                "Nom du nouveau groupe",
-                value=f"Groupe {', '.join(modalities_to_group)}"
-            )
+        with col1:
+            st.write("##### Édition des modalités")
+            # Interface de regroupement
+            if st.checkbox("Regrouper des modalités", key="group_modalities"):
+                modalities_to_group = st.multiselect(
+                    "Sélectionnez les modalités à regrouper",
+                    options=value_counts['Modalité'].unique()
+                )
+                
+                if modalities_to_group:
+                    new_name = st.text_input(
+                        "Nom du nouveau groupe",
+                        value=f"Groupe {', '.join(modalities_to_group)}"
+                    )
+                    
+                    if st.button("Appliquer le regroupement"):
+                        # Mise à jour des modalités
+                        mask = value_counts['Modalité'].isin(modalities_to_group)
+                        total_effectif = value_counts[mask]['Effectif'].sum()
+                        
+                        # Suppression des anciennes modalités
+                        value_counts = value_counts[~mask]
+                        
+                        # Ajout de la nouvelle modalité groupée
+                        new_row = pd.DataFrame({
+                            'Modalité': [new_name],
+                            'Effectif': [total_effectif],
+                            'Taux (%)': [(total_effectif / len(data_series) * 100).round(2)],
+                            'Nouvelle modalité': [new_name]
+                        })
+                        value_counts = pd.concat([value_counts, new_row], ignore_index=True)
+                        value_counts = value_counts.sort_values('Effectif', ascending=False)
             
-            if st.button("Appliquer le regroupement"):
-                # Mise à jour des modalités
-                mask = edited_df['Modalité'].isin(modalities_to_group)
-                total_effectif = edited_df[mask]['Effectif'].sum()
-                
-                # Suppression des anciennes modalités
-                edited_df = edited_df[~mask]
-                
-                # Ajout de la nouvelle modalité groupée
-                new_row = pd.DataFrame({
-                    'Modalité': [new_name],
-                    'Effectif': [total_effectif],
-                    'Taux (%)': [(total_effectif / len(data_series) * 100).round(2)],
-                    'Nouvelle modalité': [new_name]
-                })
-                edited_df = pd.concat([edited_df, new_row], ignore_index=True)
-                edited_df = edited_df.sort_values('Effectif', ascending=False)
-    
-    # Edition manuelle des noms de modalités
-    st.write("### Édition manuelle des modalités")
-    for idx, row in edited_df.iterrows():
-        edited_df.at[idx, 'Nouvelle modalité'] = st.text_input(
-            f"Renommer '{row['Modalité']}'",
-            value=row['Nouvelle modalité'],
-            key=f"modal_{idx}"
-        )
+            # Edition manuelle des noms de modalités
+            st.write("##### Renommer les modalités")
+            st.write("(Modifiez directement les noms ci-dessous)")
+            for idx, row in value_counts.iterrows():
+                value_counts.at[idx, 'Nouvelle modalité'] = st.text_input(
+                    f"Renommer '{row['Modalité']}'",
+                    value=row['Nouvelle modalité'],
+                    key=f"modal_{idx}",
+                    label_visibility="collapsed"
+                )
+        
+        with col2:
+            st.write("##### Paramètres du tableau")
+            # Titre du tableau
+            table_title = st.text_input("Titre du tableau", 
+                                      value=f"Distribution de la variable {var_name}")
+            
+            # Source et note de lecture
+            table_source = st.text_input("Source", placeholder="Ex: Enquête XX, 2023")
+            table_note = st.text_area("Note de lecture", 
+                                   placeholder="Ex: Lecture : XX% des répondants...", 
+                                   height=100)
     
     # Création du tableau final avec les nouvelles modalités
-    final_df = edited_df.copy()
+    final_df = value_counts.copy()
     final_df['Modalité'] = final_df['Nouvelle modalité']
     final_df = final_df.drop('Nouvelle modalité', axis=1)
     
-    # Affichage du tableau avec AgGrid
+    # Configuration et affichage du tableau avec AgGrid
     gb = GridOptionsBuilder.from_dataframe(final_df)
     gb.configure_default_column(
         sorteable=True,
@@ -799,19 +812,43 @@ def create_interactive_qualitative_table(data_series, var_name):
         resizable=True
     )
     
+    # Amélioration du style du tableau
+    gb.configure_grid_options(
+        domLayout='autoHeight',
+        rowHeight=30,
+        headerHeight=45,
+        suppressHorizontalScroll=True,
+        enableCellTextSelection=True,
+        suppressMovableColumns=True
+    )
+    
     grid_options = gb.build()
     
-    st.write("### Tableau final")
+    # Affichage du titre si défini
+    if 'table_title' in locals() and table_title:
+        st.write(f"### {table_title}")
+    
+    # Affichage du tableau
     grid_table = AgGrid(
         final_df,
         gridOptions=grid_options,
         enable_enterprise_modules=True,
         allow_unsafe_jscode=True,
-        update_mode='VALUE_CHANGED'
+        update_mode='VALUE_CHANGED',
+        theme='streamlit',
+        fit_columns_on_grid_load=True
     )
     
+    # Affichage de la source et de la note si définies
+    if ('table_source' in locals() and table_source) or ('table_note' in locals() and table_note):
+        st.write("---")
+        if table_source:
+            st.caption(f"Source : {table_source}")
+        if table_note:
+            st.caption(f"Note : {table_note}")
+    
     return grid_table['data']
-
+    
 def display_univariate_analysis(data, var):
     """Gère l'affichage de l'analyse univariée."""
     plot_data = data[var].dropna()
