@@ -1241,10 +1241,7 @@ def main():
     
                 else:
                     # Statistiques pour variable qualitative
-                    value_counts = plot_data.value_counts().reset_index()
-                    value_counts.columns = ['Modalité', 'Effectif']
-                    value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
-                    st.dataframe(value_counts)
+                    value_counts = create_interactive_qualitative_table(plot_data, var)
                 
                 # Configuration de la visualisation
                 st.write("### Configuration de la visualisation")
