@@ -183,12 +183,12 @@ def get_grist_data(table_id):
 
 def test_simple_update():
     try:
-        # Structure de données pour Grist avec require
+        # Structure de données pour Grist avec require sur une colonne existante
         update_data = {
             "records": [
                 {
                     "require": {
-                        "id": 1
+                        "region": "Île-de-France"  # Utilisation d'une colonne existante
                     },
                     "fields": {
                         "Paris_Province_14": "Test d'écriture"
