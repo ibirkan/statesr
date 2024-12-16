@@ -1228,13 +1228,13 @@ def display_univariate_analysis(data, var):
         try:
             # Préparation des données
             if not is_numeric:
-                data_to_plot = value_counts.copy()
+                data_to_plot = value_counts.copy()  # Ensure value_counts is a DataFrame
                 if value_type == "Taux (%)":
                     data_to_plot['Effectif'] = data_to_plot['Taux (%)']
                     y_axis = "Taux (%)" if y_axis == "Valeur" else y_axis
             else:
                 if grouping_method == "Aucune":
-                    data_to_plot = plot_data
+                    data_to_plot = plot_data  # plot_data should be a Series
                 else:
                     value_counts = grouped_data.value_counts().reset_index()
                     value_counts.columns = ['Modalité', 'Effectif']
@@ -1242,7 +1242,7 @@ def display_univariate_analysis(data, var):
                     if value_type == "Taux (%)":
                         data_to_plot['Effectif'] = (data_to_plot['Effectif'] / len(plot_data) * 100).round(2)
                         y_axis = "Taux (%)"
-
+    
             # Création du graphique
             if is_numeric and grouping_method == "Aucune":
                 if graph_type == "Histogramme":
@@ -1262,7 +1262,7 @@ def display_univariate_analysis(data, var):
                                                   COLOR_PALETTES[color_scheme], show_values)
                 else:
                     fig = plot_qualitative_treemap(data_to_plot.rename(columns={modality_col: 'Modalité'}), title, COLOR_PALETTES[color_scheme])
-
+    
             # Ajout des annotations
             if source or note:
                 annotations = []
@@ -1291,7 +1291,7 @@ def display_univariate_analysis(data, var):
                 
                 if annotations and isinstance(fig, go.Figure):
                     fig.update_layout(annotations=annotations)
-
+    
             st.plotly_chart(fig, use_container_width=True)
             
         except Exception as e:
