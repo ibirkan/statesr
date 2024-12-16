@@ -183,6 +183,8 @@ def get_grist_data(table_id):
 
 def test_simple_update():
     try:
+        current_time = datetime.now().strftime("%H:%M:%S")
+        
         # 1. D'abord récupérer tous les enregistrements pour trouver l'ID correspondant
         headers = {
             "Authorization": f"Bearer {st.secrets['grist_key']}",
@@ -217,7 +219,7 @@ def test_simple_update():
                                     id_column: selected_value
                                 },
                                 "fields": {
-                                    "Paris_Province_14": "Test d'écriture"
+                                    "Paris_Province_14": f"Test d'écriture à {current_time}"
                                 }
                             }
                         ]
@@ -227,7 +229,7 @@ def test_simple_update():
                     update_response = requests.put(get_url, headers=headers, json=update_data)
                     
                     if update_response.ok:
-                        st.success(f"Mise à jour réussie pour {id_column} = {selected_value}")
+                        st.success(f"Mise à jour réussie pour {id_column} = {selected_value} à {current_time}")
                     else:
                         st.error("Échec de la mise à jour")
     
