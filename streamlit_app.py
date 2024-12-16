@@ -989,9 +989,9 @@ def create_interactive_qualitative_table(data_series, var_name):
                         # Création du tableau
                         table = ax.table(
                             cellText=cell_text,
-                            colLabels=final_df.columns,
+                            colLabels=[var_name_display, 'Effectif', 'Taux (%)'],  # Utiliser le nom personnalisé ici
                             loc='center',
-                            cellLoc='center',  # Alignement par défaut centré
+                            cellLoc='center',
                             bbox=[0, 0.1, 1, 0.9]
                         )
                         
