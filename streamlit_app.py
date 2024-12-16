@@ -133,13 +133,14 @@ def get_grist_tables():
     try:
         result = grist_api_request("tables")
         if result and 'tables' in result:
-            # Inverser le dictionnaire : utiliser l'id comme valeur et le name comme clé
-            tables_dict = {}
-            for table in result['tables']:
-                # Utiliser le nom (title) pour l'affichage et l'id pour l'API
-                display_name = table.get('title', table.get('name', table['id']))
-                tables_dict[display_name] = table['id']
-            return tables_dict
+            # Debug : afficher la structure complète d'une table
+            # Créer un expander qui peut être déplié/replié
+            with st.expander("Voir les détails techniques (Debug)"):
+                st.write("Structure d'une table:")
+                st.json(result['tables'][0])
+            
+            # Retourne les tables comme avant
+            return {table.get('name', table['id']): table['id'] for table in result['tables']}
         return {}
     except Exception as e:
         st.error(f"Erreur lors de la récupération des tables : {str(e)}")
