@@ -794,6 +794,7 @@ def save_test_indicator(test_data):
 
 # Structure principale de l'application
 def create_interactive_qualitative_table(data_series, var_name):
+    """Crée un tableau statistique interactif pour les variables qualitatives."""
     # Création du DataFrame initial
     value_counts = data_series.value_counts().reset_index()
     value_counts.columns = ['Modalité', 'Effectif']
@@ -850,97 +851,81 @@ def create_interactive_qualitative_table(data_series, var_name):
             table_note = st.text_input("Note de lecture", 
                                      placeholder="Ex: Lecture : XX% des répondants...")
 
-    # Création du tableau final avec le nouveau nom de variable
+    # Création du DataFrame final
     final_df = value_counts.copy()
     final_df['Modalité'] = final_df['Nouvelle modalité']
     final_df = final_df.drop('Nouvelle modalité', axis=1)
     
     # Renommer la première colonne avec le nom de variable personnalisé
-    final_df = final_df.rename(columns={'Modalité': var_name_display})  # Renommer avant le style
-
-    # Création du tableau final
-    final_df = value_counts.copy()
-    final_df['Modalité'] = final_df['Nouvelle modalité']
-    final_df = final_df.drop('Nouvelle modalité', axis=1)
+    final_df.columns = [var_name_display, 'Effectif', 'Taux (%)']
 
     # CSS personnalisé pour le tableau
     st.markdown("""
         <style>
-        /* Style pour le conteneur du tableau */
         [data-testid="stDataFrame"] > div {
             width: auto !important;
             max-width: 800px !important;
             margin: 0 auto;
         }
         
-        /* Style pour le tableau lui-même */
         .dataframe {
             width: 100% !important;
             margin: 0 !important;
         }
         
-        /* Style pour les cellules */
         .dataframe td, .dataframe th {
             text-align: center !important;
             white-space: nowrap !important;
             padding: 8px !important;
         }
         
-        /* Alignement à gauche pour la première colonne (Modalité) */
         .dataframe td:first-child {
             text-align: left !important;
         }
         
-        /* Largeurs de colonnes */
         .dataframe td:first-child { width: 60% !important; }
         .dataframe td:nth-child(2) { width: 20% !important; }
         .dataframe td:nth-child(3) { width: 20% !important; }
         </style>
     """, unsafe_allow_html=True)
 
-
-        # Style du tableau
-        styled_df = final_df.style\
-            .format({
-                'Effectif': '{:,.0f}',
-                'Taux (%)': '{:.1f}%'
-            })\
-            .set_properties(**{
-                'font-family': 'Marianne, sans-serif',
-                'font-size': '14px',
-                'padding': '8px'
-            })\
-            .set_table_styles([
-                # En-têtes
-                {'selector': 'th',
-                 'props': [
-                     ('background-color', '#f0f2f6'),
-                     ('color', '#262730'),
-                     ('font-weight', 'bold'),
-                     ('text-align', 'center'),
-                     ('padding', '10px'),
-                     ('font-size', '14px')
-                 ]},
-            # Première colonne (Modalité)
+    # Style du tableau
+    styled_df = final_df.style\
+        .format({
+            'Effectif': '{:,.0f}',
+            'Taux (%)': '{:.1f}%'
+        })\
+        .set_properties(**{
+            'font-family': 'Marianne, sans-serif',
+            'font-size': '14px',
+            'padding': '8px'
+        })\
+        .set_table_styles([
+            {'selector': 'th',
+             'props': [
+                 ('background-color', '#f0f2f6'),
+                 ('color', '#262730'),
+                 ('font-weight', 'bold'),
+                 ('text-align', 'center'),
+                 ('padding', '10px'),
+                 ('font-size', '14px')
+             ]},
             {'selector': 'td:nth-child(1)',
              'props': [
                  ('text-align', 'left'),
                  ('width', '60%'),
                  ('padding-left', '15px')
              ]},
-            # Deuxième colonne (Effectif)
             {'selector': 'td:nth-child(2)',
              'props': [
                  ('text-align', 'center'),
                  ('width', '20%')
              ]},
-            # Troisième colonne (Taux)
             {'selector': 'td:nth-child(3)',
              'props': [
                  ('text-align', 'center'),
                  ('width', '20%')
              ]},
-            # Lignes alternées
             {'selector': 'tbody tr:nth-child(even)',
              'props': [('background-color', '#f9f9f9')]},
             {'selector': 'tbody tr:nth-child(odd)',
