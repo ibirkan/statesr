@@ -129,27 +129,39 @@ def grist_api_request(endpoint, method="GET", data=None):
         return None
 
 def get_grist_tables():
-    """Récupère la liste des tables disponibles dans Grist avec leurs noms originaux."""
+    """Récupère la liste des tables disponibles dans Grist."""
     try:
         result = grist_api_request("tables")
         if result and 'tables' in result:
-            # Retourner un dictionnaire avec les IDs comme clés et les noms comme valeurs
-            return {table['id']: table.get('name', table['id']) for table in result['tables']}
-        return {}
+            # Utiliser le champ 'name' au lieu de 'id' si disponible
+            return [table.get('name', table['id']) for table in result['tables']]
+        return []
     except Exception as e:
         st.error(f"Erreur lors de la récupération des tables : {str(e)}")
-        return {}
+        return []
 
 def get_grist_data(table_id):
     """Récupère les données d'une table Grist."""
     try:
-        # Ajouter "tables/" avant l'ID de la table
+        # Obtenir les métadonnées de la table pour avoir les vrais noms des colonnes
+        table_meta = grist_api_request(f"tables/{table_id}")
+        column_names = {}
+        if table_meta and 'columns' in table_meta:
+            column_names = {col['id']: col.get('name', col['id']) 
+                          for col in table_meta['columns']}
+
         result = grist_api_request(f"tables/{table_id}/records")
         if result and 'records' in result and result['records']:
             records = []
             for record in result['records']:
                 if 'fields' in record:
-                    fields = {k.lstrip('$'): v for k, v in record['fields'].items()}
+                    # Utiliser les noms originaux des colonnes
+                    fields = {}
+                    for k, v in record['fields'].items():
+                        # Enlever le préfixe '$' et utiliser le nom original de la colonne
+                        original_key = k.lstrip('$')
+                        display_key = column_names.get(original_key, original_key)
+                        fields[display_key] = v
                     records.append(fields)
             
             if records:
