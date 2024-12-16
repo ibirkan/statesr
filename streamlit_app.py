@@ -1435,12 +1435,12 @@ def main():
     st.title("Analyse des données ESR")
 
     if st.button("Test écriture Grist"):
-    result = test_simple_update()
-    if result is not None:
-        st.success("Test d'écriture réussi!")
-        st.write("Réponse de l'API:", result)
-    else:
-        st.error("Échec du test d'écriture")
+        result = test_simple_update()
+        if result is not None:
+            st.success("Test d'écriture réussi!")
+            st.write("Réponse de l'API:", result)
+        else:
+            st.error("Échec du test d'écriture")
 
     # Initialisation de l'état de session pour les données fusionnées
     if 'merged_data' not in st.session_state:
