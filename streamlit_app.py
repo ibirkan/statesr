@@ -1170,14 +1170,16 @@ def save_grouping_to_grist(table_id, original_column, grouped_data, new_column_n
             mapping_dict = grouped_data.to_dict()  # Convertir la Series en dictionnaire
             
             for record in existing_records['records']:
+                record_id = record['id']  # Récupérer l'ID unique
                 old_value = record['fields'].get(original_column)
+                
                 if old_value is not None and old_value in mapping_dict:
                     records.append({
                         "require": {
-                            original_column: str(old_value)  # Valeur originale
+                            "id": record_id  # Utiliser l'ID unique comme identifiant
                         },
                         "fields": {
-                            new_column_name: str(mapping_dict[old_value])  # Nouvelle valeur après regroupement
+                            new_column_name: str(mapping_dict[old_value])
                         }
                     })
             
@@ -1201,8 +1203,8 @@ def save_grouping_to_grist(table_id, original_column, grouped_data, new_column_n
             else:
                 st.error("Aucune donnée à mettre à jour - Vérifiez le mapping")
                 st.write("Mapping disponible:", mapping_dict)
-                st.write("Valeurs dans la colonne originale:", 
-                        [record['fields'].get(original_column) for record in existing_records['records'][:5]])
+                st.write("Exemple de structure d'enregistrement:", 
+                        existing_records['records'][0] if existing_records['records'] else "Aucun enregistrement")
         else:
             st.error("Impossible de récupérer les enregistrements existants")
     else:
