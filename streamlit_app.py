@@ -1186,7 +1186,7 @@ def display_univariate_analysis(data, var):
                 grouped_data = pd.cut(plot_data, bins=breaks)
     else:
         # Statistiques qualitatives
-        value_counts = create_interactive_qualitative_table(data, var)
+        value_counts, var_name_display = create_interactive_qualitative_table(data, var)
         grouped_data = None
 
     # Configuration de la visualisation
@@ -1242,7 +1242,7 @@ def display_univariate_analysis(data, var):
                     if value_type == "Taux (%)":
                         data_to_plot['Effectif'] = (data_to_plot['Effectif'] / len(plot_data) * 100).round(2)
                         y_axis = "Taux (%)"
-    
+
             # Création du graphique
             if is_numeric and grouping_method == "Aucune":
                 if graph_type == "Histogramme":
@@ -1262,7 +1262,7 @@ def display_univariate_analysis(data, var):
                                                   COLOR_PALETTES[color_scheme], show_values)
                 else:
                     fig = plot_qualitative_treemap(data_to_plot.rename(columns={modality_col: 'Modalité'}), title, COLOR_PALETTES[color_scheme])
-    
+
             # Ajout des annotations
             if source or note:
                 annotations = []
@@ -1291,7 +1291,7 @@ def display_univariate_analysis(data, var):
                 
                 if annotations and isinstance(fig, go.Figure):
                     fig.update_layout(annotations=annotations)
-    
+
             st.plotly_chart(fig, use_container_width=True)
             
         except Exception as e:
