@@ -189,18 +189,23 @@ def test_add_column(table_id, column_name):
     """
     # Données pour la création de la colonne
     column_data = {
-        "addColumn": {
-            "colId": column_name,
-            "type": "Text"
-        }
+        "columns": [
+            {
+                "id": column_name,
+                "fields": {
+                    "label": column_name,
+                    "type": "Text"
+                }
+            }
+        ]
     }
     
     # Debug : afficher les données que nous allons envoyer
     st.write("Données à envoyer:", column_data)
     
-    # Créer la colonne en utilisant l'endpoint apply
+    # Créer la colonne
     response = grist_api_request(
-        f"apply",
+        f"tables/{table_id}/columns",
         method="POST",
         data=column_data
     )
