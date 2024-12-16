@@ -1110,26 +1110,27 @@ def create_interactive_qualitative_table(data_series, var_name):
                     height=150
                 )
 
-                with st.expander("Options de sauvegarde Grist"):
-                    st.write("##### Sauvegarder le regroupement dans Grist")
-                    new_column_name = st.text_input(
-                        "Nom de la nouvelle colonne",
-                        value=f"{var_name}_regroupé"
-                    )
-                    
-                    if st.button("Sauvegarder dans Grist"):
-                        # Créer un dictionnaire de mapping des modalités
-                        mapping_dict = dict(zip(value_counts['Modalité'], value_counts['Nouvelle modalité']))
-                        
-                        # Créer la série avec les nouvelles valeurs
-                        grouped_series = data_series.map(mapping_dict)
-                        
-                        save_grouping_to_grist(
-                            table_id="MonMaster_2023",
-                            original_column=var_name,
-                            grouped_data=grouped_series,
-                            new_column_name=new_column_name
-                        )
+    # Nouvel expander pour Grist (au même niveau que "Options d'export")
+    with st.expander("Options de sauvegarde Grist"):
+        st.write("##### Sauvegarder le regroupement dans Grist")
+        new_column_name = st.text_input(
+            "Nom de la nouvelle colonne",
+            value=f"{var_name}_regroupé"
+        )
+        
+        if st.button("Sauvegarder dans Grist"):
+            # Créer un dictionnaire de mapping des modalités
+            mapping_dict = dict(zip(value_counts['Modalité'], value_counts['Nouvelle modalité']))
+            
+            # Créer la série avec les nouvelles valeurs
+            grouped_series = data_series.map(mapping_dict)
+            
+            save_grouping_to_grist(
+                table_id="MonMaster_2023",
+                original_column=var_name,
+                grouped_data=grouped_series,
+                new_column_name=new_column_name
+            )
     
     return final_df
 
