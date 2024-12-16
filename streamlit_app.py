@@ -149,7 +149,7 @@ def get_grist_tables():
     except Exception as e:
         st.error(f"Erreur lors de la récupération des tables : {str(e)}")
         return {}
-        
+
 def get_grist_data(table_id):
     """Récupère les données d'une table Grist avec les noms lisibles des colonnes."""
     try:
@@ -174,7 +174,7 @@ def get_grist_data(table_id):
             
             if records:
                 df = pd.DataFrame(records)
-                # Renommer les colonnes avec leurs labels lisibles (avec espaces et accents)
+                # Renommer les colonnes avec leurs labels lisibles
                 df = df.rename(columns=column_mapping)
                 return df
             
