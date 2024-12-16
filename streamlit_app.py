@@ -1171,34 +1171,31 @@ def save_grouping_to_grist(table_id, original_column, grouped_data, new_column_n
             existing_records = grist_api_request(f"tables/{table_id}/records")
             
             if existing_records and 'records' in existing_records:
-                # Convertir le mapping en dictionnaire et s'assurer que toutes les valeurs sont des strings
                 mapping_dict = {str(k): str(v) for k, v in grouped_data.to_dict().items()}
                 
-                # Debug : afficher le mapping
-                st.write("Mapping des valeurs :")
-                st.write(mapping_dict)
-                
-                updates = []
+                # Préparer les mises à jour avec le bon format pour Grist
+                records_to_update = []
                 for record in existing_records['records']:
                     old_value = str(record['fields'].get(original_column, ''))
+                    record_id = record.get('id')  # Récupérer l'ID de l'enregistrement
                     
-                    # Debug : afficher les valeurs comparées
-                    st.write(f"Comparaison - Valeur dans Grist: '{old_value}'")
-                    st.write(f"Valeurs disponibles dans le mapping: {list(mapping_dict.keys())}")
-                    
-                    if old_value in mapping_dict:
-                        updates.append({
-                            "id": record['id'],
+                    if old_value in mapping_dict and record_id is not None:
+                        records_to_update.append({
+                            "id": record_id,  # Utiliser l'ID de l'enregistrement existant
                             "fields": {
                                 new_column_name: mapping_dict[old_value]
                             }
                         })
                 
-                if updates:
-                    # Mettre à jour les enregistrements
-                    update_data = {"records": updates}
-                    st.write("Données à mettre à jour :")
-                    st.write(update_data)
+                if records_to_update:
+                    # Structure correcte pour l'API Grist
+                    update_data = {
+                        "records": records_to_update
+                    }
+                    
+                    # Debug pour vérifier la structure des données
+                    st.write("Premiers enregistrements à mettre à jour :")
+                    st.write(update_data['records'][:2])
                     
                     update_response = grist_api_request(
                         f"tables/{table_id}/records",
@@ -1207,13 +1204,11 @@ def save_grouping_to_grist(table_id, original_column, grouped_data, new_column_n
                     )
                     
                     if update_response is not None:
-                        st.success(f"{len(updates)} enregistrements mis à jour avec succès!")
+                        st.success(f"{len(records_to_update)} enregistrements mis à jour avec succès!")
                     else:
                         st.error("Erreur lors de la mise à jour des données")
                 else:
-                    st.warning("Aucune donnée à mettre à jour")
-                    st.write("Premier enregistrement pour vérification:")
-                    st.write(existing_records['records'][0] if existing_records['records'] else "Aucun enregistrement")
+                    st.warning("Aucune correspondance trouvée pour la mise à jour")
             else:
                 st.error("Impossible de récupérer les enregistrements existants")
     except Exception as e:
