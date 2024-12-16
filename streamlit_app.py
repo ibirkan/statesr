@@ -183,15 +183,14 @@ def get_grist_data(table_id):
 
 def test_simple_update():
     try:
-        # Structure de données pour Grist avec require sur une colonne existante
         update_data = {
             "records": [
                 {
                     "require": {
-                        "region": "Île-de-France"  # Utilisation d'une colonne existante
+                        "pet": "cat"  # Utilisation de la colonne pet exactement comme dans l'exemple
                     },
                     "fields": {
-                        "Paris_Province_14": "Test d'écriture"
+                        "Paris_Province_14": "Test d'écriture"  # La nouvelle colonne à écrire
                     }
                 }
             ]
@@ -200,11 +199,7 @@ def test_simple_update():
         # Debug: afficher les données envoyées
         st.write("Données envoyées:", update_data)
         
-        # Debug: afficher l'URL complète
-        url_debug = f"{BASE_URL}/{DOC_ID}/tables/MonMaster_2023/records"
-        st.write("URL utilisée:", url_debug)
-        
-        # Requête PATCH avec la structure exacte
+        # Requête PATCH 
         result = grist_api_request(
             "tables/MonMaster_2023/records",
             method="PATCH",
