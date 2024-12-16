@@ -1138,6 +1138,7 @@ def save_grouping_to_grist(table_id, original_column, grouped_data, new_column_n
     """
     Sauvegarde les données regroupées dans une nouvelle colonne Grist.
     """
+    # 1. Créer la nouvelle colonne
     column_data = {
         "columns": [
             {
@@ -1159,16 +1160,22 @@ def save_grouping_to_grist(table_id, original_column, grouped_data, new_column_n
     if response:
         st.success(f"Colonne '{new_column_name}' créée avec succès!")
         
-        update_data = {
-            "records": [
-                {"id": idx, "fields": {new_column_name: str(val)}}
-                for idx, val in enumerate(grouped_data, start=1)
-            ]
-        }
+        # 2. Mettre à jour les données avec le bon format
+        records = []
+        for idx, val in enumerate(grouped_data, start=1):
+            record = {
+                "id": idx,
+                "fields": {
+                    new_column_name: str(val)
+                }
+            }
+            records.append(record)
+            
+        update_data = {"records": records}
         
         update_response = grist_api_request(
             f"tables/{table_id}/records",
-            method="PATCH",
+            method="POST",  # Changé de PATCH à POST
             data=update_data
         )
         
