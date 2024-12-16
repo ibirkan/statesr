@@ -133,14 +133,20 @@ def get_grist_tables():
     try:
         result = grist_api_request("tables")
         if result and 'tables' in result:
-            # Debug : afficher la structure complète d'une table
-            # Créer un expander qui peut être déplié/replié
-            with st.expander("Voir les détails techniques (Debug)"):
-                st.write("Structure d'une table:")
-                st.json(result['tables'][0])
+            # Afficher toutes les informations disponibles pour debug
+            print("Données complètes des tables:", result)
             
-            # Retourne les tables comme avant
-            return {table.get('name', table['id']): table['id'] for table in result['tables']}
+            tables_dict = {}
+            for table in result['tables']:
+                # Essayer d'obtenir le meilleur nom possible
+                display_name = (
+                    table.get('title') or  # essayer d'abord le titre
+                    table.get('displayName') or  # puis le nom d'affichage
+                    table.get('name') or  # puis le nom
+                    table['id']  # en dernier recours, l'ID
+                )
+                tables_dict[display_name] = table['id']
+            return tables_dict
         return {}
     except Exception as e:
         st.error(f"Erreur lors de la récupération des tables : {str(e)}")
@@ -1285,14 +1291,19 @@ def main():
         st.error("Aucune table disponible.")
         return
 
-    # Afficher le dictionnaire pour debug
-    print("Tables disponibles:", tables_dict)
-
     # Choix du mode de sélection
     selection_mode = st.radio(
         "Mode de sélection des tables",
         ["Une seule table", "Plusieurs tables"]
     )
+
+    # Afficher les détails techniques
+    with st.expander("Voir les détails techniques (Debug)"):
+        st.write("Tables disponibles dans l'API :")
+        # Afficher la structure complète de toutes les tables
+        result = grist_api_request("tables")
+        if result and 'tables' in result:
+            st.json(result['tables'])
 
     if selection_mode == "Une seule table":
         # Sélection d'une seule table avec selectbox
