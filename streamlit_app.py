@@ -1299,14 +1299,6 @@ def main():
         ["Une seule table", "Plusieurs tables"]
     )
 
-    # Afficher les détails techniques
-    with st.expander("Voir les détails techniques (Debug)"):
-        st.write("Tables disponibles dans l'API :")
-        # Afficher la structure complète de toutes les tables
-        result = grist_api_request("tables")
-        if result and 'tables' in result:
-            st.json(result['tables'])
-
     if selection_mode == "Une seule table":
         # Sélection d'une seule table avec selectbox
         table_name = st.selectbox(
