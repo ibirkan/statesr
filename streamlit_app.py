@@ -127,7 +127,6 @@ def grist_api_request(endpoint, method="GET", data=None):
     except Exception as e:
         st.error(f"Erreur API Grist : {str(e)}")
         return None
-
 def get_grist_tables():
     """Récupère la liste des tables disponibles dans Grist."""
     try:
@@ -143,25 +142,15 @@ def get_grist_tables():
 def get_grist_data(table_id):
     """Récupère les données d'une table Grist."""
     try:
-        # Obtenir les métadonnées de la table pour avoir les vrais noms des colonnes
-        table_meta = grist_api_request(f"tables/{table_id}")
-        column_names = {}
-        if table_meta and 'columns' in table_meta:
-            column_names = {col['id']: col.get('name', col['id']) 
-                          for col in table_meta['columns']}
-
+        # Pour le debug, afficher l'ID de la table
+        print(f"Tentative d'accès à la table avec l'ID: {table_id}")
+        
         result = grist_api_request(f"tables/{table_id}/records")
         if result and 'records' in result and result['records']:
             records = []
             for record in result['records']:
                 if 'fields' in record:
-                    # Utiliser les noms originaux des colonnes
-                    fields = {}
-                    for k, v in record['fields'].items():
-                        # Enlever le préfixe '$' et utiliser le nom original de la colonne
-                        original_key = k.lstrip('$')
-                        display_key = column_names.get(original_key, original_key)
-                        fields[display_key] = v
+                    fields = {k.lstrip('$'): v for k, v in record['fields'].items()}
                     records.append(fields)
             
             if records:
@@ -1289,7 +1278,10 @@ def main():
         st.error("Aucune table disponible.")
         return
 
-    # Choix du mode de sélection - Cette ligne doit être avant d'utiliser selection_mode
+    # Afficher le dictionnaire pour debug
+    print("Tables disponibles:", tables_dict)
+
+    # Choix du mode de sélection
     selection_mode = st.radio(
         "Mode de sélection des tables",
         ["Une seule table", "Plusieurs tables"]
@@ -1299,11 +1291,13 @@ def main():
         # Sélection d'une seule table avec selectbox
         table_name = st.selectbox(
             "Sélectionnez la table à analyser",
-            options=list(tables_dict.keys())  # Les clés sont maintenant les noms affichables
+            options=list(tables_dict.keys())
         )
         
         if table_name:
             table_id = tables_dict[table_name]  # Obtenir l'ID correspondant au nom
+            # Debug: afficher l'ID utilisé
+            print(f"ID de la table sélectionnée: {table_id}")
             df = get_grist_data(table_id)
             if df is not None:
                 st.session_state.merged_data = df
