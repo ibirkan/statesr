@@ -183,45 +183,42 @@ def get_grist_data(table_id):
 
 def test_simple_update():
     try:
-        current_time = datetime.now().strftime("%H:%M:%S")
+        update_data = {
+            "records": [
+                {
+                    "require": {
+                        "id": "2"
+                    },
+                    "fields": {
+                        "Paris_Province_14": "Test d'écriture"
+                    }
+                }
+            ]
+        }
         
-        # Récupérer les IDs disponibles
+        # Debug: afficher les données envoyées
+        st.write("Données envoyées:", update_data)
+        
+        # Envoi de la requête PUT
         url = f"{BASE_URL}/{st.secrets['grist_doc_id']}/tables/MonMaster_2023/records"
         headers = {
             "Authorization": f"Bearer {st.secrets['grist_key']}",
             "Content-Type": "application/json"
         }
         
-        response = requests.get(url, headers=headers)
-        records = response.json()
+        response = requests.put(url, headers=headers, json=update_data)
         
-        if records and 'records' in records:
-            # Récupérer la liste des IDs
-            ids = [record['id'] for record in records['records']]
-            selected_id = st.selectbox("Sélectionner l'ID à mettre à jour", ids)
+        # Afficher les détails de la réponse
+        st.write("Status code:", response.status_code)
+        st.write("Headers:", dict(response.headers))
+        st.write("Response text:", response.text)
+        
+        if response.ok:
+            return response.json()
+        else:
+            st.error(f"Error {response.status_code}: {response.text}")
+            return None
             
-            if st.button("Mettre à jour"):
-                update_data = {
-                    "records": [
-                        {
-                            "require": {
-                                "id": 2
-                            },
-                            "fields": {
-                                "Paris_Province_14": "Test"
-                            }
-                        }
-                    ]
-                }
-                
-                st.write("Données envoyées:", update_data)
-                update_response = requests.put(url, headers=headers, json=update_data)
-                
-                if update_response.ok:
-                    st.success(f"Mise à jour réussie pour l'ID {selected_id} à {current_time}")
-                else:
-                    st.error("Échec de la mise à jour")
-    
     except Exception as e:
         st.error(f"Erreur détaillée: {str(e)}")
         return None
