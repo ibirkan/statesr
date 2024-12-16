@@ -129,21 +129,26 @@ def grist_api_request(endpoint, method="GET", data=None):
         return None
         
 def get_grist_tables():
-    """Récupère la liste des tables disponibles dans Grist avec leurs noms lisibles."""
+    """Récupère la liste des tables disponibles dans Grist."""
     try:
         result = grist_api_request("tables")
         if result and 'tables' in result:
+            # Afficher les données brutes pour debug
+            with st.expander("Données brutes des tables"):
+                st.json(result)
+            
+            # Essayons d'obtenir plus d'informations sur la structure
+            metadata_result = grist_api_request("")  # Requête à la racine de l'API
+            with st.expander("Métadonnées du document"):
+                st.json(metadata_result)
+            
+            # Pour l'instant, créons un dictionnaire avec les IDs
             tables_dict = {}
             for table in result['tables']:
-                # Récupérer les métadonnées de la table pour avoir le nom lisible
-                metadata = grist_api_request(f"tables/{table['id']}/columns")
-                if metadata and 'tableId' in metadata:
-                    # On utilise le nom lisible de la table comme clé, et l'ID comme valeur
-                    table_name = metadata.get('tableName', table['id'])
-                else:
-                    # Si pas de nom lisible, on utilise l'ID
-                    table_name = table['id']
-                tables_dict[table_name] = table['id']
+                # Convertir l'ID en nom plus lisible
+                display_name = table['id'].replace('_', ' ')  # Remplacer les underscores par des espaces
+                tables_dict[display_name] = table['id']
+            
             return tables_dict
         return {}
     except Exception as e:
@@ -155,11 +160,11 @@ def get_grist_data(table_id):
     try:
         # Récupérer les données
         result = grist_api_request(f"tables/{table_id}/records")
-        # Récupérer les métadonnées des colonnes pour avoir les noms lisibles
+        # Récupérer les métadonnées des colonnes
         columns_metadata = grist_api_request(f"tables/{table_id}/columns")
         
         if result and 'records' in result and columns_metadata and 'columns' in columns_metadata:
-            # Créer un dictionnaire de mapping id -> label pour les noms lisibles
+            # Créer un dictionnaire de mapping id -> label
             column_mapping = {
                 col['id']: col['fields']['label'] 
                 for col in columns_metadata['columns']
@@ -176,8 +181,14 @@ def get_grist_data(table_id):
                 df = pd.DataFrame(records)
                 # Renommer les colonnes avec leurs labels lisibles
                 df = df.rename(columns=column_mapping)
+                
+                # Debug : afficher le mapping des colonnes
+                with st.expander(f"Mapping des noms de colonnes pour {table_id}"):
+                    st.write("Original -> Lisible")
+                    for orig, new in column_mapping.items():
+                        st.write(f"{orig} -> {new}")
+                
                 return df
-            
         return None
     except Exception as e:
         st.error(f"Erreur lors de la récupération des données : {str(e)}")
