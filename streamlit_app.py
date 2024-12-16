@@ -1173,42 +1173,51 @@ def save_grouping_to_grist(table_id, original_column, grouped_data, new_column_n
             if existing_records and 'records' in existing_records:
                 mapping_dict = {str(k): str(v) for k, v in grouped_data.to_dict().items()}
                 
-                # Préparer les mises à jour avec le bon format pour Grist
+                # Préparer les mises à jour avec le format exact requis par Grist
                 records_to_update = []
+                added_ids = set()  # Pour éviter les doublons d'ID
+                
                 for record in existing_records['records']:
+                    record_id = record.get('id')
                     old_value = str(record['fields'].get(original_column, ''))
-                    record_id = record.get('id')  # Récupérer l'ID de l'enregistrement
                     
-                    if old_value in mapping_dict and record_id is not None:
-                        records_to_update.append({
-                            "id": record_id,  # Utiliser l'ID de l'enregistrement existant
-                            "fields": {
-                                new_column_name: mapping_dict[old_value]
-                            }
-                        })
+                    # Ne traiter que les enregistrements avec un ID valide et non déjà traités
+                    if record_id and old_value in mapping_dict and record_id not in added_ids:
+                        new_value = mapping_dict[old_value]
+                        # Ne pas ajouter si la nouvelle valeur est vide
+                        if new_value.strip():
+                            records_to_update.append({
+                                "id": record_id,
+                                "fields": {
+                                    new_column_name: new_value
+                                }
+                            })
+                            added_ids.add(record_id)
                 
                 if records_to_update:
-                    # Structure correcte pour l'API Grist
-                    update_data = {
+                    # Structure exacte requise par l'API Grist
+                    update_payload = {
                         "records": records_to_update
                     }
                     
-                    # Debug pour vérifier la structure des données
-                    st.write("Premiers enregistrements à mettre à jour :")
-                    st.write(update_data['records'][:2])
+                    # Debug pour vérifier la structure exacte
+                    st.write("Données envoyées à Grist:")
+                    st.json(update_payload)
                     
+                    # Envoi des données à Grist
                     update_response = grist_api_request(
                         f"tables/{table_id}/records",
                         method="PATCH",
-                        data=update_data
+                        data=update_payload
                     )
                     
                     if update_response is not None:
                         st.success(f"{len(records_to_update)} enregistrements mis à jour avec succès!")
                     else:
                         st.error("Erreur lors de la mise à jour des données")
+                        st.write("Réponse de l'API:", update_response)
                 else:
-                    st.warning("Aucune correspondance trouvée pour la mise à jour")
+                    st.warning("Aucun enregistrement valide à mettre à jour")
             else:
                 st.error("Impossible de récupérer les enregistrements existants")
     except Exception as e:
