@@ -15,6 +15,66 @@ from scipy import stats
 from st_aggrid import AgGrid, GridOptionsBuilder
 from st_aggrid.grid_options_builder import GridOptionsBuilder
 
+# Configuration de la police Marianne pour toute l'application
+st.markdown("""
+    <style>
+        @import url('https://cdn.jsdelivr.net/npm/@gouvfr/dsfr@1.7.2/dist/fonts/Marianne-Light.woff2');
+        @import url('https://cdn.jsdelivr.net/npm/@gouvfr/dsfr@1.7.2/dist/fonts/Marianne-Regular.woff2');
+        @import url('https://cdn.jsdelivr.net/npm/@gouvfr/dsfr@1.7.2/dist/fonts/Marianne-Medium.woff2');
+        @import url('https://cdn.jsdelivr.net/npm/@gouvfr/dsfr@1.7.2/dist/fonts/Marianne-Bold.woff2');
+
+        /* Appliquer Marianne à tous les éléments */
+        * {
+            font-family: "Marianne", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        /* Styles spécifiques pour les différents éléments Streamlit */
+        .stMarkdown, .stText, .stCode, .stTextInput, .stNumberInput, 
+        .stSelectbox, .stMultiselect, .stTextArea, .stButton, 
+        .stDataFrame, .stTable, .stHeader, .stSubheader, .stCaption {
+            font-family: "Marianne", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+        }
+
+        /* Styles pour les titres */
+        h1, h2, h3, h4, h5, h6 {
+            font-family: "Marianne", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+            font-weight: 600 !important;
+        }
+
+        /* Style pour les widgets */
+        .stSelectbox > div > div > div {
+            font-family: "Marianne", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+        }
+
+        /* Style pour les boutons */
+        .stButton > button {
+            font-family: "Marianne", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+            font-weight: 500 !important;
+        }
+
+        /* Style pour les tableaux de données */
+        .dataframe {
+            font-family: "Marianne", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+        }
+        .dataframe th {
+            font-family: "Marianne", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+            font-weight: 600 !important;
+        }
+
+        /* Style pour les expanders */
+        .streamlit-expanderHeader {
+            font-family: "Marianne", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+            font-weight: 500 !important;
+        }
+
+        /* Style pour les légendes */
+        .stCaption {
+            font-family: "Marianne", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+            font-style: italic;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 # Configuration de base
 sns.set_theme()
 sns.set_style("whitegrid")
@@ -23,7 +83,8 @@ sns.set_style("whitegrid")
 st.set_page_config(
     page_title="Indicateurs ESR",
     page_icon="📊",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 # Palettes de couleurs prédéfinies
@@ -796,7 +857,7 @@ def create_interactive_qualitative_table(data_series, var_name):
     final_df['Modalité'] = final_df['Nouvelle modalité']
     final_df = final_df.drop('Nouvelle modalité', axis=1)
 
-    # Style personnalisé pour le tableau
+    # Style personnalisé pour le tableau avec police Marianne
     styled_df = final_df.style\
         .format({
             'Effectif': '{:,.0f}',
@@ -806,7 +867,8 @@ def create_interactive_qualitative_table(data_series, var_name):
             'text-align': 'left',
             'font-size': '14px',
             'padding': '10px',
-            'border': '1px solid #e6e6e6'
+            'border': '1px solid #e6e6e6',
+            'font-family': 'Marianne, sans-serif'
         })\
         .set_table_styles([
             {'selector': 'th',
@@ -817,7 +879,8 @@ def create_interactive_qualitative_table(data_series, var_name):
                  ('text-align', 'left'),
                  ('padding', '10px'),
                  ('font-size', '14px'),
-                 ('border', '1px solid #e6e6e6')
+                 ('border', '1px solid #e6e6e6'),
+                 ('font-family', 'Marianne, sans-serif')
              ]},
             {'selector': 'caption',
              'props': [
@@ -825,36 +888,122 @@ def create_interactive_qualitative_table(data_series, var_name):
                  ('font-size', '16px'),
                  ('font-weight', 'bold'),
                  ('color', '#262730'),
-                 ('padding', '10px 0')
+                 ('padding', '10px 0'),
+                 ('font-family', 'Marianne, sans-serif')
              ]},
             {'selector': 'td',
-             'props': [('border', '1px solid #e6e6e6')]},
-            # Ajout du style pour les lignes alternées
+             'props': [
+                 ('border', '1px solid #e6e6e6'),
+                 ('font-family', 'Marianne, sans-serif')
+             ]},
             {'selector': 'tr:nth-child(even)',
              'props': [('background-color', '#f9f9f9')]},
             {'selector': 'tr:nth-child(odd)',
              'props': [('background-color', 'white')]}
         ])
 
-    # Affichage du titre si défini
-    if table_title:
-        st.write(f"### {table_title}")
+    # Création d'un conteneur pour le tableau et ses métadonnées
+    table_container = st.container()
     
-    # Affichage du tableau avec style
-    st.dataframe(
-        styled_df,
-        use_container_width=True,
-        hide_index=True
-    )
-    
-    # Affichage de la source et de la note si définies
-    if table_source or table_note:
-        st.write("---")
+    with table_container:
+        # Affichage du titre si défini
+        if table_title:
+            st.write(f"### {table_title}")
+        
+        # Affichage du tableau avec style
+        st.dataframe(
+            styled_df,
+            use_container_width=True,
+            hide_index=True
+        )
+        
+        # Affichage de la source et de la note si définies (sans séparateur)
         if table_source:
             st.caption(f"Source : {table_source}")
         if table_note:
-            st.caption(f"Lecture : {table_note}")
-    
+            st.caption(f"Note : {table_note}")
+
+    # Options d'export
+    with st.expander("Options d'export"):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Export en image
+            if st.button("Exporter en image"):
+                # Création d'une image du tableau avec ses métadonnées
+                import matplotlib.pyplot as plt
+                from io import BytesIO
+                
+                # Création de la figure
+                fig, ax = plt.subplots(figsize=(12, len(final_df) + 2))
+                ax.axis('off')
+                
+                # Création du tableau
+                table = ax.table(
+                    cellText=final_df.values,
+                    colLabels=final_df.columns,
+                    cellLoc='left',
+                    loc='center',
+                    bbox=[0, 0, 1, 1]
+                )
+                
+                # Ajout du titre, source et note
+                if table_title:
+                    plt.title(table_title, pad=20)
+                if table_source or table_note:
+                    footer_text = []
+                    if table_source:
+                        footer_text.append(f"Source : {table_source}")
+                    if table_note:
+                        footer_text.append(f"Note : {table_note}")
+                    plt.figtext(0.1, 0.02, '\n'.join(footer_text), fontsize=8)
+                
+                # Sauvegarde en buffer
+                buf = BytesIO()
+                plt.savefig(buf, format='png', bbox_inches='tight', dpi=300)
+                plt.close()
+                
+                # Téléchargement
+                st.download_button(
+                    label="Télécharger l'image",
+                    data=buf.getvalue(),
+                    file_name="tableau_statistique.png",
+                    mime="image/png"
+                )
+        
+        with col2:
+            # Export Excel
+            if st.button("Copier pour Excel"):
+                # Création d'un DataFrame complet avec métadonnées
+                excel_df = final_df.copy()
+                metadata = []
+                if table_title:
+                    metadata.append([table_title])
+                if table_source:
+                    metadata.append([f"Source : {table_source}"])
+                if table_note:
+                    metadata.append([f"Note : {table_note}"])
+                
+                # Conversion en format CSV pour le presse-papiers
+                from io import StringIO
+                output = StringIO()
+                
+                # Écriture des métadonnées
+                for row in metadata:
+                    output.write(f"{','.join(row)}\n")
+                
+                # Écriture du tableau
+                excel_df.to_csv(output, index=False)
+                
+                # Copie dans le presse-papiers via JavaScript
+                js_code = f"""
+                    navigator.clipboard.writeText(`{output.getvalue()}`);
+                    alert("Le tableau a été copié dans le presse-papiers !");
+                """
+                st.components.v1.html(f"""
+                    <script>{js_code}</script>
+                """, height=0)
+
     return final_df
     
 def display_univariate_analysis(data, var):
