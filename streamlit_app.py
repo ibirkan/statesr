@@ -965,82 +965,95 @@ def create_interactive_qualitative_table(data_series, var_name):
         col1, col2 = st.columns(2)
         
         with col1:
-            if st.button("Exporter en image"):
-                # Création d'une figure matplotlib avec style amélioré
-                plt.style.use('seaborn')
-                fig, ax = plt.subplots(figsize=(12, len(final_df) + 2))
-                ax.axis('off')
-                
-                # Création du tableau
-                table = ax.table(
-                    cellText=final_df.values,
-                    colLabels=final_df.columns,
-                    loc='center',
-                    cellLoc='center',
-                    bbox=[0, 0.1, 1, 0.9]  # Ajustement de la position du tableau
-                )
-                
-                # Style du tableau pour l'export
-                table.auto_set_font_size(False)
-                table.set_fontsize(9)
-                
-                # Largeurs des colonnes
-                col_widths = [0.6, 0.2, 0.2]
-                for idx, width in enumerate(col_widths):
-                    for cell in table._cells:
-                        if cell[1] == idx:
-                            table._cells[cell].set_width(width)
-
-                # Style des en-têtes
-                for j, cell in enumerate(table._cells[(0, j)] for j in range(len(final_df.columns))):
-                    cell.set_facecolor('#f0f2f6')
-                    cell.set_text_props(weight='bold', color='#262730')
-                    cell.set_height(0.1)
-
-                # Style des cellules
-                for i in range(len(final_df) + 1):  # +1 pour inclure l'en-tête
-                    for j in range(len(final_df.columns)):
-                        cell = table._cells[(i, j)]
-                        cell.set_edgecolor('#e6e6e6')
+                    if st.button("Exporter en image"):
+                        # Création de la figure avec un style personnalisé
+                        fig, ax = plt.subplots(figsize=(12, len(final_df) + 2))
+                        ax.axis('off')
                         
-                        # Alignement du texte
-                        if j == 0:  # Première colonne (Modalité)
-                            cell._loc = 'left'
-                            cell.set_padding(0.1, 0, 0, 0.05)  # Padding à gauche
-                        else:  # Colonnes numériques
-                            cell._loc = 'center'
+                        # Configuration du style de base
+                        plt.rcParams['font.family'] = 'sans-serif'
+                        plt.rcParams['font.sans-serif'] = ['Arial']
                         
-                        # Lignes alternées
-                        if i > 0 and i % 2 == 0:
-                            cell.set_facecolor('#f9f9f9')
-
-                # Titre
-                if table_title:
-                    plt.title(table_title, pad=20, fontsize=12, fontweight='bold')
-                
-                # Notes de bas de page
-                footer_text = []
-                if table_source:
-                    footer_text.append(f"Source : {table_source}")
-                if table_note:
-                    footer_text.append(f"Note : {table_note}")
-                
-                if footer_text:
-                    plt.figtext(0.1, 0.02, '\n'.join(footer_text), fontsize=8)
-                
-                # Sauvegarde
-                buf = BytesIO()
-                plt.savefig(buf, format='png', bbox_inches='tight', dpi=300, 
-                          facecolor='white', edgecolor='none')
-                plt.close()
-                
-                # Téléchargement
-                st.download_button(
-                    label="Télécharger l'image",
-                    data=buf.getvalue(),
-                    file_name="tableau_statistique.png",
-                    mime="image/png"
-                )
+                        # Création du tableau
+                        table = ax.table(
+                            cellText=final_df.values,
+                            colLabels=final_df.columns,
+                            loc='center',
+                            cellLoc='center',
+                            bbox=[0, 0.1, 1, 0.9]
+                        )
+                        
+                        # Style du tableau
+                        table.auto_set_font_size(False)
+                        table.set_fontsize(9)
+                        
+                        # Largeurs des colonnes
+                        col_widths = [0.6, 0.2, 0.2]
+                        for idx, width in enumerate(col_widths):
+                            for cell in table._cells:
+                                if cell[1] == idx:
+                                    table._cells[cell].set_width(width)
+        
+                        # Style des en-têtes
+                        header_color = '#f0f2f6'
+                        header_text_color = '#262730'
+                        for j, cell in enumerate(table._cells[(0, j)] for j in range(len(final_df.columns))):
+                            cell.set_facecolor(header_color)
+                            cell.set_text_props(weight='bold', color=header_text_color)
+                            cell.set_height(0.1)
+                            cell.set_edgecolor('#e6e6e6')
+        
+                        # Style des cellules
+                        for i in range(len(final_df) + 1):
+                            for j in range(len(final_df.columns)):
+                                cell = table._cells[(i, j)]
+                                cell.set_edgecolor('#e6e6e6')
+                                
+                                # Alignement du texte
+                                if j == 0:  # Modalité
+                                    cell._loc = 'left'
+                                    cell.set_padding(0.1, 0, 0, 0.05)
+                                else:  # Colonnes numériques
+                                    cell._loc = 'center'
+                                
+                                # Lignes alternées
+                                if i > 0:  # Exclure l'en-tête
+                                    if i % 2 == 0:
+                                        cell.set_facecolor('#f9f9f9')
+                                    else:
+                                        cell.set_facecolor('white')
+        
+                        # Titre
+                        if table_title:
+                            plt.title(table_title, pad=20, fontsize=12, fontweight='bold')
+                        
+                        # Notes de bas de page
+                        footer_text = []
+                        if table_source:
+                            footer_text.append(f"Source : {table_source}")
+                        if table_note:
+                            footer_text.append(f"Note : {table_note}")
+                        
+                        if footer_text:
+                            plt.figtext(0.1, 0.02, '\n'.join(footer_text), fontsize=8)
+                        
+                        # Sauvegarde avec fond blanc
+                        buf = BytesIO()
+                        plt.savefig(buf, format='png', 
+                                  bbox_inches='tight', 
+                                  dpi=300,
+                                  facecolor='white',
+                                  edgecolor='none',
+                                  pad_inches=0.1)
+                        plt.close()
+                        
+                        # Téléchargement
+                        st.download_button(
+                            label="Télécharger l'image",
+                            data=buf.getvalue(),
+                            file_name="tableau_statistique.png",
+                            mime="image/png"
+                        )
 
         with col2:
             if st.button("Copier pour Excel"):
