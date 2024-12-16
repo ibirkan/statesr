@@ -128,12 +128,12 @@ def grist_api_request(endpoint, method="GET", data=None):
         st.error(f"Erreur API Grist : {str(e)}")
         return None
         
+
 def get_grist_tables():
     """Récupère la liste des tables disponibles dans Grist."""
     try:
         result = grist_api_request("tables")
-                        
-            # Pour l'instant, créons un dictionnaire avec les IDs
+        if result and 'tables' in result:
             tables_dict = {}
             for table in result['tables']:
                 # Convertir l'ID en nom plus lisible
