@@ -199,14 +199,26 @@ def test_simple_update():
         # Debug: afficher les données envoyées
         st.write("Données envoyées:", update_data)
         
-        # Requête PUT au lieu de PATCH
-        result = grist_api_request(
-            f"tables/MonMaster_2023/records",
-            method="PUT",
-            data=update_data
-        )
+        # Envoi de la requête PUT
+        url = f"{BASE_URL}/{st.secrets['grist_doc_id']}/tables/MonMaster_2023/records"
+        headers = {
+            "Authorization": f"Bearer {st.secrets['grist_key']}",
+            "Content-Type": "application/json"
+        }
         
-        return result
+        response = requests.put(url, headers=headers, json=update_data)
+        
+        # Afficher les détails de la réponse
+        st.write("Status code:", response.status_code)
+        st.write("Headers:", dict(response.headers))
+        st.write("Response text:", response.text)
+        
+        if response.ok:
+            return response.json()
+        else:
+            st.error(f"Error {response.status_code}: {response.text}")
+            return None
+            
     except Exception as e:
         st.error(f"Erreur détaillée: {str(e)}")
         return None
