@@ -160,11 +160,11 @@ def get_grist_data(table_id):
     try:
         # Récupérer les données
         result = grist_api_request(f"tables/{table_id}/records")
-        # Récupérer les métadonnées des colonnes
+        # Récupérer les métadonnées des colonnes pour avoir les noms lisibles
         columns_metadata = grist_api_request(f"tables/{table_id}/columns")
         
         if result and 'records' in result and columns_metadata and 'columns' in columns_metadata:
-            # Créer un dictionnaire de mapping id -> label
+            # Créer un dictionnaire de mapping id -> label pour les noms lisibles
             column_mapping = {
                 col['id']: col['fields']['label'] 
                 for col in columns_metadata['columns']
@@ -179,16 +179,10 @@ def get_grist_data(table_id):
             
             if records:
                 df = pd.DataFrame(records)
-                # Renommer les colonnes avec leurs labels lisibles
+                # Renommer les colonnes avec leurs labels lisibles (avec espaces et accents)
                 df = df.rename(columns=column_mapping)
-                
-                # Debug : afficher le mapping des colonnes
-                with st.expander(f"Mapping des noms de colonnes pour {table_id}"):
-                    st.write("Original -> Lisible")
-                    for orig, new in column_mapping.items():
-                        st.write(f"{orig} -> {new}")
-                
                 return df
+            
         return None
     except Exception as e:
         st.error(f"Erreur lors de la récupération des données : {str(e)}")
