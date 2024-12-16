@@ -731,12 +731,12 @@ def save_test_indicator(test_data):
         raise Exception(f"Erreur test : {str(e)}")
 
 # Structure principale de l'application
-def create_interactive_qualitative_table(data, var):
+def create_interactive_qualitative_table(data_series, var_name):
     """Crée un tableau statistique interactif pour les variables qualitatives avec possibilité de modification."""
     # Création du DataFrame initial
-    value_counts = data[var].value_counts().reset_index()
+    value_counts = data_series.value_counts().reset_index()
     value_counts.columns = ['Modalité', 'Effectif']
-    value_counts['Taux (%)'] = (value_counts['Effectif'] / len(data) * 100).round(2)
+    value_counts['Taux (%)'] = (value_counts['Effectif'] / len(data_series) * 100).round(2)
     value_counts['Nouvelle modalité'] = value_counts['Modalité']
     
     # Configuration de l'interface d'édition
@@ -771,7 +771,7 @@ def create_interactive_qualitative_table(data, var):
                 new_row = pd.DataFrame({
                     'Modalité': [new_name],
                     'Effectif': [total_effectif],
-                    'Taux (%)': [(total_effectif / len(data) * 100).round(2)],
+                    'Taux (%)': [(total_effectif / len(data_series) * 100).round(2)],
                     'Nouvelle modalité': [new_name]
                 })
                 edited_df = pd.concat([edited_df, new_row], ignore_index=True)
