@@ -759,14 +759,9 @@ def create_interactive_qualitative_table(data_series, var_name):
                     )
                     
                     if st.button("Appliquer le regroupement"):
-                        # Mise à jour des modalités
                         mask = value_counts['Modalité'].isin(modalities_to_group)
                         total_effectif = value_counts[mask]['Effectif'].sum()
-                        
-                        # Suppression des anciennes modalités
                         value_counts = value_counts[~mask]
-                        
-                        # Ajout de la nouvelle modalité groupée
                         new_row = pd.DataFrame({
                             'Modalité': [new_name],
                             'Effectif': [total_effectif],
@@ -789,65 +784,82 @@ def create_interactive_qualitative_table(data_series, var_name):
         
         with col2:
             st.write("##### Paramètres du tableau")
-            # Titre du tableau
             table_title = st.text_input("Titre du tableau", 
                                       value=f"Distribution de la variable {var_name}")
-            
-            # Source et note de lecture
             table_source = st.text_input("Source", placeholder="Ex: Enquête XX, 2023")
             table_note = st.text_area("Note de lecture", 
                                    placeholder="Ex: Lecture : XX% des répondants...", 
                                    height=100)
-    
+
     # Création du tableau final avec les nouvelles modalités
     final_df = value_counts.copy()
     final_df['Modalité'] = final_df['Nouvelle modalité']
     final_df = final_df.drop('Nouvelle modalité', axis=1)
     
-    # Configuration et affichage du tableau avec AgGrid
-    gb = GridOptionsBuilder.from_dataframe(final_df)
-    gb.configure_default_column(
-        sorteable=True,
-        filterable=True,
-        resizable=True
-    )
+    # Appliquer des styles au DataFrame
+    def highlight_alternating_rows(x):
+        return pd.DataFrame(
+            np.where(x.index % 2, 'background-color: #f9f9f9', 'background-color: white'),
+            index=x.index,
+            columns=x.columns
+        )
     
-    # Amélioration du style du tableau
-    gb.configure_grid_options(
-        domLayout='autoHeight',
-        rowHeight=30,
-        headerHeight=45,
-        suppressHorizontalScroll=True,
-        enableCellTextSelection=True,
-        suppressMovableColumns=True
-    )
-    
-    grid_options = gb.build()
+    # Style personnalisé pour le tableau
+    styled_df = final_df.style\
+        .format({
+            'Effectif': '{:,.0f}',
+            'Taux (%)': '{:.1f}%'
+        })\
+        .apply(highlight_alternating_rows, axis=None)\
+        .set_properties(**{
+            'text-align': 'left',
+            'font-size': '14px',
+            'padding': '10px',
+            'border': '1px solid #e6e6e6'
+        })\
+        .set_table_styles([
+            {'selector': 'th',
+             'props': [
+                 ('background-color', '#f0f2f6'),
+                 ('color', '#262730'),
+                 ('font-weight', 'bold'),
+                 ('text-align', 'left'),
+                 ('padding', '10px'),
+                 ('font-size', '14px'),
+                 ('border', '1px solid #e6e6e6')
+             ]},
+            {'selector': 'caption',
+             'props': [
+                 ('caption-side', 'top'),
+                 ('font-size', '16px'),
+                 ('font-weight', 'bold'),
+                 ('color', '#262730'),
+                 ('padding', '10px 0')
+             ]},
+            {'selector': 'td',
+             'props': [('border', '1px solid #e6e6e6')]},
+        ])
     
     # Affichage du titre si défini
-    if 'table_title' in locals() and table_title:
+    if table_title:
         st.write(f"### {table_title}")
     
-    # Affichage du tableau
-    grid_table = AgGrid(
-        final_df,
-        gridOptions=grid_options,
-        enable_enterprise_modules=True,
-        allow_unsafe_jscode=True,
-        update_mode='VALUE_CHANGED',
-        theme='streamlit',
-        fit_columns_on_grid_load=True
+    # Affichage du tableau avec style
+    st.dataframe(
+        styled_df,
+        use_container_width=True,
+        hide_index=True
     )
     
     # Affichage de la source et de la note si définies
-    if ('table_source' in locals() and table_source) or ('table_note' in locals() and table_note):
+    if table_source or table_note:
         st.write("---")
         if table_source:
             st.caption(f"Source : {table_source}")
         if table_note:
-            st.caption(f"Note : {table_note}")
+            st.caption(f"Lecture : {table_note}")
     
-    return grid_table['data']
+    return final_df
     
 def display_univariate_analysis(data, var):
     """Gère l'affichage de l'analyse univariée."""
