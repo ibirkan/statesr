@@ -198,8 +198,12 @@ def merge_multiple_tables(dataframes, merge_configs):
     return merged_df
 
 def is_numeric_column(df, column):
-    """Vérifie si une colonne est numérique."""
-    return pd.api.types.is_numeric_dtype(df[column])
+    """Vérifie si une colonne est numérique de manière sûre."""
+    try:
+        return pd.api.types.is_numeric_dtype(df[column])
+    except Exception as e:
+        st.error(f"Erreur lors de la vérification du type de la colonne {column}: {str(e)}")
+        return False
 
 def check_normality(data, var):
     """Vérifie la normalité d'une variable avec adaptation pour les grands échantillons."""
@@ -1742,33 +1746,39 @@ def main():
             if 'previous_var_y' not in st.session_state:
                 st.session_state.previous_var_y = None
     
-            # Ajout de l'option vide pour var_x
-            var_x = st.selectbox("Variable X", 
-                                 ["---"] + list(st.session_state.merged_data.columns), 
-                                 key='var_x_select')
+            # Ajout de l'option vide pour var_x avec une clé unique
+            var_x = st.selectbox(
+                "Variable X", 
+                ["---"] + list(st.session_state.merged_data.columns), 
+                key='bivariate_var_x'
+            )
     
             if var_x != "---":
-                # Filtrer les colonnes pour var_y en excluant var_x
-                available_columns_y = [col for col in st.session_state.merged_data.columns if col != var_x]
+                try:
+                    # Filtrer les colonnes pour var_y en excluant var_x
+                    available_columns_y = [col for col in st.session_state.merged_data.columns if col != var_x]
+                    
+                    # Si la valeur précédente de var_y est valide, la mettre en premier dans la liste
+                    if st.session_state.previous_var_y in available_columns_y:
+                        available_columns_y.remove(st.session_state.previous_var_y)
+                        available_columns_y.insert(0, st.session_state.previous_var_y)
     
-                # Si la valeur précédente de var_y est valide, la mettre en premier dans la liste
-                if st.session_state.previous_var_y in available_columns_y:
-                    available_columns_y.remove(st.session_state.previous_var_y)
-                    available_columns_y.insert(0, st.session_state.previous_var_y)
+                    # Ajout de l'option vide pour var_y avec une clé unique
+                    var_y = st.selectbox(
+                        "Variable Y", 
+                        ["---"] + available_columns_y, 
+                        key='bivariate_var_y'
+                    )
     
-                # Ajout de l'option vide pour var_y
-                var_y = st.selectbox("Variable Y", 
-                                     ["---"] + available_columns_y, 
-                                     key='var_y_select')
+                    # Ne continuer que si les deux variables sont sélectionnées
+                    if var_y != "---":
+                        try:
+                            # Sauvegarder la valeur de var_y pour la prochaine itération
+                            st.session_state.previous_var_y = var_y
     
-                # Ne continuer que si les deux variables sont sélectionnées
-                if var_y != "---":
-                    # Sauvegarder la valeur de var_y pour la prochaine itération
-                    st.session_state.previous_var_y = var_y
-      
-                # Détection des types de variables avec gestion d'erreur
-                is_x_numeric = is_numeric_column(st.session_state.merged_data, var_x)
-                is_y_numeric = is_numeric_column(st.session_state.merged_data, var_y)
+                            # Détection des types de variables avec gestion d'erreur
+                            is_x_numeric = is_numeric_column(st.session_state.merged_data, var_x)
+                            is_y_numeric = is_numeric_column(st.session_state.merged_data, var_y)
     
                 # Analyse pour deux variables qualitatives
                 if not is_x_numeric and not is_y_numeric:
