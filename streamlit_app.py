@@ -1433,26 +1433,6 @@ def main():
                 st.warning("Impossible de charger les tables sélectionnées.")
                 return
         
-            # Configuration de la fusion
-            st.write("### Configuration de la fusion")
-            for i in range(len(dataframes) - 1):
-                col1, col2 = st.columns(2)
-                with col1:
-                    left_col = st.selectbox(
-                        f"Colonne de fusion pour {table_selections[i]}", 
-                        dataframes[i].columns.tolist(),
-                        key=f"left_{i}"
-                    )
-                with col2:
-                    right_col = st.selectbox(
-                        f"Colonne de fusion pour {table_selections[i + 1]}", 
-                        dataframes[i + 1].columns.tolist(),
-                        key=f"right_{i}"
-                    )
-                merge_configs.append({"left": left_col, "right": right_col})
-
-            st.session_state.merged_data = merge_multiple_tables(dataframes, merge_configs)
-
     # Vérification des données fusionnées
     if st.session_state.merged_data is None:
         st.error("Erreur lors du chargement ou de la fusion des tables.")
