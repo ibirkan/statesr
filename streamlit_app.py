@@ -16,7 +16,7 @@ from scipy import stats
 
 # Configuration de la page Streamlit - DOIT ÊTRE LA PREMIÈRE COMMANDE STREAMLIT
 st.set_page_config(
-    page_title="Indicateurs ESR",
+    page_title="Indicateurs de l'ESR",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
