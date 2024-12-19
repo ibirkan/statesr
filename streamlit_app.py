@@ -299,6 +299,8 @@ def calculate_regression(x, y):
 # Fonctions de visualisation univariée
 def plot_qualitative_bar(data, title, x_label, y_label, color_palette, show_values=True):
     """Crée un graphique en barres pour une variable qualitative avec une mise en page adaptative."""
+    # Initialisation de la liste des annotations
+    annotations = []
     if not isinstance(data, pd.DataFrame):
         st.error("Les données ne sont pas dans le format attendu")
         return None
