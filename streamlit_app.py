@@ -298,124 +298,142 @@ def calculate_regression(x, y):
 
 # Fonctions de visualisation univariée
 def plot_qualitative_bar(data, title, x_label, y_label, color_palette, show_values=True):
-    """Crée un graphique en barres pour une variable qualitative."""
+    """Crée un graphique en barres pour une variable qualitative avec une mise en page adaptative."""
     if not isinstance(data, pd.DataFrame):
         st.error("Les données ne sont pas dans le format attendu")
         return None
     
-    # Obtenir les noms des colonnes actuels
     columns = data.columns.tolist()
+    category_col = columns[0]
+    value_col = 'Effectif'
     
-    # La première colonne sera toujours celle des modalités (quel que soit son nom)
-    category_col = columns[0]  # Première colonne (nom dynamique)
-    value_col = 'Effectif'     # Deuxième colonne (fixe)
+    n_categories = len(data[category_col])
+    bar_width = min(0.5, 1.0 / (n_categories + 1))
+    
+    max_value = data[value_col].max()
+    y_max = max_value * 1.2
     
     fig = go.Figure(data=[
         go.Bar(
             x=data[category_col],
             y=data[value_col],
-            marker_color=color_palette[0]
+            marker_color=color_palette[0],
+            width=[bar_width] * n_categories
         )
     ])
+    
+    width = max(400, min(800, 200 * n_categories))
     
     fig.update_layout(
         title=title,
         xaxis_title=x_label,
         yaxis_title=y_label,
-        height=600,
-        margin=dict(t=100, b=100),
+        width=width,
+        height=500,
+        margin=dict(t=100, b=100, l=50, r=50),
         showlegend=False,
         plot_bgcolor='white',
         xaxis=dict(
             showgrid=False,
             gridcolor='lightgray',
-            tickangle=45
+            tickangle=45 if n_categories > 2 else 0
         ),
         yaxis=dict(
             showgrid=True,
             gridcolor='lightgray',
             zeroline=True,
             zerolinewidth=1,
-            zerolinecolor='lightgray'
+            zerolinecolor='lightgray',
+            range=[0, y_max]
         )
     )
 
     if show_values:
+        text_positions = ['outside' if val / max_value > 0.15 else 'auto' for val in data[value_col]]
         fig.update_traces(
             text=data[value_col].round(1),
-            textposition='outside',
-            texttemplate='%{text:.1f}'
+            textposition=text_positions,
+            texttemplate='%{text:.1f}',
+            textfont=dict(size=12)
         )
 
     return fig
 
 def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show_values=True):
-    """Crée un graphique lollipop pour une variable qualitative."""
+    """Crée un graphique en lollipop pour une variable qualitative."""
     if not isinstance(data, pd.DataFrame):
         st.error("Les données ne sont pas dans le format attendu")
         return None
     
-    # Obtenir les noms des colonnes actuels
     columns = data.columns.tolist()
-    category_col = columns[0]  # Première colonne (nom dynamique)
-    value_col = 'Effectif'     # Deuxième colonne (fixe)
+    category_col = columns[0]
+    value_col = 'Effectif'
+    
+    n_categories = len(data[category_col])
+    max_value = data[value_col].max()
+    y_max = max_value * 1.2
     
     fig = go.Figure()
     
-    # Lignes verticales
-    for i in range(len(data)):
-        fig.add_trace(go.Scatter(
-            x=[data[category_col].iloc[i], data[category_col].iloc[i]],
-            y=[0, data[value_col].iloc[i]],
-            mode='lines',
-            line=dict(color=color_palette[0], width=2),
-            showlegend=False,
-            hoverinfo='none'
-        ))
+    # Ajouter les lignes
+    fig.add_trace(go.Scatter(
+        x=data[category_col],
+        y=data[value_col],
+        mode='lines',
+        line=dict(color=color_palette[0], width=2),
+        showlegend=False
+    ))
     
-    # Points
+    # Ajouter les points
     fig.add_trace(go.Scatter(
         x=data[category_col],
         y=data[value_col],
         mode='markers',
-        marker=dict(color=color_palette[0], size=10),
-        name='Valeurs',
+        marker=dict(
+            color=color_palette[0],
+            size=12,
+            line=dict(color='white', width=1)
+        ),
         showlegend=False
     ))
-
-    if show_values:
-        max_y = data[value_col].max()
-        text_y = data[value_col] + (max_y * 0.2)
-        
-        fig.add_trace(go.Scatter(
-            x=data[category_col],
-            y=text_y,
-            mode='text',
-            text=data[value_col].round(1).astype(str),
-            textposition='middle center',
-            textfont=dict(size=12),
-            showlegend=False
-        ))
-
+    
+    width = max(400, min(800, 200 * n_categories))
+    
     fig.update_layout(
         title=title,
         xaxis_title=x_label,
         yaxis_title=y_label,
-        height=600,
-        margin=dict(t=100, b=100),
+        width=width,
+        height=500,
+        margin=dict(t=100, b=100, l=50, r=50),
         plot_bgcolor='white',
+        xaxis=dict(
+            showgrid=False,
+            gridcolor='lightgray',
+            tickangle=45 if n_categories > 2 else 0
+        ),
         yaxis=dict(
+            showgrid=True,
+            gridcolor='lightgray',
             zeroline=True,
             zerolinewidth=1,
             zerolinecolor='lightgray',
-            gridcolor='lightgray',
-            range=[0, data[value_col].max() * 1.5]
-        ),
-        xaxis=dict(
-            gridcolor='lightgray',
-            tickangle=45
+            range=[0, y_max]
         )
     )
+
+    if show_values:
+        text_positions = ['top center' if val / max_value > 0.15 else 'middle center' for val in data[value_col]]
+        fig.add_trace(go.Scatter(
+            x=data[category_col],
+            y=data[value_col],
+            mode='text',
+            text=data[value_col].round(1),
+            textposition=text_positions,
+            texttemplate='%{text:.1f}',
+            textfont=dict(size=12),
+            showlegend=False
+        ))
 
     return fig
 
@@ -425,27 +443,27 @@ def plot_qualitative_treemap(data, title, color_palette):
         st.error("Les données ne sont pas dans le format attendu")
         return None
     
-    # Obtenir les noms des colonnes actuels
     columns = data.columns.tolist()
-    category_col = columns[0]  # Première colonne (nom dynamique)
-    value_col = 'Effectif'     # Deuxième colonne (fixe)
+    category_col = columns[0]
+    value_col = 'Effectif'
     
-    fig = px.treemap(
-        data,
-        path=[category_col],
-        values=value_col,
-        title=title,
-        color=value_col,
-        color_continuous_scale=[color_palette[0]] * 2
-    )
-
+    fig = go.Figure(go.Treemap(
+        labels=data[category_col],
+        parents=[''] * len(data),
+        values=data[value_col],
+        textinfo='label+value',
+        marker=dict(colors=color_palette),
+        texttemplate='%{label}<br>%{value:.1f}',
+        hovertemplate='%{label}<br>Valeur: %{value:.1f}<extra></extra>'
+    ))
+    
     fig.update_layout(
-        height=600,
-        margin=dict(t=100, b=100),
-        uniformtext=dict(minsize=10, mode='hide'),
-        margin_pad=5
+        title=title,
+        width=800,
+        height=500,
+        margin=dict(t=100, b=100, l=20, r=20)
     )
-
+    
     return fig
     
 def plot_density(plot_data, var, title, x_axis, y_axis):
@@ -680,6 +698,51 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
     fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
     fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
     
+    return fig
+
+def add_annotations(fig, source=None, note=None, is_treemap=False):
+    """
+    Ajoute les annotations (source et note) au graphique de manière adaptée selon le type.
+    
+    Args:
+        fig: Figure plotly
+        source: Source des données
+        note: Note explicative
+        is_treemap: Boolean indiquant si c'est un treemap (nécessite un traitement spécial)
+    """
+    annotations = []
+    
+    if is_treemap:
+        # Pour les treemaps, positionner les annotations différemment
+        current_y = -0.1
+        x_pos = 0.02
+    else:
+        # Pour les autres types de graphiques
+        current_y = -0.2
+        x_pos = 0.02
+    
+    if source:
+        annotations.append(dict(
+            text=f"Source : {source}",
+            xref="paper", yref="paper",
+            x=x_pos, y=current_y,
+            showarrow=False,
+            font=dict(size=10),
+            align="left"
+        ))
+        current_y -= 0.07
+    
+    if note:
+        annotations.append(dict(
+            text=f"Note : {note}",
+            xref="paper", yref="paper",
+            x=x_pos, y=current_y,
+            showarrow=False,
+            font=dict(size=10),
+            align="left"
+        ))
+    
+    fig.update_layout(annotations=annotations)
     return fig
 
 # Fonctions d'analyse bivariée
@@ -923,54 +986,87 @@ def save_test_indicator(test_data):
         raise Exception(f"Erreur test : {str(e)}")
 
 # Structure principale de l'application
-def create_interactive_qualitative_table(data_series, var_name):
+def create_interactive_qualitative_table(data_series, var_name, exclude_missing=False, missing_label="Non réponse"):
     """Crée un tableau statistique interactif pour les variables qualitatives."""
-    # Création du DataFrame initial
-    value_counts = data_series.value_counts().reset_index()
-    value_counts.columns = ['Modalité', 'Effectif']
-    value_counts['Taux (%)'] = (value_counts['Effectif'] / len(data_series) * 100).round(2)
-    value_counts['Nouvelle modalité'] = value_counts['Modalité']
+    # Définition des valeurs manquantes
+    missing_values = [None, np.nan, '', 'nan', 'NaN', 'NA', 'nr', 'NR']
+
+    # Initialisation du state si nécessaire
+    if 'original_data' not in st.session_state:
+        st.session_state.original_data = data_series.copy()
+        st.session_state.groupings = []
+        st.session_state.current_data = data_series.copy()
+
+    # Préparation des données
+    processed_series = st.session_state.current_data.copy()
+    if exclude_missing:
+        processed_series = processed_series.replace(missing_values, np.nan).dropna()
+    else:
+        processed_series = processed_series.replace(missing_values, missing_label)
     
+    # Création du DataFrame initial
+    value_counts = processed_series.value_counts().reset_index()
+    value_counts.columns = ['Modalité', 'Effectif']
+    value_counts['Taux (%)'] = (value_counts['Effectif'] / len(processed_series) * 100).round(2)
+    value_counts['Nouvelle modalité'] = value_counts['Modalité']
+
     # Configuration des options avancées dans un expander
     with st.expander("Options avancées du tableau statistique"):
-        col1, col2 = st.columns(2)
-        
+        col1, col2, col3 = st.columns(3)
+
         with col1:
             st.write("##### Édition des modalités")
-            if st.checkbox("Regrouper des modalités", key="group_modalities"):
-                modalities_to_group = st.multiselect(
-                    "Sélectionnez les modalités à regrouper",
-                    options=value_counts['Modalité'].unique()
-                )
-                
-                if modalities_to_group:
-                    new_name = st.text_input(
-                        "Nom du nouveau groupe",
-                        value=f"Groupe {', '.join(modalities_to_group)}"
-                    )
-                    
-                    if st.button("Appliquer le regroupement"):
-                        mask = value_counts['Modalité'].isin(modalities_to_group)
-                        total_effectif = value_counts[mask]['Effectif'].sum()
-                        value_counts = value_counts[~mask]
-                        new_row = pd.DataFrame({
-                            'Modalité': [new_name],
-                            'Effectif': [total_effectif],
-                            'Taux (%)': [(total_effectif / len(data_series) * 100).round(2)],
-                            'Nouvelle modalité': [new_name]
-                        })
-                        value_counts = pd.concat([value_counts, new_row], ignore_index=True)
-                        value_counts = value_counts.sort_values('Effectif', ascending=False)
+            
+            # Interface pour créer un nouveau regroupement
+            st.write("**Nouveau regroupement**")
+            
+            # Obtenir toutes les modalités disponibles
+            available_modalities = value_counts['Modalité'].tolist()
+            
+            # Sélection multiple des modalités à regrouper
+            selected_modalities = st.multiselect(
+                "Sélectionner les modalités à regrouper",
+                options=available_modalities
+            )
 
-            # Création du mapping entre valeurs originales et nouvelles modalités
-            mapping_dict = {}
-            for idx, row in value_counts.iterrows():
-                old_value = row['Modalité']
-                new_value = row['Nouvelle modalité']  # Cette colonne doit contenir les valeurs regroupées
-                mapping_dict[old_value] = new_value
-            
-            grouped_series = pd.Series(mapping_dict)
-            
+            if selected_modalities:
+                new_group_name = st.text_input(
+                    "Nom du nouveau groupe",
+                    value=f"Groupe {', '.join(selected_modalities)}"
+                )
+
+                if st.button("Appliquer le regroupement"):
+                    # Sauvegarder le regroupement
+                    st.session_state.groupings.append({
+                        'modalites': selected_modalities,
+                        'nouveau_nom': new_group_name
+                    })
+                    
+                    # Appliquer tous les regroupements depuis le début
+                    processed_series = st.session_state.original_data.copy()
+                    for group in st.session_state.groupings:
+                        processed_series = processed_series.replace(
+                            group['modalites'],
+                            group['nouveau_nom']
+                        )
+                    
+                    st.session_state.current_data = processed_series
+                    st.rerun()
+
+            # Afficher les regroupements existants
+            if st.session_state.groupings:
+                st.write("**Regroupements existants:**")
+                for idx, group in enumerate(st.session_state.groupings):
+                    st.info(
+                        f"Groupe {idx + 1}: {', '.join(group['modalites'])} → {group['nouveau_nom']}"
+                    )
+
+            # Bouton pour réinitialiser
+            if st.button("Réinitialiser tous les regroupements"):
+                st.session_state.groupings = []
+                st.session_state.current_data = st.session_state.original_data.copy()
+                st.rerun()
+
             st.write("##### Renommer les modalités")
             for idx, row in value_counts.iterrows():
                 value_counts.at[idx, 'Nouvelle modalité'] = st.text_input(
@@ -979,16 +1075,47 @@ def create_interactive_qualitative_table(data_series, var_name):
                     key=f"modal_{idx}",
                     label_visibility="collapsed"
                 )
-        
+
         with col2:
             st.write("##### Paramètres du tableau")
-            table_title = st.text_input("Titre du tableau", 
-                                      value=f"Distribution de la variable {var_name}")
-            var_name_display = st.text_input("Nom de la variable :", 
-                                           value="Modalités")
-            table_source = st.text_input("Source", placeholder="Ex: Enquête XX, 2023")
-            table_note = st.text_input("Note de lecture", 
-                                     placeholder="Ex: Lecture : XX% des répondants...")
+            table_title = st.text_input(
+                "Titre du tableau",
+                value=f"Distribution de la variable {var_name}"
+            )
+            var_name_display = st.text_input(
+                "Nom de la variable :",
+                value="Modalités"
+            )
+            table_source = st.text_input(
+                "Source",
+                placeholder="Ex: Enquête XX, 2023"
+            )
+            table_note = st.text_input(
+                "Note de lecture",
+                placeholder="Ex: Lecture : XX% des répondants..."
+            )
+
+        with col3:
+            st.write("##### Gestion des non-réponses")
+            exclude_missing = st.checkbox("Exclure les non-réponses")
+            if not exclude_missing:
+                missing_label = st.text_input(
+                    "Libellé pour les non-réponses",
+                    value="Non réponse"
+                )
+            # Application immédiate du traitement des non-réponses
+            if exclude_missing:
+                processed_series = data_series.replace(missing_values, np.nan).dropna()
+            else:
+                processed_series = data_series.replace(missing_values, missing_label)
+            
+            # Seulement mettre à jour value_counts si on n'a pas de regroupements actifs
+            if not st.session_state.groupings:
+                value_counts = processed_series.value_counts().reset_index()
+                value_counts.columns = ['Modalité', 'Effectif']
+                value_counts['Taux (%)'] = (value_counts['Effectif'] / len(processed_series) * 100).round(2)
+                value_counts['Nouvelle modalité'] = value_counts['Modalité']
+                st.session_state.value_counts = value_counts.copy()
 
     # Création du DataFrame final
     final_df = value_counts.copy()
@@ -1293,8 +1420,12 @@ def display_univariate_analysis(data, var):
                 grouped_data = pd.cut(plot_data, bins=breaks)
     else:
         # Statistiques qualitatives
-        value_counts, var_name_display = create_interactive_qualitative_table(data, var)
-        grouped_data = None
+        value_counts, var_name_display = create_interactive_qualitative_table(
+            plot_data, 
+            var, 
+            exclude_missing=exclude_missing if 'exclude_missing' in locals() else False,
+            missing_label=missing_label if 'missing_label' in locals() else "Non réponse"
+        )
 
     # Configuration de la visualisation
     st.write("### Configuration de la visualisation")
@@ -1314,7 +1445,7 @@ def display_univariate_analysis(data, var):
 
     # Options avancées
     with st.expander("Options avancées"):
-        adv_col1, adv_col2 = st.columns(2)
+        adv_col1, adv_col2, adv_col3 = st.columns(3) 
         with adv_col1:
             title = st.text_input("Titre du graphique", f"Distribution de {var}")
             x_axis = st.text_input("Titre de l'axe X", var)
@@ -1325,6 +1456,12 @@ def display_univariate_analysis(data, var):
             show_values = st.checkbox("Afficher les valeurs", True)
             if not is_numeric or (is_numeric and grouping_method != "Aucune"):
                 value_type = st.radio("Type de valeur à afficher", ["Effectif", "Taux (%)"])
+        with adv_col3:
+            # gestion des non-réponses
+            st.markdown("##### Gestion des non-réponses")
+            exclude_missing = st.checkbox("Exclure les non-réponses", key="exclude_missing")
+            if not exclude_missing:
+                missing_label = st.text_input("Libellé pour les non-réponses", "Non réponse", key="missing_label")
 
     # Définition de value_type en dehors des options avancées pour les variables qualitatives
     if not is_numeric:
@@ -1684,7 +1821,12 @@ def main():
     
                 else:
                     # Statistiques pour variable qualitative
-                    value_counts, var_name_display = create_interactive_qualitative_table(plot_data, var)
+                    value_counts, var_name_display = create_interactive_qualitative_table(
+                        plot_data, 
+                        var, 
+                        exclude_missing=exclude_missing if 'exclude_missing' in locals() else False,
+                        missing_label=missing_label if 'missing_label' in locals() else "Non réponse"
+                    )
                 
                 # Configuration de la visualisation
                 st.write("### Configuration de la visualisation")
@@ -1725,46 +1867,29 @@ def main():
                 # Génération du graphique
                 if st.button("Générer la visualisation"):
                     try:
-                        annotations = []
-                        current_y = -0.15
-                        
-                        if source:
-                            annotations.append(dict(
-                                text=f"Source : {source}",
-                                xref="paper", yref="paper",
-                                x=0, y=current_y,
-                                showarrow=False,
-                                font=dict(size=10),
-                                align="left"
-                            ))
-                            current_y -= 0.05
-                        
-                        if note:
-                            annotations.append(dict(
-                                text=f"Note : {note}",
-                                xref="paper", yref="paper",
-                                x=0, y=current_y,
-                                showarrow=False,
-                                font=dict(size=10),
-                                align="left"
-                            ))
-                
-                        # Création du graphique selon le type
                         if not is_numeric:
                             data_to_plot = value_counts.copy()
                             if value_type == "Taux (%)":
-                                # Créer une copie du DataFrame avec la bonne structure
                                 data_to_plot = pd.DataFrame({
-                                    data_to_plot.columns[0]: data_to_plot[data_to_plot.columns[0]],  # Garde le nom dynamique de la première colonne
-                                    'Effectif': data_to_plot['Taux (%)']  # Utilise toujours 'Effectif' comme nom de colonne pour les valeurs
+                                    data_to_plot.columns[0]: data_to_plot[data_to_plot.columns[0]],
+                                    'Effectif': data_to_plot['Taux (%)']
                                 })
                             
+                            # Création du graphique selon le type
                             if graph_type == "Bar plot":
-                                fig = plot_qualitative_bar(data_to_plot, title, x_axis, y_axis, COLOR_PALETTES[color_scheme], show_values)
+                                fig = plot_qualitative_bar(data_to_plot, title, x_axis, y_axis, 
+                                                        COLOR_PALETTES[color_scheme], show_values)
                             elif graph_type == "Lollipop plot":
-                                fig = plot_qualitative_lollipop(data_to_plot, title, x_axis, y_axis, COLOR_PALETTES[color_scheme], show_values)
+                                fig = plot_qualitative_lollipop(data_to_plot, title, x_axis, y_axis, 
+                                                            COLOR_PALETTES[color_scheme], show_values)
                             elif graph_type == "Treemap":
-                                fig = plot_qualitative_treemap(data_to_plot, title, COLOR_PALETTES[color_scheme])
+                                fig = plot_qualitative_treemap(data_to_plot, title, 
+                                                            COLOR_PALETTES[color_scheme])
+                            
+                            # Ajout des annotations si nécessaire
+                            if fig is not None and (source or note):
+                                is_treemap = (graph_type == "Treemap")
+                                fig = add_annotations(fig, source, note, is_treemap=is_treemap)
                         
                         else:  # Variables numériques
                             if grouping_method == "Aucune":
@@ -1788,7 +1913,7 @@ def main():
                             else:  # Groupement manuel
                                 data_to_plot = pd.DataFrame({
                                     'Modalité': value_counts['Groupe'].astype(str),
-                                    'Effectif': value_counts['Effectif' if value_to_display == "Effectif" else 'Taux (%)']
+                                    'Effectif': value_counts['Effectif' if value_type == "Effectif" else 'Taux (%)']
                                 })
                                 
                                 if graph_type == "Bar plot":
@@ -1803,8 +1928,8 @@ def main():
                             fig.update_layout(annotations=annotations)
                 
                         # Affichage du graphique
-                        st.plotly_chart(fig, use_container_width=True)
-                
+                            if fig is not None:
+                                    st.plotly_chart(fig, use_container_width=True)                
                     except Exception as e:
                         st.error(f"Erreur lors de la génération du graphique : {str(e)}")
                         st.error(f"Détails : {str(type(e).__name__)}")
