@@ -1472,7 +1472,11 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
             except Exception as e:
                 st.error(f"Erreur dans create_interactive_qualitative_table : {str(e)}")
                 return None, None
-                
+            
+            # Retourner les valeurs après une génération réussie
+            return final_df, var_name_display
+        
+        # Si le bouton n'est pas cliqué, retourner les valeurs par défaut
         return final_df, var_name_display
 
     except Exception as e:
