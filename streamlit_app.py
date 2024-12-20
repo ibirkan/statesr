@@ -410,7 +410,7 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
             ),
             showlegend=False,
             name=cat,
-            hovertemplate=f"<b>{cat}</b><br>Valeur: <b>%{y:.1f}</b><extra></extra>"
+            hovertemplate=f"<b>{cat}</b><br>Valeur: <b>{val:.1f}</b><extra></extra>"  # Correction ici
         ))
     
     # Calculer les marges en fonction du nombre de catégories
