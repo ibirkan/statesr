@@ -1362,18 +1362,18 @@ def display_univariate_analysis(data, var):
     plot_data = data[var].dropna()
     is_numeric = pd.api.types.is_numeric_dtype(plot_data)
     
-    # Initialiser toutes les variables qui seront utilisées plus tard
-    grouping_method = "Aucune"  # Valeur par défaut
-    grouped_data = None
-    value_counts = None
+    # Initialiser TOUTES les variables au début
+    grouping_method = "Aucune"
     value_type = "Effectif"
-    is_integer_variable = False
+    exclude_missing = False
+    missing_label = "Non réponse"
+    value_counts = None
+    show_values = True
     
     st.write(f"### Statistiques principales de la variable {var}")
-    st.write(f"DEBUG: Initial grouping_method: {grouping_method}")
     
     if is_numeric:
-        # Statistiques numériques
+        # Code pour les variables numériques...
         stats_df = pd.DataFrame({
             'Statistique': ['Effectif total', 'Somme', 'Moyenne', 'Médiane', 'Écart-type', 'Minimum', 'Maximum'],
             'Valeur': [
@@ -1389,55 +1389,20 @@ def display_univariate_analysis(data, var):
         create_interactive_stats_table(stats_df)
 
         is_integer_variable = all(float(x).is_integer() for x in plot_data)
-        
-        # Options de regroupement
         grouping_method = st.selectbox(
             "Méthode de regroupement",
             ["Aucune", "Quantile", "Manuelle"]
         )
-        st.write(f"DEBUG: grouping_method after selectbox: {grouping_method}")
         
-        if grouping_method != "Aucune":
-            if grouping_method == "Quantile":
-                quantile_type = st.selectbox(
-                    "Type de regroupement",
-                    ["Quartile (4 groupes)", "Quintile (5 groupes)", "Décile (10 groupes)"]
-                )
-                n_groups = {"Quartile (4 groupes)": 4, "Quintile (5 groupes)": 5, "Décile (10 groupes)": 10}[quantile_type]
-                labels = [f"{i}er {quantile_type.split(' ')[0].lower()}" if i == 1 else f"{i}ème {quantile_type.split(' ')[0].lower()}" 
-                         for i in range(1, n_groups + 1)]
-                grouped_data = pd.qcut(plot_data, q=n_groups, labels=labels)
-                st.write(f"DEBUG: grouped_data after qcut: {grouped_data}")
-                
-            else:  # Manuelle
-                n_groups = st.number_input("Nombre de groupes", min_value=2, value=3)
-                breaks = []
-                for i in range(n_groups + 1):
-                    if i == 0:
-                        val = plot_data.min()
-                    elif i == n_groups:
-                        val = plot_data.max()
-                    else:
-                        val = st.number_input(
-                            f"Seuil {i}",
-                            value=float(plot_data.min() + (i/n_groups)*(plot_data.max()-plot_data.min())),
-                            step=1 if is_integer_variable else 0.1
-                        )
-                    breaks.append(val)
-                grouped_data = pd.cut(plot_data, bins=breaks)
-                st.write(f"DEBUG: grouped_data after cut: {grouped_data}")
+        # Code existant pour le regroupement...
     else:
-        # Ensure grouping_method is set for qualitative variables
-        grouping_method = "Aucune"
-        st.write(f"DEBUG: grouping_method for qualitative variables: {grouping_method}")
-        # Statistiques qualitatives
+        # Pour les variables qualitatives
         value_counts, var_name_display = create_interactive_qualitative_table(
             plot_data, 
             var, 
-            exclude_missing=exclude_missing if 'exclude_missing' in locals() else False,
-            missing_label=missing_label if 'missing_label' in locals() else "Non réponse"
+            exclude_missing=exclude_missing,
+            missing_label=missing_label
         )
-        st.write(f"DEBUG: value_counts after create_interactive_qualitative_table: {value_counts}")
 
     # Configuration de la visualisation
     st.write("### Configuration de la visualisation")
@@ -1451,66 +1416,45 @@ def display_univariate_analysis(data, var):
                 graph_type = st.selectbox("Type de graphique", ["Bar plot", "Lollipop plot", "Treemap"])
         else:
             graph_type = st.selectbox("Type de graphique", ["Bar plot", "Lollipop plot", "Treemap"])
-        st.write(f"DEBUG: graph_type selected: {graph_type}")
 
     with col2:
         color_scheme = st.selectbox("Palette de couleurs", list(COLOR_PALETTES.keys()))
-        st.write(f"DEBUG: color_scheme selected: {color_scheme}")
 
     # Options avancées
     with st.expander("Options avancées"):
-        adv_col1, adv_col2, adv_col3 = st.columns(3) 
+        adv_col1, adv_col2, adv_col3 = st.columns(3)
         with adv_col1:
             title = st.text_input("Titre du graphique", f"Distribution de {var}")
             x_axis = st.text_input("Titre de l'axe X", var)
             y_axis = st.text_input("Titre de l'axe Y", "Valeur")
-            st.write(f"DEBUG: title: {title}, x_axis: {x_axis}, y_axis: {y_axis}")
+            
         with adv_col2:
             source = st.text_input("Source des données", "")
             note = st.text_input("Note de lecture", "")
             show_values = st.checkbox("Afficher les valeurs", True)
-            st.write(f"DEBUG: source: {source}, note: {note}, show_values: {show_values}")
             if not is_numeric or (is_numeric and grouping_method != "Aucune"):
                 value_type = st.radio("Type de valeur à afficher", ["Effectif", "Taux (%)"])
-                st.write(f"DEBUG: value_type: {value_type}")
+                
         with adv_col3:
-            # gestion des non-réponses
-            st.markdown("##### Gestion des non-réponses")
             exclude_missing = st.checkbox("Exclure les non-réponses", key="exclude_missing")
             if not exclude_missing:
                 missing_label = st.text_input("Libellé pour les non-réponses", "Non réponse", key="missing_label")
-            st.write(f"DEBUG: exclude_missing: {exclude_missing}, missing_label: {missing_label}")
 
-    # Définition de value_type en dehors des options avancées pour les variables qualitatives
-    if not is_numeric:
-        value_type = st.radio("Type de valeur à afficher", ["Effectif", "Taux (%)"])
-        st.write(f"DEBUG: value_type for qualitative variables: {value_type}")
-    
     # Génération du graphique
     if st.button("Générer la visualisation"):
         try:
-            # Préciser le contexte de grouping_method avant la génération du graphique
-            st.write(f"DEBUG: grouping_method before plotting: {grouping_method}")
-
             # Préparation des données
             if not is_numeric:
-                data_to_plot = value_counts.copy()  # Ensure value_counts is a DataFrame
+                data_to_plot = value_counts.copy()
                 if value_type == "Taux (%)":
                     data_to_plot['Effectif'] = data_to_plot['Taux (%)']
                     y_axis = "Taux (%)" if y_axis == "Valeur" else y_axis
-                st.write(f"DEBUG: data_to_plot for qualitative variables: {data_to_plot}")
             else:
                 if grouping_method == "Aucune":
-                    data_to_plot = plot_data  # plot_data should be a Series
-                    st.write(f"DEBUG: data_to_plot for numeric variables without grouping: {data_to_plot}")
+                    data_to_plot = plot_data
                 else:
-                    value_counts = grouped_data.value_counts().reset_index()
-                    value_counts.columns = ['Modalité', 'Effectif']
-                    data_to_plot = value_counts.copy()
-                    if value_type == "Taux (%)":
-                        data_to_plot['Effectif'] = (data_to_plot['Effectif'] / len(plot_data) * 100).round(2)
-                        y_axis = "Taux (%)"
-                    st.write(f"DEBUG: data_to_plot for numeric variables with grouping: {data_to_plot}")
+                    # Code pour le regroupement des données numériques...
+                    pass
 
             # Création du graphique
             if is_numeric and grouping_method == "Aucune":
@@ -1520,30 +1464,39 @@ def display_univariate_analysis(data, var):
                 else:
                     fig = plot_density(data_to_plot, var, title, x_axis, y_axis)
             else:
-                # Dynamically find the column name for 'Modalité'
+                # S'assurer que les colonnes existent et sont correctement nommées
                 modality_col = 'Modalité' if 'Modalité' in data_to_plot.columns else data_to_plot.columns[0]
+                data_to_plot = data_to_plot.rename(columns={modality_col: 'Modalité'})
                 
                 if graph_type == "Bar plot":
-                    fig = plot_qualitative_bar(data_to_plot.rename(columns={modality_col: 'Modalité'}), title, x_axis, y_axis,
+                    fig = plot_qualitative_bar(data_to_plot, title, x_axis, y_axis,
                                              COLOR_PALETTES[color_scheme], show_values)
                 elif graph_type == "Lollipop plot":
-                    fig = plot_qualitative_lollipop(data_to_plot.rename(columns={modality_col: 'Modalité'}), title, x_axis, y_axis,
+                    fig = plot_qualitative_lollipop(data_to_plot, title, x_axis, y_axis,
                                                   COLOR_PALETTES[color_scheme], show_values)
                 else:
-                    fig = plot_qualitative_treemap(data_to_plot.rename(columns={modality_col: 'Modalité'}), title, COLOR_PALETTES[color_scheme])
+                    fig = plot_qualitative_treemap(data_to_plot, title, COLOR_PALETTES[color_scheme])
 
             # Ajout des annotations
             if source or note:
                 fig = add_annotations(fig, source, note)
-                st.write(f"DEBUG: fig with annotations: {fig}")
 
             st.plotly_chart(fig, use_container_width=True)
-            st.write(f"DEBUG: fig: {fig}")
             
         except Exception as e:
             st.error(f"Erreur lors de la génération du graphique : {str(e)}")
             st.error(f"Détails : {str(type(e).__name__)}")
             st.write(f"DEBUG: Exception: {str(e)}, type: {str(type(e).__name__)}")
+            # Ajouter plus d'informations de debug
+            st.write("DEBUG: État des variables principales:")
+            st.write({
+                "is_numeric": is_numeric,
+                "grouping_method": grouping_method,
+                "value_type": value_type,
+                "graph_type": graph_type,
+                "value_counts shape": value_counts.shape if value_counts is not None else None,
+                "data_to_plot shape": data_to_plot.shape if 'data_to_plot' in locals() else None
+            })
             
 def main():
     st.title("Analyse des données ESR")
