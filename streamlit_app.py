@@ -1364,10 +1364,18 @@ def display_univariate_analysis(data, var):
     plot_data = data[var].dropna()
     is_numeric = pd.api.types.is_numeric_dtype(plot_data)
     
+    # Initialiser toutes les variables qui seront utilisées plus tard
+    grouping_method = "Aucune"  # Valeur par défaut
+    grouped_data = None
+    value_counts = None
+    value_type = "Effectif"
+    is_integer_variable = False
+    
     st.write(f"### Statistiques principales de la variable {var}")
     
-    # Initialize value_type with a default value
+    # Initialize value_type and grouping_method with default values
     value_type = "Effectif"
+    grouping_method = "Aucune"
     
     if is_numeric:
         # Statistiques numériques
