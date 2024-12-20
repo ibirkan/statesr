@@ -1029,6 +1029,9 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
         
         # Calcul des pourcentages avec le total approprié
         value_counts['Taux (%)'] = (value_counts['Effectif'] / total_effectif * 100).round(2)
+        
+        # Ajout de la colonne 'Nouvelle modalité' avec les valeurs de 'Modalité'
+        value_counts['Nouvelle modalité'] = value_counts['Modalité'].copy()
 
         # Configuration des options avancées dans un expander
         with st.expander("Options avancées du tableau statistique"):
