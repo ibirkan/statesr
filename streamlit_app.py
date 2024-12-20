@@ -13,6 +13,7 @@ from io import BytesIO
 import squarify
 import seaborn as sns
 from scipy import stats
+from kaleido.scopes.plotly import PlotlyScope
 
 # Configuration de la page Streamlit - DOIT ÊTRE LA PREMIÈRE COMMANDE STREAMLIT
 st.set_page_config(
