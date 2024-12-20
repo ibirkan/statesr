@@ -1470,11 +1470,16 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                         st.write("DEBUG export error:", str(export_error))
     
                 return final_df, var_name_display
-        
             except Exception as e:
                 st.error(f"Erreur dans create_interactive_qualitative_table : {str(e)}")
                 return None, None
                 
+        return final_df, var_name_display  # Ce return doit être indenté dans le premier try
+
+    except Exception as e:
+        st.error(f"Erreur dans create_interactive_qualitative_table : {str(e)}")
+        return None, None
+
 def main():
     st.title("Analyse des données ESR")
 
