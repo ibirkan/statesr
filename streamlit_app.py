@@ -1368,12 +1368,13 @@ def display_univariate_analysis(data, var):
     exclude_missing = False
     missing_label = "Non réponse"
     show_values = True
+    grouped_data = None
 
     st.write(f"### Statistiques principales de la variable {var}")
 
     # 2. Traitement selon le type de variable
     if is_numeric:
-        # Statistiques numériques reste inchangé...
+        # Statistiques numériques
         stats_df = pd.DataFrame({
             'Statistique': ['Effectif total', 'Somme', 'Moyenne', 'Médiane', 'Écart-type', 'Minimum', 'Maximum'],
             'Valeur': [
@@ -1395,17 +1396,47 @@ def display_univariate_analysis(data, var):
         )
 
         if grouping_method != "Aucune":
-            # Le reste du code pour le regroupement des variables numériques...
-            pass
+            if grouping_method == "Quantile":
+                quantile_type = st.selectbox(
+                    "Type de regroupement",
+                    ["Quartile (4 groupes)", "Quintile (5 groupes)", "Décile (10 groupes)"]
+                )
+                n_groups = {"Quartile (4 groupes)": 4, "Quintile (5 groupes)": 5, "Décile (10 groupes)": 10}[quantile_type]
+                labels = [f"{i}er {quantile_type.split(' ')[0].lower()}" if i == 1 else f"{i}ème {quantile_type.split(' ')[0].lower()}" 
+                         for i in range(1, n_groups + 1)]
+                grouped_data = pd.qcut(plot_data, q=n_groups, labels=labels)
+                
+            else:  # Manuelle
+                n_groups = st.number_input("Nombre de groupes", min_value=2, value=3)
+                breaks = []
+                for i in range(n_groups + 1):
+                    if i == 0:
+                        val = plot_data.min()
+                    elif i == n_groups:
+                        val = plot_data.max()
+                    else:
+                        val = st.number_input(
+                            f"Seuil {i}",
+                            value=float(plot_data.min() + (i/n_groups)*(plot_data.max()-plot_data.min())),
+                            step=1 if is_integer_variable else 0.1
+                        )
+                    breaks.append(val)
+                grouped_data = pd.cut(plot_data, bins=breaks)
+
+            # Création des value_counts pour les données groupées
+            if grouped_data is not None:
+                value_counts = grouped_data.value_counts().reset_index()
+                value_counts.columns = ['Modalité', 'Effectif']
+                value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
     else:
-        # 3. Pour les variables qualitatives, on garde le résultat de create_interactive_qualitative_table
+        # 3. Pour les variables qualitatives
         temp_df, _ = create_interactive_qualitative_table(
             plot_data, 
             var, 
             exclude_missing=exclude_missing,
             missing_label=missing_label
         )
-        value_counts = temp_df  # Stocker le résultat dans value_counts
+        value_counts = temp_df
 
     # Configuration de la visualisation
     st.write("### Configuration de la visualisation")
@@ -1445,11 +1476,8 @@ def display_univariate_analysis(data, var):
     if st.button("Générer la visualisation"):
         try:
             # Préparation des données pour le graphique
-            data_to_plot = None
-            
-            if not is_numeric:
-                # Pour les variables qualitatives, on utilise value_counts
-                if value_counts is not None:  # Vérification que value_counts existe
+            if not is_numeric or (is_numeric and grouping_method != "Aucune"):
+                if value_counts is not None:
                     data_to_plot = value_counts.copy()
                     if value_type == "Taux (%)":
                         data_to_plot['Effectif'] = data_to_plot['Taux (%)']
@@ -1457,12 +1485,7 @@ def display_univariate_analysis(data, var):
                 else:
                     raise ValueError("Données non disponibles pour le graphique")
             else:
-                # Pour les variables numériques
-                if grouping_method == "Aucune":
-                    data_to_plot = plot_data
-                else:
-                    # Traitement des données groupées numériques...
-                    pass
+                data_to_plot = plot_data
 
             # Création du graphique
             if is_numeric and grouping_method == "Aucune":
@@ -1497,8 +1520,10 @@ def display_univariate_analysis(data, var):
                 'is_numeric': is_numeric,
                 'grouping_method': grouping_method,
                 'value_type': value_type,
-                'value_counts': value_counts is not None,
-                'data_to_plot': 'data_to_plot' in locals(),
+                'value_counts présent': value_counts is not None,
+                'shape value_counts': value_counts.shape if value_counts is not None else None,
+                'colonnes value_counts': list(value_counts.columns) if value_counts is not None else None,
+                'data_to_plot présent': 'data_to_plot' in locals(),
                 'graph_type': graph_type
             })
             
