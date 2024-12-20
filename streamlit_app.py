@@ -1468,8 +1468,8 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                 else:
                     st.error(f"Erreur lors de l'export : {str(export_error)}")
                     st.write("DEBUG export error:", str(export_error))
-
-return final_df, var_name_display
+    
+        return final_df, var_name_display
                 
 def main():
     st.title("Analyse des données ESR")
