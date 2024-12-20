@@ -1357,7 +1357,7 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
     
     return final_df, var_name_display  # Return the DataFrame and the dynamic column name
 
-    # Ajout de la partie visualisation directement ici
+        # Ajout de la partie visualisation
     st.write("### Configuration de la visualisation")
     col1, col2 = st.columns([1, 2])
     
@@ -1392,7 +1392,7 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
     if st.button("Générer la visualisation"):
         try:
             # Préparation des données pour le graphique
-            data_to_plot = final_df.copy()  # Utilisation du DataFrame final déjà créé
+            data_to_plot = final_df.copy()
             
             # Ajustement des données selon le type de valeur choisi
             if value_type == "Taux (%)":
@@ -1418,7 +1418,8 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
 
             # Ajout des annotations si nécessaire
             if source or note:
-                fig = add_annotations(fig, source, note)
+                is_treemap = (graph_type == "Treemap")
+                fig = add_annotations(fig, source, note, is_treemap=is_treemap)
 
             # Affichage du graphique
             st.plotly_chart(fig, use_container_width=True)
@@ -1433,7 +1434,7 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                 'value_type': value_type
             })
 
-    return final_df, var_name_display
+    return final_df, var_name_display 
             
 def main():
     st.title("Analyse des données ESR")
@@ -1714,7 +1715,6 @@ def main():
 
                 if not is_numeric:
                     # Pour les variables qualitatives, on utilise directement create_interactive_qualitative_table
-                    # qui contient maintenant la logique de visualisation
                     value_counts, var_name_display = create_interactive_qualitative_table(
                         plot_data, 
                         var, 
@@ -1723,7 +1723,6 @@ def main():
                     )
                 
                 else:
-                    # Le reste du code pour les variables numériques reste inchangé
                     # Configuration de la visualisation pour les variables numériques
                     st.write("### Configuration de la visualisation")
                     viz_col1, viz_col2 = st.columns([1, 2])
