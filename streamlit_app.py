@@ -1432,6 +1432,8 @@ def display_univariate_analysis(data, var):
             exclude_missing=exclude_missing if 'exclude_missing' in locals() else False,
             missing_label=missing_label if 'missing_label' in locals() else "Non réponse"
         )
+        # Update plot_data to use the processed series
+        plot_data = st.session_state.current_data
 
     # Configuration de la visualisation
     st.write("### Configuration de la visualisation")
