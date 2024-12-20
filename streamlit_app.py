@@ -1370,6 +1370,7 @@ def display_univariate_analysis(data, var):
     is_integer_variable = False
     
     st.write(f"### Statistiques principales de la variable {var}")
+    st.write(f"DEBUG: Initial grouping_method: {grouping_method}")
     
     if is_numeric:
         # Statistiques numériques
@@ -1488,6 +1489,9 @@ def display_univariate_analysis(data, var):
     # Génération du graphique
     if st.button("Générer la visualisation"):
         try:
+            # Préciser le contexte de grouping_method avant la génération du graphique
+            st.write(f"DEBUG: grouping_method before plotting: {grouping_method}")
+
             # Préparation des données
             if not is_numeric:
                 data_to_plot = value_counts.copy()  # Ensure value_counts is a DataFrame
