@@ -1354,11 +1354,8 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                     value=copy_text,
                     height=150
                 )
-    
-    return final_df, var_name_display  # Return the DataFrame and the dynamic column name
 
-        # Ajout de la partie visualisation juste avant le return
-    # Ajout de la partie visualisation AVANT le return
+    # Ajout de la partie visualisation
     st.write("### Configuration de la visualisation")
     viz_col1, viz_col2 = st.columns([1, 2])
     
@@ -1437,7 +1434,6 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                 'value_type': value_type
             })
 
-    # Le return doit être à la fin de la fonction
     return final_df, var_name_display
                 
 def main():
