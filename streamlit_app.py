@@ -990,7 +990,7 @@ def save_test_indicator(test_data):
 def create_interactive_qualitative_table(data_series, var_name, exclude_missing=False, missing_label="Non réponse"):
     try:
         # Initialisation des variables
-        missing_values = [None, np.nan, '', 'nan', 'NaN', 'NA', 'nr', 'NR']
+        missing_values = [None, np.nan, '', 'nan', 'NaN', 'NA', 'nr', 'NR', 'Non réponse', 'Non-réponse']
 
         # Initialisation du state si nécessaire
         if 'original_data' not in st.session_state:
@@ -998,13 +998,16 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
             st.session_state.groupings = []
             st.session_state.current_data = data_series.copy()
 
-        # Traitement des non-réponses sur les données originales
+        # Traitement des données avec gestion des non-réponses
         processed_series = st.session_state.original_data.copy()
+        
+        # Remplacement des valeurs manquantes par le missing_label
+        processed_series = processed_series.replace(missing_values, missing_label)
+        
+        # Si on exclut les non-réponses, on les retire avant tout traitement
         if exclude_missing:
-            processed_series = processed_series.replace(missing_values, np.nan).dropna()
-        else:
-            processed_series = processed_series.replace(missing_values, missing_label)
-
+            processed_series = processed_series[processed_series != missing_label]
+            
         # Appliquer les regroupements existants
         for group in st.session_state.groupings:
             processed_series = processed_series.replace(
@@ -1013,18 +1016,16 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
             )
 
         st.session_state.current_data = processed_series.copy()
-        
+
         # Création du DataFrame initial
         value_counts = processed_series.value_counts().reset_index()
         value_counts.columns = ['Modalité', 'Effectif']
-        
-        # Exclusion des non-réponses une seule fois, AVANT le calcul des pourcentages
-        if exclude_missing:
-            value_counts = value_counts[~value_counts['Modalité'].isin([missing_label] + missing_values)]
-        
-        # Calcul du total sur les données déjà filtrées
+
+        # Calcul des pourcentages sur les données déjà filtrées
         total_effectif = value_counts['Effectif'].sum()
         value_counts['Taux (%)'] = (value_counts['Effectif'] / total_effectif * 100).round(2)
+        
+        # Ajout de la colonne Nouvelle modalité
         value_counts['Nouvelle modalité'] = value_counts['Modalité'].copy()
 
         # Configuration des options avancées dans un expander
