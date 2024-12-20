@@ -1394,6 +1394,7 @@ def display_univariate_analysis(data, var):
             "Méthode de regroupement",
             ["Aucune", "Quantile", "Manuelle"]
         )
+        st.write(f"DEBUG: grouping_method after selectbox: {grouping_method}")
         
         if grouping_method != "Aucune":
             if grouping_method == "Quantile":
@@ -1405,6 +1406,7 @@ def display_univariate_analysis(data, var):
                 labels = [f"{i}er {quantile_type.split(' ')[0].lower()}" if i == 1 else f"{i}ème {quantile_type.split(' ')[0].lower()}" 
                          for i in range(1, n_groups + 1)]
                 grouped_data = pd.qcut(plot_data, q=n_groups, labels=labels)
+                st.write(f"DEBUG: grouped_data after qcut: {grouped_data}")
                 
             else:  # Manuelle
                 n_groups = st.number_input("Nombre de groupes", min_value=2, value=3)
@@ -1422,9 +1424,11 @@ def display_univariate_analysis(data, var):
                         )
                     breaks.append(val)
                 grouped_data = pd.cut(plot_data, bins=breaks)
+                st.write(f"DEBUG: grouped_data after cut: {grouped_data}")
     else:
         # Ensure grouping_method is set for qualitative variables
         grouping_method = "Aucune"
+        st.write(f"DEBUG: grouping_method for qualitative variables: {grouping_method}")
         # Statistiques qualitatives
         value_counts, var_name_display = create_interactive_qualitative_table(
             plot_data, 
@@ -1432,8 +1436,7 @@ def display_univariate_analysis(data, var):
             exclude_missing=exclude_missing if 'exclude_missing' in locals() else False,
             missing_label=missing_label if 'missing_label' in locals() else "Non réponse"
         )
-        # Update plot_data to use the processed series
-        plot_data = st.session_state.current_data
+        st.write(f"DEBUG: value_counts after create_interactive_qualitative_table: {value_counts}")
 
     # Configuration de la visualisation
     st.write("### Configuration de la visualisation")
@@ -1447,9 +1450,11 @@ def display_univariate_analysis(data, var):
                 graph_type = st.selectbox("Type de graphique", ["Bar plot", "Lollipop plot", "Treemap"])
         else:
             graph_type = st.selectbox("Type de graphique", ["Bar plot", "Lollipop plot", "Treemap"])
+        st.write(f"DEBUG: graph_type selected: {graph_type}")
 
     with col2:
         color_scheme = st.selectbox("Palette de couleurs", list(COLOR_PALETTES.keys()))
+        st.write(f"DEBUG: color_scheme selected: {color_scheme}")
 
     # Options avancées
     with st.expander("Options avancées"):
@@ -1458,22 +1463,27 @@ def display_univariate_analysis(data, var):
             title = st.text_input("Titre du graphique", f"Distribution de {var}")
             x_axis = st.text_input("Titre de l'axe X", var)
             y_axis = st.text_input("Titre de l'axe Y", "Valeur")
+            st.write(f"DEBUG: title: {title}, x_axis: {x_axis}, y_axis: {y_axis}")
         with adv_col2:
             source = st.text_input("Source des données", "")
             note = st.text_input("Note de lecture", "")
             show_values = st.checkbox("Afficher les valeurs", True)
+            st.write(f"DEBUG: source: {source}, note: {note}, show_values: {show_values}")
             if not is_numeric or (is_numeric and grouping_method != "Aucune"):
                 value_type = st.radio("Type de valeur à afficher", ["Effectif", "Taux (%)"])
+                st.write(f"DEBUG: value_type: {value_type}")
         with adv_col3:
             # gestion des non-réponses
             st.markdown("##### Gestion des non-réponses")
             exclude_missing = st.checkbox("Exclure les non-réponses", key="exclude_missing")
             if not exclude_missing:
                 missing_label = st.text_input("Libellé pour les non-réponses", "Non réponse", key="missing_label")
+            st.write(f"DEBUG: exclude_missing: {exclude_missing}, missing_label: {missing_label}")
 
     # Définition de value_type en dehors des options avancées pour les variables qualitatives
     if not is_numeric:
         value_type = st.radio("Type de valeur à afficher", ["Effectif", "Taux (%)"])
+        st.write(f"DEBUG: value_type for qualitative variables: {value_type}")
     
     # Génération du graphique
     if st.button("Générer la visualisation"):
@@ -1484,9 +1494,11 @@ def display_univariate_analysis(data, var):
                 if value_type == "Taux (%)":
                     data_to_plot['Effectif'] = data_to_plot['Taux (%)']
                     y_axis = "Taux (%)" if y_axis == "Valeur" else y_axis
+                st.write(f"DEBUG: data_to_plot for qualitative variables: {data_to_plot}")
             else:
                 if grouping_method == "Aucune":
                     data_to_plot = plot_data  # plot_data should be a Series
+                    st.write(f"DEBUG: data_to_plot for numeric variables without grouping: {data_to_plot}")
                 else:
                     value_counts = grouped_data.value_counts().reset_index()
                     value_counts.columns = ['Modalité', 'Effectif']
@@ -1494,6 +1506,7 @@ def display_univariate_analysis(data, var):
                     if value_type == "Taux (%)":
                         data_to_plot['Effectif'] = (data_to_plot['Effectif'] / len(plot_data) * 100).round(2)
                         y_axis = "Taux (%)"
+                    st.write(f"DEBUG: data_to_plot for numeric variables with grouping: {data_to_plot}")
 
             # Création du graphique
             if is_numeric and grouping_method == "Aucune":
@@ -1518,12 +1531,15 @@ def display_univariate_analysis(data, var):
             # Ajout des annotations
             if source or note:
                 fig = add_annotations(fig, source, note)
+                st.write(f"DEBUG: fig with annotations: {fig}")
 
             st.plotly_chart(fig, use_container_width=True)
+            st.write(f"DEBUG: fig: {fig}")
             
         except Exception as e:
             st.error(f"Erreur lors de la génération du graphique : {str(e)}")
             st.error(f"Détails : {str(type(e).__name__)}")
+            st.write(f"DEBUG: Exception: {str(e)}, type: {str(type(e).__name__)}")
             
 def main():
     st.title("Analyse des données ESR")
