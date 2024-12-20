@@ -1030,22 +1030,7 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
 
         # Configuration des options avancées dans un expander
         with st.expander("Options avancées du tableau statistique"):
-            col1, col2, col3 = st.columns(3)
-
-            with col3:
-                st.write("##### Gestion des non-réponses")
-                exclude_missing = st.checkbox("Exclure les non-réponses")
-                if not exclude_missing:
-                    missing_label = st.text_input(
-                        "Libellé pour les non-réponses",
-                        value="Non réponse"
-                    )
-
-            # Filtrer les modalités disponibles pour le regroupement
-            available_modalities = value_counts['Modalité'].tolist()
-            if exclude_missing:
-                available_modalities = [mod for mod in available_modalities 
-                                     if mod not in [missing_label] + missing_values]
+            col1, col2 = st.columns(2)
 
             with col1:
                 st.write("##### Édition des modalités")
