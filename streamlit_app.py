@@ -1423,6 +1423,8 @@ def display_univariate_analysis(data, var):
                     breaks.append(val)
                 grouped_data = pd.cut(plot_data, bins=breaks)
     else:
+        # Ensure grouping_method is set for qualitative variables
+        grouping_method = "Aucune"
         # Statistiques qualitatives
         value_counts, var_name_display = create_interactive_qualitative_table(
             plot_data, 
