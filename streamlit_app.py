@@ -374,84 +374,100 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
     max_value = data[value_col].max()
     y_max = max_value * 1.2
     
+    # Calculer la largeur en fonction du nombre de catégories
+    base_width = 300  # Largeur de base pour 2 catégories ou moins
+    if n_categories <= 2:
+        width = base_width
+    else:
+        width = min(1000, base_width + (150 * n_categories))
+    
     fig = go.Figure()
     
     # Pour chaque catégorie, créer une ligne verticale
     for i, (cat, val) in enumerate(zip(data[category_col], data[value_col])):
-        # Ajouter la ligne verticale
+        # Ajouter la ligne verticale avec une couleur plus foncée
         fig.add_trace(go.Scatter(
-            x=[cat, cat],  # Même x pour ligne verticale
-            y=[0, val],    # De 0 à la valeur
+            x=[cat, cat],
+            y=[0, val],
             mode='lines',
-            line=dict(color=color_palette[0], width=2),
+            line=dict(
+                color=color_palette[3],  # Utiliser une couleur plus foncée de la palette
+                width=3  # Ligne plus épaisse
+            ),
             showlegend=False,
             hoverinfo='none'
         ))
         
-        # Ajouter le point
+        # Ajouter le point avec une taille plus grande
         fig.add_trace(go.Scatter(
             x=[cat],
             y=[val],
             mode='markers',
             marker=dict(
-                color=color_palette[0],
-                size=12,
-                line=dict(color='white', width=1)
+                color=color_palette[5],  # Utiliser la couleur la plus foncée de la palette
+                size=15,  # Points plus grands
+                line=dict(color='white', width=2)
             ),
             showlegend=False,
             name=cat,
-            hovertemplate=f"{cat}<br>Valeur: %{{y:.1f}}<extra></extra>"
+            hovertemplate=f"<b>{cat}</b><br>Valeur: <b>%{y:.1f}</b><extra></extra>"
         ))
     
-    # Ajuster la largeur en fonction du nombre de catégories
+    # Calculer les marges en fonction du nombre de catégories
     if n_categories <= 2:
-        width = 400  # Largeur fixe plus étroite pour 2 modalités ou moins
+        margin_x = width * 0.3  # 30% de la largeur pour les marges
     else:
-        width = min(800, 200 * n_categories)  # Largeur adaptative pour plus de modalités
-        
-    # Ajuster les marges en fonction du nombre de catégories
-    left_margin = 50
-    right_margin = 50
-    if n_categories <= 2:
-        # Augmenter les marges latérales pour réduire l'espace entre les points
-        left_margin = 150
-        right_margin = 150
+        margin_x = 50
     
     fig.update_layout(
-        title=title,
-        xaxis_title=x_label,
-        yaxis_title=y_label,
+        title=dict(
+            text=title,
+            font=dict(size=16, color='#1f1f1f')  # Titre plus foncé et plus grand
+        ),
         width=width,
         height=500,
-        margin=dict(t=100, b=100, l=left_margin, r=right_margin),
+        margin=dict(t=100, b=100, l=margin_x, r=margin_x),
         plot_bgcolor='white',
+        paper_bgcolor='white',
         xaxis=dict(
             showgrid=False,
-            gridcolor='lightgray',
             tickangle=45 if n_categories > 2 else 0,
-            type='category'  # Force l'axe x à être catégoriel
+            type='category',
+            tickfont=dict(size=12, color='#1f1f1f'),  # Police plus grande et plus foncée
+            title=dict(
+                text=x_label,
+                font=dict(size=14, color='#1f1f1f')
+            )
         ),
         yaxis=dict(
             showgrid=True,
-            gridcolor='lightgray',
+            gridcolor='#e0e0e0',  # Grille plus visible
             zeroline=True,
-            zerolinewidth=1,
-            zerolinecolor='lightgray',
-            range=[0, y_max]
+            zerolinewidth=2,
+            zerolinecolor='#a0a0a0',  # Ligne zéro plus visible
+            range=[0, y_max],
+            tickfont=dict(size=12, color='#1f1f1f'),
+            title=dict(
+                text=y_label,
+                font=dict(size=14, color='#1f1f1f')
+            )
         )
     )
 
     if show_values:
-        # Ajouter les valeurs au-dessus des points
         for cat, val in zip(data[category_col], data[value_col]):
             text_pos = 'top center' if val / max_value > 0.15 else 'middle center'
             y_pos = val + (max_value * 0.02 if text_pos == 'top center' else 0)
             fig.add_annotation(
                 x=cat,
                 y=y_pos,
-                text=f"{val:.1f}",
+                text=f"<b>{val:.1f}</b>",  # Valeurs en gras
                 showarrow=False,
-                font=dict(size=12),
+                font=dict(
+                    size=13,
+                    color='#1f1f1f',  # Texte plus foncé
+                    family='Arial'
+                ),
                 yshift=5 if text_pos == 'top center' else 0
             )
 
