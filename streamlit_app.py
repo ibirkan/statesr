@@ -1445,6 +1445,23 @@ def main():
             "Sélectionnez la variable:", 
             options=["---"] + list(st.session_state.merged_data.columns)
         )
+
+        # Nettoyer le session_state quand on change de variable
+        if 'current_variable' not in st.session_state:
+            st.session_state.current_variable = var
+        elif st.session_state.current_variable != var:
+            
+            # La variable a changé, on réinitialise le state
+            if 'original_data' in st.session_state:
+                del st.session_state.original_data
+            if 'groupings' in st.session_state:
+                del st.session_state.groupings
+            if 'current_data' in st.session_state:
+                del st.session_state.current_data
+            if 'value_counts' in st.session_state:
+                del st.session_state.value_counts
+            st.session_state.current_variable = var
+            st.rerun()  # Recharger la page pour réinitialiser complètement
         
         if var != "---":
             # Préparation des données
