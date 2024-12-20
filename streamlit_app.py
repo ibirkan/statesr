@@ -1031,17 +1031,29 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
         # Configuration des options avancées dans un expander
         with st.expander("Options avancées du tableau statistique"):
             col1, col2 = st.columns(2)
-
+        
+            # Créer value_counts avant les colonnes
+            value_counts = processed_series.value_counts().reset_index()
+            value_counts.columns = ['Modalité', 'Effectif']
+        
+            # Calcul des pourcentages
+            total_effectif = value_counts['Effectif'].sum()
+            value_counts['Taux (%)'] = (value_counts['Effectif'] / total_effectif * 100).round(2)
+            value_counts['Nouvelle modalité'] = value_counts['Modalité'].copy()
+        
+            # Définir les modalités disponibles
+            available_modalities = value_counts['Modalité'].tolist()
+        
             with col1:
                 st.write("##### Édition des modalités")
                 st.write("**Nouveau regroupement**")
                 
-                # Utiliser les modalités filtrées pour le multiselect
+                # Utiliser les modalités disponibles pour le multiselect
                 selected_modalities = st.multiselect(
                     "Sélectionner les modalités à regrouper",
                     options=available_modalities
                 )
-
+        
                 if selected_modalities:
                     new_group_name = st.text_input(
                         "Nom du nouveau groupe",
