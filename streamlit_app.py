@@ -1225,7 +1225,7 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
         col1, col2 = st.columns(2)
         
         with col1:
-                    if st.button("Exporter en image"):
+            if st.button("Exporter en image"):
                         # Création de la figure avec un style personnalisé
                         fig, ax = plt.subplots(figsize=(12, len(final_df) + 2))
                         ax.axis('off')
@@ -1358,83 +1358,87 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
     return final_df, var_name_display  # Return the DataFrame and the dynamic column name
 
         # Ajout de la partie visualisation juste avant le return
-        st.write("### Configuration de la visualisation")
-        viz_col1, viz_col2 = st.columns([1, 2])
+    # Ajout de la partie visualisation AVANT le return
+    st.write("### Configuration de la visualisation")
+    viz_col1, viz_col2 = st.columns([1, 2])
+    
+    with viz_col1:
+        graph_type = st.selectbox(
+            "Type de graphique",
+            ["Bar plot", "Lollipop plot", "Treemap"],
+            key="graph_type_qual_viz"
+        )
+
+    with viz_col2:
+        color_scheme = st.selectbox(
+            "Palette de couleurs",
+            list(COLOR_PALETTES.keys()),
+            key="color_scheme_qual_viz"
+        )
+
+    # Options avancées pour la visualisation
+    with st.expander("Options avancées de visualisation"):
+        adv_col1, adv_col2 = st.columns(2)
         
-        with viz_col1:
-            graph_type = st.selectbox(
-                "Type de graphique",
-                ["Bar plot", "Lollipop plot", "Treemap"],
-                key="graph_type_qual_viz"
-            )
-    
-        with viz_col2:
-            color_scheme = st.selectbox(
-                "Palette de couleurs",
-                list(COLOR_PALETTES.keys()),
-                key="color_scheme_qual_viz"
-            )
-    
-        # Options avancées pour la visualisation
-        with st.expander("Options avancées de visualisation"):
-            adv_col1, adv_col2 = st.columns(2)
+        with adv_col1:
+            viz_title = st.text_input("Titre du graphique", f"Distribution de {var_name}", key="viz_title")
+            x_axis = st.text_input("Titre de l'axe X", var_name, key="x_axis_qual")
+            y_axis = st.text_input("Titre de l'axe Y", "Valeur", key="y_axis_qual")
+            show_values = st.checkbox("Afficher les valeurs", True, key="show_values_qual")
+
+        with adv_col2:
+            viz_source = st.text_input("Source des données", "", key="viz_source")
+            viz_note = st.text_input("Note de lecture", "", key="viz_note")
+            value_type = st.radio("Type de valeur à afficher", ["Effectif", "Taux (%)"], key="value_type_qual")
+
+    # Génération du graphique
+    if st.button("Générer la visualisation", key="generate_qual_viz"):
+        try:
+            # Préparation des données pour le graphique
+            data_to_plot = final_df.copy()
             
-            with adv_col1:
-                viz_title = st.text_input("Titre du graphique", f"Distribution de {var_name}", key="viz_title")
-                x_axis = st.text_input("Titre de l'axe X", var_name, key="x_axis_qual")
-                y_axis = st.text_input("Titre de l'axe Y", "Valeur", key="y_axis_qual")
-                show_values = st.checkbox("Afficher les valeurs", True, key="show_values_qual")
-    
-            with adv_col2:
-                viz_source = st.text_input("Source des données", "", key="viz_source")
-                viz_note = st.text_input("Note de lecture", "", key="viz_note")
-                value_type = st.radio("Type de valeur à afficher", ["Effectif", "Taux (%)"], key="value_type_qual")
-    
-        # Génération du graphique
-        if st.button("Générer la visualisation", key="generate_qual_viz"):
-            try:
-                # Préparation des données pour le graphique
-                data_to_plot = final_df.copy()
-                
-                # Ajustement des données selon le type de valeur choisi
-                if value_type == "Taux (%)":
-                    data_to_plot['Effectif'] = data_to_plot['Taux (%)']
-                    y_axis = "Taux (%)" if y_axis == "Valeur" else y_axis
-    
-                # Création du graphique selon le type choisi
-                if graph_type == "Bar plot":
-                    fig = plot_qualitative_bar(
-                        data_to_plot, viz_title, x_axis, y_axis,
-                        COLOR_PALETTES[color_scheme], show_values
-                    )
-                elif graph_type == "Lollipop plot":
-                    fig = plot_qualitative_lollipop(
-                        data_to_plot, viz_title, x_axis, y_axis,
-                        COLOR_PALETTES[color_scheme], show_values
-                    )
-                else:  # Treemap
-                    fig = plot_qualitative_treemap(
-                        data_to_plot, viz_title,
-                        COLOR_PALETTES[color_scheme]
-                    )
-    
-                # Ajout des annotations si nécessaire
-                if viz_source or viz_note:
-                    is_treemap = (graph_type == "Treemap")
-                    fig = add_annotations(fig, viz_source, viz_note, is_treemap=is_treemap)
-    
-                # Affichage du graphique
-                st.plotly_chart(fig, use_container_width=True)
-    
-            except Exception as e:
-                st.error(f"Erreur lors de la génération du graphique : {str(e)}")
-                st.error(f"Détails : {str(type(e).__name__)}")
-                st.write("DEBUG état des variables:", {
-                    'data_to_plot shape': data_to_plot.shape if 'data_to_plot' in locals() else None,
-                    'colonnes': list(data_to_plot.columns) if 'data_to_plot' in locals() else None,
-                    'graph_type': graph_type,
-                    'value_type': value_type
-                })
+            # Ajustement des données selon le type de valeur choisi
+            if value_type == "Taux (%)":
+                data_to_plot['Effectif'] = data_to_plot['Taux (%)']
+                y_axis = "Taux (%)" if y_axis == "Valeur" else y_axis
+
+            # Création du graphique selon le type choisi
+            if graph_type == "Bar plot":
+                fig = plot_qualitative_bar(
+                    data_to_plot, viz_title, x_axis, y_axis,
+                    COLOR_PALETTES[color_scheme], show_values
+                )
+            elif graph_type == "Lollipop plot":
+                fig = plot_qualitative_lollipop(
+                    data_to_plot, viz_title, x_axis, y_axis,
+                    COLOR_PALETTES[color_scheme], show_values
+                )
+            else:  # Treemap
+                fig = plot_qualitative_treemap(
+                    data_to_plot, viz_title,
+                    COLOR_PALETTES[color_scheme]
+                )
+
+            # Ajout des annotations si nécessaire
+            if viz_source or viz_note:
+                is_treemap = (graph_type == "Treemap")
+                fig = add_annotations(fig, viz_source, viz_note, is_treemap=is_treemap)
+
+            # Affichage du graphique
+            st.plotly_chart(fig, use_container_width=True)
+
+        except Exception as e:
+            st.error(f"Erreur lors de la génération du graphique : {str(e)}")
+            st.error(f"Détails : {str(type(e).__name__)}")
+            st.write("DEBUG état des variables:", {
+                'data_to_plot shape': data_to_plot.shape if 'data_to_plot' in locals() else None,
+                'colonnes': list(data_to_plot.columns) if 'data_to_plot' in locals() else None,
+                'graph_type': graph_type,
+                'value_type': value_type
+            })
+
+    # Le return doit être à la fin de la fonction
+    return final_df, var_name_display
                 
 def main():
     st.title("Analyse des données ESR")
