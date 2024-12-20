@@ -1371,10 +1371,6 @@ def display_univariate_analysis(data, var):
     
     st.write(f"### Statistiques principales de la variable {var}")
     
-    # Initialize value_type and grouping_method with default values
-    value_type = "Effectif"
-    grouping_method = "Aucune"
-    
     if is_numeric:
         # Statistiques numériques
         stats_df = pd.DataFrame({
