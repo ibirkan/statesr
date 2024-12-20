@@ -309,7 +309,7 @@ def plot_qualitative_bar(data, title, x_label, y_label, color_palette, show_valu
     value_col = 'Effectif'
     
     n_categories = len(data[category_col])
-    base_width = 300  # Largeur de base pour 2 catégories ou moins
+    base_width = 300
     if n_categories <= 2:
         width = base_width
         margin_x = width * 0.3
@@ -325,17 +325,14 @@ def plot_qualitative_bar(data, title, x_label, y_label, color_palette, show_valu
         go.Bar(
             x=data[category_col],
             y=data[value_col],
-            marker_color=color_palette[3],  # Couleur plus foncée
+            marker_color=color_palette[2],  # Couleur modérément foncée
             width=[bar_width] * n_categories,
-            hovertemplate="<b>%{x}</b><br>Valeur: <b>%{y:.1f}</b><extra></extra>"
+            hovertemplate="%{x}<br>Valeur: %{y:.1f}<extra></extra>"
         )
     ])
     
     fig.update_layout(
-        title=dict(
-            text=title,
-            font=dict(size=16, color='#1f1f1f')
-        ),
+        title=title,
         width=width,
         height=500,
         margin=dict(t=100, b=100, l=margin_x, r=margin_x),
@@ -346,24 +343,17 @@ def plot_qualitative_bar(data, title, x_label, y_label, color_palette, show_valu
             showgrid=False,
             tickangle=45 if n_categories > 2 else 0,
             type='category',
-            tickfont=dict(size=12, color='#1f1f1f'),
-            title=dict(
-                text=x_label,
-                font=dict(size=14, color='#1f1f1f')
-            )
+            tickfont=dict(size=11),
+            title=dict(text=x_label)
         ),
         yaxis=dict(
             showgrid=True,
             gridcolor='#e0e0e0',
             zeroline=True,
-            zerolinewidth=2,
+            zerolinewidth=1,
             zerolinecolor='#a0a0a0',
             range=[0, y_max],
-            tickfont=dict(size=12, color='#1f1f1f'),
-            title=dict(
-                text=y_label,
-                font=dict(size=14, color='#1f1f1f')
-            )
+            title=dict(text=y_label)
         )
     )
 
@@ -372,28 +362,9 @@ def plot_qualitative_bar(data, title, x_label, y_label, color_palette, show_valu
         fig.update_traces(
             text=data[value_col].round(1),
             textposition=text_positions,
-            texttemplate='<b>%{text:.1f}</b>',
-            textfont=dict(
-                size=13,
-                color='#1f1f1f',
-                family='Arial'
-            )
+            texttemplate='%{text:.1f}',
+            textfont=dict(size=11)
         )
-        # Ajuster la position des valeurs
-        for i, (val, pos) in enumerate(zip(data[value_col], text_positions)):
-            if pos == 'outside':
-                fig.add_annotation(
-                    x=data[category_col].iloc[i],
-                    y=val,
-                    text=f"<b>{val:.1f}</b>",
-                    showarrow=False,
-                    font=dict(
-                        size=13,
-                        color='#1f1f1f',
-                        family='Arial'
-                    ),
-                    yshift=15  # Décalage vertical
-                )
 
     return fig
 
@@ -411,56 +382,45 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
     max_value = data[value_col].max()
     y_max = max_value * 1.2
     
-    # Calculer la largeur en fonction du nombre de catégories
-    base_width = 300  # Largeur de base pour 2 catégories ou moins
+    base_width = 300
     if n_categories <= 2:
         width = base_width
+        margin_x = width * 0.3
     else:
         width = min(1000, base_width + (150 * n_categories))
+        margin_x = 50
     
     fig = go.Figure()
     
-    # Pour chaque catégorie, créer une ligne verticale
     for i, (cat, val) in enumerate(zip(data[category_col], data[value_col])):
-        # Ajouter la ligne verticale avec une couleur plus foncée
         fig.add_trace(go.Scatter(
             x=[cat, cat],
             y=[0, val],
             mode='lines',
             line=dict(
-                color=color_palette[3],  # Utiliser une couleur plus foncée de la palette
-                width=3  # Ligne plus épaisse
+                color=color_palette[2],
+                width=2
             ),
             showlegend=False,
             hoverinfo='none'
         ))
         
-        # Ajouter le point avec une taille plus grande
         fig.add_trace(go.Scatter(
             x=[cat],
             y=[val],
             mode='markers',
             marker=dict(
-                color=color_palette[5],  # Utiliser la couleur la plus foncée de la palette
-                size=15,  # Points plus grands
-                line=dict(color='white', width=2)
+                color=color_palette[2],
+                size=12,
+                line=dict(color='white', width=1)
             ),
             showlegend=False,
             name=cat,
-            hovertemplate=f"<b>{cat}</b><br>Valeur: <b>{val:.1f}</b><extra></extra>"  # Correction ici
+            hovertemplate=f"{cat}<br>Valeur: {val:.1f}<extra></extra>"
         ))
     
-    # Calculer les marges en fonction du nombre de catégories
-    if n_categories <= 2:
-        margin_x = width * 0.3  # 30% de la largeur pour les marges
-    else:
-        margin_x = 50
-    
     fig.update_layout(
-        title=dict(
-            text=title,
-            font=dict(size=16, color='#1f1f1f')  # Titre plus foncé et plus grand
-        ),
+        title=title,
         width=width,
         height=500,
         margin=dict(t=100, b=100, l=margin_x, r=margin_x),
@@ -470,42 +430,31 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
             showgrid=False,
             tickangle=45 if n_categories > 2 else 0,
             type='category',
-            tickfont=dict(size=12, color='#1f1f1f'),  # Police plus grande et plus foncée
-            title=dict(
-                text=x_label,
-                font=dict(size=14, color='#1f1f1f')
-            )
+            tickfont=dict(size=11),
+            title=dict(text=x_label)
         ),
         yaxis=dict(
             showgrid=True,
-            gridcolor='#e0e0e0',  # Grille plus visible
+            gridcolor='#e0e0e0',
             zeroline=True,
-            zerolinewidth=2,
-            zerolinecolor='#a0a0a0',  # Ligne zéro plus visible
+            zerolinewidth=1,
+            zerolinecolor='#a0a0a0',
             range=[0, y_max],
-            tickfont=dict(size=12, color='#1f1f1f'),
-            title=dict(
-                text=y_label,
-                font=dict(size=14, color='#1f1f1f')
-            )
+            title=dict(text=y_label)
         )
     )
 
     if show_values:
         for cat, val in zip(data[category_col], data[value_col]):
             text_pos = 'top center' if val / max_value > 0.15 else 'middle center'
-            y_pos = val + (max_value * 0.05 if text_pos == 'top center' else 0)
+            y_pos = val + (max_value * 0.03 if text_pos == 'top center' else 0)
             fig.add_annotation(
                 x=cat,
                 y=y_pos,
-                text=f"<b>{val:.1f}</b>",  # Valeurs en gras
+                text=f"{val:.1f}",
                 showarrow=False,
-                font=dict(
-                    size=13,
-                    color='#1f1f1f',  # Texte plus foncé
-                    family='Arial'
-                ),
-                yshift=15 if text_pos == 'top center' else 0
+                font=dict(size=11),
+                yshift=10 if text_pos == 'top center' else 0
             )
 
     return fig
@@ -520,32 +469,22 @@ def plot_qualitative_treemap(data, title, color_palette):
     category_col = columns[0]
     value_col = 'Effectif'
     
-    # Utiliser des couleurs plus foncées de la palette
-    darker_colors = color_palette[3:]  # Prendre les couleurs plus foncées
-    
     fig = go.Figure(go.Treemap(
         labels=data[category_col],
         parents=[''] * len(data),
         values=data[value_col],
         textinfo='label+value',
         marker=dict(
-            colors=darker_colors,
-            line=dict(width=2, color='white')  # Ajouter une bordure blanche
+            colors=color_palette[1:],
+            line=dict(width=1, color='white')
         ),
-        texttemplate='<b>%{label}</b><br>%{value:.1f}',
-        hovertemplate='<b>%{label}</b><br>Valeur: <b>%{value:.1f}</b><extra></extra>',
-        textfont=dict(
-            size=13,
-            color='#1f1f1f',
-            family='Arial'
-        )
+        texttemplate='%{label}<br>%{value:.1f}',
+        hovertemplate='%{label}<br>Valeur: %{value:.1f}<extra></extra>',
+        textfont=dict(size=11)
     ))
     
     fig.update_layout(
-        title=dict(
-            text=title,
-            font=dict(size=16, color='#1f1f1f')
-        ),
+        title=title,
         width=800,
         height=500,
         margin=dict(t=100, b=100, l=20, r=20),
