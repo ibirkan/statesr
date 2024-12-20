@@ -9,4 +9,3 @@ squarify
 seaborn
 numpy
 stats
-streamlit-aggrid
