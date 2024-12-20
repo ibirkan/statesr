@@ -1018,18 +1018,13 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
         value_counts = processed_series.value_counts().reset_index()
         value_counts.columns = ['Modalité', 'Effectif']
         
-        # Exclusion des non-réponses AVANT le calcul des pourcentages si demandé
+        # Exclusion des non-réponses une seule fois, AVANT le calcul des pourcentages
         if exclude_missing:
-            # Filtrer les non-réponses et les valeurs manquantes
             value_counts = value_counts[~value_counts['Modalité'].isin([missing_label] + missing_values)]
         
-        # Maintenant calculer le total sur les données filtrées
+        # Calcul du total sur les données déjà filtrées
         total_effectif = value_counts['Effectif'].sum()
-        
-        # Calcul des pourcentages avec le total approprié (qui exclut déjà les non-réponses si exclude_missing=True)
         value_counts['Taux (%)'] = (value_counts['Effectif'] / total_effectif * 100).round(2)
-        
-        # Ajout de la colonne 'Nouvelle modalité' avec les valeurs de 'Modalité'
         value_counts['Nouvelle modalité'] = value_counts['Modalité'].copy()
 
         # Configuration des options avancées dans un expander
@@ -1136,10 +1131,6 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
         final_df['Modalité'] = final_df['Nouvelle modalité']
         final_df = final_df.drop('Nouvelle modalité', axis=1)
         final_df.columns = [var_name_display, 'Effectif', 'Taux (%)']
-
-        # Exclure les non-réponses du tableau final si nécessaire
-        if exclude_missing:
-            final_df = final_df[~final_df[var_name_display].isin([missing_label] + missing_values)]
 
         # Styles CSS pour le tableau
         st.markdown("""
