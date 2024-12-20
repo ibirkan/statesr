@@ -1336,7 +1336,7 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
     except Exception as e:
         st.error(f"Erreur dans create_interactive_qualitative_table : {str(e)}")
         return
-
+        
 def main():
     st.title("Analyse des données ESR")
 
