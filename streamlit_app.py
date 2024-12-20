@@ -987,10 +987,10 @@ def save_test_indicator(test_data):
 
 # Structure principale de l'application
 def create_interactive_qualitative_table(data_series, var_name, exclude_missing=False, missing_label="Non réponse"):
-    """Crée un tableau statistique interactif pour les variables qualitatives."""
-    # Définition des valeurs manquantes
+    """Crée un tableau statistique interactif pour les variables qualitatives et gère la visualisation."""
+    # Initialisation des variables
     missing_values = [None, np.nan, '', 'nan', 'NaN', 'NA', 'nr', 'NR']
-
+    
     # Initialisation du state si nécessaire
     if 'original_data' not in st.session_state:
         st.session_state.original_data = data_series.copy()
@@ -1357,175 +1357,83 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
     
     return final_df, var_name_display  # Return the DataFrame and the dynamic column name
 
-def display_univariate_analysis(data, var):
-    """Gère l'affichage de l'analyse univariée."""
-    # 1. Initialisation des variables AVANT tout traitement
-    plot_data = data[var].dropna()
-    is_numeric = pd.api.types.is_numeric_dtype(plot_data)
-    grouping_method = "Aucune"  # Initialisation de base
-    value_type = "Effectif"
-    value_counts = None
-    exclude_missing = False
-    missing_label = "Non réponse"
-    show_values = True
-    grouped_data = None
-
-    st.write(f"### Statistiques principales de la variable {var}")
-
-    # 2. Traitement selon le type de variable
-    if is_numeric:
-        # Statistiques numériques
-        stats_df = pd.DataFrame({
-            'Statistique': ['Effectif total', 'Somme', 'Moyenne', 'Médiane', 'Écart-type', 'Minimum', 'Maximum'],
-            'Valeur': [
-                len(plot_data),
-                plot_data.sum().round(2),
-                plot_data.mean().round(2),
-                plot_data.median().round(2),
-                plot_data.std().round(2),
-                plot_data.min(),
-                plot_data.max()
-            ]
-        })
-        create_interactive_stats_table(stats_df)
-
-        is_integer_variable = all(float(x).is_integer() for x in plot_data)
-        grouping_method = st.selectbox(
-            "Méthode de regroupement",
-            ["Aucune", "Quantile", "Manuelle"]
-        )
-
-        if grouping_method != "Aucune":
-            if grouping_method == "Quantile":
-                quantile_type = st.selectbox(
-                    "Type de regroupement",
-                    ["Quartile (4 groupes)", "Quintile (5 groupes)", "Décile (10 groupes)"]
-                )
-                n_groups = {"Quartile (4 groupes)": 4, "Quintile (5 groupes)": 5, "Décile (10 groupes)": 10}[quantile_type]
-                labels = [f"{i}er {quantile_type.split(' ')[0].lower()}" if i == 1 else f"{i}ème {quantile_type.split(' ')[0].lower()}" 
-                         for i in range(1, n_groups + 1)]
-                grouped_data = pd.qcut(plot_data, q=n_groups, labels=labels)
-                
-            else:  # Manuelle
-                n_groups = st.number_input("Nombre de groupes", min_value=2, value=3)
-                breaks = []
-                for i in range(n_groups + 1):
-                    if i == 0:
-                        val = plot_data.min()
-                    elif i == n_groups:
-                        val = plot_data.max()
-                    else:
-                        val = st.number_input(
-                            f"Seuil {i}",
-                            value=float(plot_data.min() + (i/n_groups)*(plot_data.max()-plot_data.min())),
-                            step=1 if is_integer_variable else 0.1
-                        )
-                    breaks.append(val)
-                grouped_data = pd.cut(plot_data, bins=breaks)
-
-            # Création des value_counts pour les données groupées
-            if grouped_data is not None:
-                value_counts = grouped_data.value_counts().reset_index()
-                value_counts.columns = ['Modalité', 'Effectif']
-                value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(2)
-    else:
-        # 3. Pour les variables qualitatives
-        temp_df, _ = create_interactive_qualitative_table(
-            plot_data, 
-            var, 
-            exclude_missing=exclude_missing,
-            missing_label=missing_label
-        )
-        value_counts = temp_df
-
-    # Configuration de la visualisation
+    # Ajout de la partie visualisation directement ici
     st.write("### Configuration de la visualisation")
     col1, col2 = st.columns([1, 2])
     
     with col1:
-        graph_type_options = ["Bar plot", "Lollipop plot", "Treemap"]
-        if is_numeric and grouping_method == "Aucune":
-            graph_type_options = ["Histogramme", "Density plot"]
-        graph_type = st.selectbox("Type de graphique", graph_type_options)
+        graph_type = st.selectbox(
+            "Type de graphique",
+            ["Bar plot", "Lollipop plot", "Treemap"]
+        )
 
     with col2:
-        color_scheme = st.selectbox("Palette de couleurs", list(COLOR_PALETTES.keys()))
+        color_scheme = st.selectbox(
+            "Palette de couleurs",
+            list(COLOR_PALETTES.keys())
+        )
 
-    # Options avancées
-    with st.expander("Options avancées"):
-        adv_col1, adv_col2, adv_col3 = st.columns(3)
+    # Options avancées pour la visualisation
+    with st.expander("Options avancées de visualisation"):
+        adv_col1, adv_col2 = st.columns(2)
         
         with adv_col1:
-            title = st.text_input("Titre du graphique", f"Distribution de {var}")
-            x_axis = st.text_input("Titre de l'axe X", var)
+            title = st.text_input("Titre du graphique", f"Distribution de {var_name}")
+            x_axis = st.text_input("Titre de l'axe X", var_name)
             y_axis = st.text_input("Titre de l'axe Y", "Valeur")
+            show_values = st.checkbox("Afficher les valeurs", True)
 
         with adv_col2:
             source = st.text_input("Source des données", "")
             note = st.text_input("Note de lecture", "")
-            show_values = st.checkbox("Afficher les valeurs", True)
-            if not is_numeric or (is_numeric and grouping_method != "Aucune"):
-                value_type = st.radio("Type de valeur à afficher", ["Effectif", "Taux (%)"])
+            value_type = st.radio("Type de valeur à afficher", ["Effectif", "Taux (%)"])
 
-        with adv_col3:
-            exclude_missing = st.checkbox("Exclure les non-réponses", key="exclude_missing")
-            if not exclude_missing:
-                missing_label = st.text_input("Libellé pour les non-réponses", "Non réponse", key="missing_label")
-
-    # 4. Génération du graphique
+    # Génération du graphique
     if st.button("Générer la visualisation"):
         try:
             # Préparation des données pour le graphique
-            if not is_numeric or (is_numeric and grouping_method != "Aucune"):
-                if value_counts is not None:
-                    data_to_plot = value_counts.copy()
-                    if value_type == "Taux (%)":
-                        data_to_plot['Effectif'] = data_to_plot['Taux (%)']
-                        y_axis = "Taux (%)" if y_axis == "Valeur" else y_axis
-                else:
-                    raise ValueError("Données non disponibles pour le graphique")
-            else:
-                data_to_plot = plot_data
+            data_to_plot = final_df.copy()  # Utilisation du DataFrame final déjà créé
+            
+            # Ajustement des données selon le type de valeur choisi
+            if value_type == "Taux (%)":
+                data_to_plot['Effectif'] = data_to_plot['Taux (%)']
+                y_axis = "Taux (%)" if y_axis == "Valeur" else y_axis
 
-            # Création du graphique
-            if is_numeric and grouping_method == "Aucune":
-                if graph_type == "Histogramme":
-                    fig = px.histogram(data_to_plot, title=title,
-                                     color_discrete_sequence=COLOR_PALETTES[color_scheme])
-                else:  # Density plot
-                    fig = plot_density(data_to_plot, var, title, x_axis, y_axis)
-            else:
-                # Pour les graphiques qualitatifs ou numériques groupés
-                if graph_type == "Bar plot":
-                    fig = plot_qualitative_bar(data_to_plot, title, x_axis, y_axis,
-                                             COLOR_PALETTES[color_scheme], show_values)
-                elif graph_type == "Lollipop plot":
-                    fig = plot_qualitative_lollipop(data_to_plot, title, x_axis, y_axis,
-                                                  COLOR_PALETTES[color_scheme], show_values)
-                else:  # Treemap
-                    fig = plot_qualitative_treemap(data_to_plot, title, COLOR_PALETTES[color_scheme])
+            # Création du graphique selon le type choisi
+            if graph_type == "Bar plot":
+                fig = plot_qualitative_bar(
+                    data_to_plot, title, x_axis, y_axis,
+                    COLOR_PALETTES[color_scheme], show_values
+                )
+            elif graph_type == "Lollipop plot":
+                fig = plot_qualitative_lollipop(
+                    data_to_plot, title, x_axis, y_axis,
+                    COLOR_PALETTES[color_scheme], show_values
+                )
+            else:  # Treemap
+                fig = plot_qualitative_treemap(
+                    data_to_plot, title,
+                    COLOR_PALETTES[color_scheme]
+                )
 
-            # Ajout des annotations
+            # Ajout des annotations si nécessaire
             if source or note:
                 fig = add_annotations(fig, source, note)
 
+            # Affichage du graphique
             st.plotly_chart(fig, use_container_width=True)
 
         except Exception as e:
             st.error(f"Erreur lors de la génération du graphique : {str(e)}")
             st.error(f"Détails : {str(type(e).__name__)}")
-            # Debug info
-            st.write("DEBUG état des variables:")
-            st.write({
-                'is_numeric': is_numeric,
-                'grouping_method': grouping_method,
-                'value_type': value_type,
-                'value_counts présent': value_counts is not None,
-                'shape value_counts': value_counts.shape if value_counts is not None else None,
-                'colonnes value_counts': list(value_counts.columns) if value_counts is not None else None,
-                'data_to_plot présent': 'data_to_plot' in locals(),
-                'graph_type': graph_type
+            st.write("DEBUG état des variables:", {
+                'data_to_plot shape': data_to_plot.shape if 'data_to_plot' in locals() else None,
+                'colonnes': list(data_to_plot.columns) if 'data_to_plot' in locals() else None,
+                'graph_type': graph_type,
+                'value_type': value_type
             })
+
+    return final_df, var_name_display
             
 def main():
     st.title("Analyse des données ESR")
@@ -1803,9 +1711,10 @@ def main():
                         
                         st.write("### Répartition des groupes")
                         st.dataframe(value_counts)
-    
-                else:
-                    # Statistiques pour variable qualitative
+
+                if not is_numeric:
+                    # Pour les variables qualitatives, on utilise directement create_interactive_qualitative_table
+                    # qui contient maintenant la logique de visualisation
                     value_counts, var_name_display = create_interactive_qualitative_table(
                         plot_data, 
                         var, 
@@ -1813,113 +1722,85 @@ def main():
                         missing_label=missing_label if 'missing_label' in locals() else "Non réponse"
                     )
                 
-                # Configuration de la visualisation
-                st.write("### Configuration de la visualisation")
-                viz_col1, viz_col2 = st.columns([1, 2])
-                
-                with viz_col1:
-                    if is_numeric:
+                else:
+                    # Le reste du code pour les variables numériques reste inchangé
+                    # Configuration de la visualisation pour les variables numériques
+                    st.write("### Configuration de la visualisation")
+                    viz_col1, viz_col2 = st.columns([1, 2])
+                    
+                    with viz_col1:
                         if grouping_method == "Aucune":
                             graph_type = st.selectbox("Type de graphique", ["Histogramme", "Density plot"], key="graph_type_no_group")
                         elif grouping_method == "Quantile":
-                            # Changé la clé pour éviter les doublons
                             graph_type = st.selectbox(
                                 "Type de graphique",
                                 ["Boîte à moustaches", "Violin plot", "Box plot avec points"],
-                                key="graph_type_quantile"  # Nouvelle clé unique
+                                key="graph_type_quantile"
                             )
                         else:
                             graph_type = st.selectbox("Type de graphique", ["Bar plot", "Lollipop plot", "Treemap"], key="graph_type_group")
-                    else:
-                        graph_type = st.selectbox("Type de graphique", ["Bar plot", "Lollipop plot", "Treemap"], key="graph_type_qual")
-                    if not is_numeric:
-                        value_type = st.radio("Type de valeur à afficher", ["Effectif", "Taux (%)"], key="value_type_qual")
-                with viz_col2:
-                    color_scheme = st.selectbox("Palette de couleurs", list(COLOR_PALETTES.keys()), key="color_scheme")
-                                
-                # Options avancées générales
-                with st.expander("Options avancées"):
-                    adv_col1, adv_col2 = st.columns(2)
-                    with adv_col1:
-                        title = st.text_input("Titre du graphique", f"Distribution de {var}", key="title_adv")
-                        x_axis = st.text_input("Titre de l'axe X", var, key="x_axis_adv")
-                        y_axis = st.text_input("Titre de l'axe Y", "Valeur", key="y_axis_adv")
-                    with adv_col2:
-                        source = st.text_input("Source des données", "", key="source_adv")
-                        note = st.text_input("Note de lecture", "", key="note_adv")
-                        show_values = st.checkbox("Afficher les valeurs", True, key="show_values_adv")
-                
-                # Génération du graphique
-                if st.button("Générer la visualisation"):
-                    try:
-                        if not is_numeric:
-                            data_to_plot = value_counts.copy()
-                            if value_type == "Taux (%)":
+                    
+                    with viz_col2:
+                        color_scheme = st.selectbox("Palette de couleurs", list(COLOR_PALETTES.keys()), key="color_scheme")
+                                    
+                    # Options avancées pour les variables numériques
+                    with st.expander("Options avancées"):
+                        adv_col1, adv_col2 = st.columns(2)
+                        with adv_col1:
+                            title = st.text_input("Titre du graphique", f"Distribution de {var}", key="title_adv")
+                            x_axis = st.text_input("Titre de l'axe X", var, key="x_axis_adv")
+                            y_axis = st.text_input("Titre de l'axe Y", "Valeur", key="y_axis_adv")
+                        with adv_col2:
+                            source = st.text_input("Source des données", "", key="source_adv")
+                            note = st.text_input("Note de lecture", "", key="note_adv")
+                            show_values = st.checkbox("Afficher les valeurs", True, key="show_values_adv")
+                    
+                    # Génération du graphique pour les variables numériques
+                    if st.button("Générer la visualisation", key="generate_num"):
+                        try:
+                            if grouping_method == "Aucune":
+                                if graph_type == "Histogramme":
+                                    fig = px.histogram(plot_data, title=title, color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                                    if show_values:
+                                        fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
+                                else:  # Density plot
+                                    fig = plot_density(plot_data, var, title, x_axis, y_axis)
+                            
+                            elif grouping_method == "Quantile":
+                                fig = plot_quantile_distribution(
+                                    data=plot_data,
+                                    title=title,
+                                    y_label=y_axis,
+                                    color_palette=COLOR_PALETTES[color_scheme],
+                                    plot_type=graph_type,
+                                    is_integer_variable=is_integer_variable
+                                )
+                            
+                            else:  # Groupement manuel
                                 data_to_plot = pd.DataFrame({
-                                    data_to_plot.columns[0]: data_to_plot[data_to_plot.columns[0]],
-                                    'Effectif': data_to_plot['Taux (%)']
+                                    'Modalité': value_counts['Groupe'].astype(str),
+                                    'Effectif': value_counts['Effectif' if value_type == "Effectif" else 'Taux (%)']
                                 })
-                        
-                            # Création du graphique selon le type
-                            if graph_type == "Bar plot":
-                                fig = plot_qualitative_bar(data_to_plot, title, x_axis, y_axis, 
-                                                        COLOR_PALETTES[color_scheme], show_values)
-                            elif graph_type == "Lollipop plot":
-                                fig = plot_qualitative_lollipop(data_to_plot, title, x_axis, y_axis, 
-                                                            COLOR_PALETTES[color_scheme], show_values)
-                            elif graph_type == "Treemap":
-                                fig = plot_qualitative_treemap(data_to_plot, title, 
-                                                            COLOR_PALETTES[color_scheme])
-
+                                
+                                if graph_type == "Bar plot":
+                                    fig = plot_qualitative_bar(data_to_plot, title, x_axis, y_axis, COLOR_PALETTES[color_scheme], show_values)
+                                elif graph_type == "Lollipop plot":
+                                    fig = plot_qualitative_lollipop(data_to_plot, title, x_axis, y_axis, COLOR_PALETTES[color_scheme], show_values)
+                                else:  # Treemap
+                                    fig = plot_qualitative_treemap(data_to_plot, title, COLOR_PALETTES[color_scheme])
+                            
                             # Ajout des annotations si nécessaire
                             if fig is not None and (source or note):
                                 is_treemap = (graph_type == "Treemap")
                                 fig = add_annotations(fig, source, note, is_treemap=is_treemap)
 
-                            else:  # Variables numériques
-                                if grouping_method == "Aucune":
-                                    if graph_type == "Histogramme":
-                                        fig = px.histogram(plot_data, title=title, color_discrete_sequence=COLOR_PALETTES[color_scheme])
-                                        if show_values:
-                                            fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
-                                    else:  # Density plot
-                                        fig = plot_density(plot_data, var, title, x_axis, y_axis)
+                            # Affichage du graphique
+                            if fig is not None:
+                                st.plotly_chart(fig, use_container_width=True)
                                 
-                                elif grouping_method == "Quantile":
-                                    fig = plot_quantile_distribution(
-                                        data=plot_data,
-                                        title=title,
-                                        y_label=y_axis,
-                                        color_palette=COLOR_PALETTES[color_scheme],
-                                        plot_type=graph_type,
-                                        is_integer_variable=is_integer_variable
-                                    )
-                                
-                                else:  # Groupement manuel
-                                    data_to_plot = pd.DataFrame({
-                                        'Modalité': value_counts['Groupe'].astype(str),
-                                        'Effectif': value_counts['Effectif' if value_type == "Effectif" else 'Taux (%)']
-                                    })
-                                    
-                                    if graph_type == "Bar plot":
-                                        fig = plot_qualitative_bar(data_to_plot, title, x_axis, y_axis, COLOR_PALETTES[color_scheme], show_values)
-                                    elif graph_type == "Lollipop plot":
-                                        fig = plot_qualitative_lollipop(data_to_plot, title, x_axis, y_axis, COLOR_PALETTES[color_scheme], show_values)
-                                    else:  # Treemap
-                                        fig = plot_qualitative_treemap(data_to_plot, title, COLOR_PALETTES[color_scheme])
-                                
-                                # Affichage du graphique avec annotations
-                                if fig is not None and (source or note):
-                                    is_treemap = (graph_type == "Treemap")
-                                    fig = add_annotations(fig, source, note, is_treemap=is_treemap)
-
-                                # Affichage final du graphique
-                                if fig is not None:
-                                    st.plotly_chart(fig, use_container_width=True)
-                                    
-                    except Exception as e:
-                        st.error(f"Erreur lors de la génération du graphique : {str(e)}")
-                        st.error(f"Détails : {str(type(e).__name__)}")
+                        except Exception as e:
+                            st.error(f"Erreur lors de la génération du graphique : {str(e)}")
+                            st.error(f"Détails : {str(type(e).__name__)}")
     
             else:
                 st.warning("Aucune donnée valide disponible pour cette variable")
