@@ -1462,22 +1462,17 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                         key="download_graph"
                     )
                     
-            except Exception as export_error:
+            except Exception as e:
                 if "kaleido" in str(export_error):
                     st.warning("⚠️ L'export en haute résolution nécessite le package 'kaleido'. Veuillez l'installer avec : pip install kaleido")
                 else:
                     st.error(f"Erreur lors de l'export : {str(export_error)}")
                     st.write("DEBUG export error:", str(export_error))
 
-        except Exception as e:
-            st.error(f"Erreur lors de la génération du graphique : {str(e)}")
-            st.error(f"Détails : {str(type(e).__name__)}")
-
-    # Déplacer le return en dehors du if st.button()
-    try:
         return final_df, var_name_display
-    except UnboundLocalError:
-        # Si final_df ou var_name_display n'ont pas été créés
+        
+    except Exception as e:
+        st.error(f"Erreur dans create_interactive_qualitative_table : {str(e)}")
         return None, None
                 
 def main():
