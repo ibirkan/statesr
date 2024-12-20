@@ -1511,32 +1511,7 @@ def display_univariate_analysis(data, var):
 
             # Ajout des annotations
             if source or note:
-                annotations = []
-                current_y = -0.15
-                
-                if source:
-                    annotations.append(dict(
-                        text=f"Source : {source}",
-                        xref="paper", yref="paper",
-                        x=0, y=current_y,
-                        showarrow=False,
-                        font=dict(size=10),
-                        align="left"
-                    ))
-                    current_y -= 0.05
-                
-                if note:
-                    annotations.append(dict(
-                        text=f"Note : {note}",
-                        xref="paper", yref="paper",
-                        x=0, y=current_y,
-                        showarrow=False,
-                        font=dict(size=10),
-                        align="left"
-                    ))
-                
-                if annotations and isinstance(fig, go.Figure):
-                    fig.update_layout(annotations=annotations)
+                fig = add_annotations(fig, source, note)
 
             st.plotly_chart(fig, use_container_width=True)
             
@@ -1876,62 +1851,64 @@ def main():
                                     data_to_plot.columns[0]: data_to_plot[data_to_plot.columns[0]],
                                     'Effectif': data_to_plot['Taux (%)']
                                 })
-                            
-                            # Création du graphique selon le type
-                            if graph_type == "Bar plot":
-                                fig = plot_qualitative_bar(data_to_plot, title, x_axis, y_axis, 
-                                                        COLOR_PALETTES[color_scheme], show_values)
-                            elif graph_type == "Lollipop plot":
-                                fig = plot_qualitative_lollipop(data_to_plot, title, x_axis, y_axis, 
-                                                            COLOR_PALETTES[color_scheme], show_values)
-                            elif graph_type == "Treemap":
-                                fig = plot_qualitative_treemap(data_to_plot, title, 
-                                                            COLOR_PALETTES[color_scheme])
-                            
-                            # Ajout des annotations si nécessaire
-                            if fig is not None and (source or note):
-                                is_treemap = (graph_type == "Treemap")
-                                fig = add_annotations(fig, source, note, is_treemap=is_treemap)
                         
-                        else:  # Variables numériques
-                            if grouping_method == "Aucune":
-                                if graph_type == "Histogramme":
-                                    fig = px.histogram(plot_data, title=title, color_discrete_sequence=COLOR_PALETTES[color_scheme])
-                                    if show_values:
-                                        fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
-                                else:  # Density plot
-                                    fig = plot_density(plot_data, var, title, x_axis, y_axis)
+                        # Création du graphique selon le type
+                        if graph_type == "Bar plot":
+                            fig = plot_qualitative_bar(data_to_plot, title, x_axis, y_axis, 
+                                                    COLOR_PALETTES[color_scheme], show_values)
+                        elif graph_type == "Lollipop plot":
+                            fig = plot_qualitative_lollipop(data_to_plot, title, x_axis, y_axis, 
+                                                        COLOR_PALETTES[color_scheme], show_values)
+                        elif graph_type == "Treemap":
+                            fig = plot_qualitative_treemap(data_to_plot, title, 
+                                                        COLOR_PALETTES[color_scheme])
+                        
+                        # Ajout des annotations si nécessaire
+                        if fig is not None and (source or note):
+                            is_treemap = (graph_type == "Treemap")
+                            fig = add_annotations(fig, source, note, is_treemap=is_treemap)
+
+                    else:  # Variables numériques
+                        if grouping_method == "Aucune":
+                            if graph_type == "Histogramme":
+                                fig = px.histogram(plot_data, title=title, color_discrete_sequence=COLOR_PALETTES[color_scheme])
+                                if show_values:
+                                    fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
+                            else:  # Density plot
+                                fig = plot_density(plot_data, var, title, x_axis, y_axis)
+                        
+                        elif grouping_method == "Quantile":
+                            fig = plot_quantile_distribution(
+                                data=plot_data,
+                                title=title,
+                                y_label=y_axis,
+                                color_palette=COLOR_PALETTES[color_scheme],
+                                plot_type=graph_type,
+                                is_integer_variable=is_integer_variable
+                            )
+                        
+                        else:  # Groupement manuel
+                            data_to_plot = pd.DataFrame({
+                                'Modalité': value_counts['Groupe'].astype(str),
+                                'Effectif': value_counts['Effectif' if value_type == "Effectif" else 'Taux (%)']
+                            })
                             
-                            elif grouping_method == "Quantile":
-                                fig = plot_quantile_distribution(
-                                    data=plot_data,
-                                    title=title,
-                                    y_label=y_axis,
-                                    color_palette=COLOR_PALETTES[color_scheme],
-                                    plot_type=graph_type,  # Utilisez graph_type au lieu de quantile_viz_type
-                                    is_integer_variable=is_integer_variable
-                                )
+                            if graph_type == "Bar plot":
+                                fig = plot_qualitative_bar(data_to_plot, title, x_axis, y_axis, COLOR_PALETTES[color_scheme], show_values)
+                            elif graph_type == "Lollipop plot":
+                                fig = plot_qualitative_lollipop(data_to_plot, title, x_axis, y_axis, COLOR_PALETTES[color_scheme], show_values)
+                            else:  # Treemap
+                                fig = plot_qualitative_treemap(data_to_plot, title, COLOR_PALETTES[color_scheme])
+                        
+                        # Affichage du graphique avec annotations
+                        if fig is not None and (source or note):
+                            is_treemap = (graph_type == "Treemap")
+                            fig = add_annotations(fig, source, note, is_treemap=is_treemap)
+
+                        # Affichage final du graphique
+                        if fig is not None:
+                            st.plotly_chart(fig, use_container_width=True)
                             
-                            else:  # Groupement manuel
-                                data_to_plot = pd.DataFrame({
-                                    'Modalité': value_counts['Groupe'].astype(str),
-                                    'Effectif': value_counts['Effectif' if value_type == "Effectif" else 'Taux (%)']
-                                })
-                                
-                                if graph_type == "Bar plot":
-                                    fig = plot_qualitative_bar(data_to_plot, title, x_axis, y_axis, COLOR_PALETTES[color_scheme], show_values)
-                                elif graph_type == "Lollipop plot":
-                                    fig = plot_qualitative_lollipop(data_to_plot, title, x_axis, y_axis, COLOR_PALETTES[color_scheme], show_values)
-                                else:  # Treemap
-                                    fig = plot_qualitative_treemap(data_to_plot, title, COLOR_PALETTES[color_scheme])
-                
-                        # Ajout des annotations au graphique
-                        if annotations and isinstance(fig, go.Figure):
-                            fig.update_layout(annotations=annotations)
-                
-                        # Affichage du graphique
-                            if fig is not None:
-                                    st.plotly_chart(fig, use_container_width=True)                
                     except Exception as e:
                         st.error(f"Erreur lors de la génération du graphique : {str(e)}")
                         st.error(f"Détails : {str(type(e).__name__)}")
