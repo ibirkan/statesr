@@ -993,11 +993,26 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
         # Initialisation des variables
         missing_values = [None, np.nan, '', 'nan', 'NaN', 'NA', 'nr', 'NR']
 
+        # Traitement initial des non-réponses
+        initial_series = data_series.copy()
+        if exclude_missing:
+            initial_series = initial_series.replace(missing_values, np.nan).dropna()
+        else:
+            initial_series = initial_series.replace(missing_values, missing_label)
+        
         # Initialisation du state si nécessaire
         if 'original_data' not in st.session_state:
             st.session_state.original_data = data_series.copy()
             st.session_state.groupings = []
             st.session_state.current_data = data_series.copy()
+
+        # Application des regroupements existants
+        processed_series = st.session_state.original_data.copy()
+        for group in st.session_state.groupings:
+            processed_series = processed_series.replace(
+                group['modalites'],
+                group['nouveau_nom']
+            )
 
         # Préparation des données
         processed_series = st.session_state.current_data.copy()
@@ -1005,6 +1020,8 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
             processed_series = processed_series.replace(missing_values, np.nan).dropna()
         else:
             processed_series = processed_series.replace(missing_values, missing_label)
+
+        st.session_state.current_data = processed_series.copy()
 
         # Création du DataFrame initial
         value_counts = processed_series.value_counts().reset_index()
@@ -1444,6 +1461,7 @@ def main():
         var = st.selectbox(
             "Sélectionnez la variable:", 
             options=["---"] + list(st.session_state.merged_data.columns)
+            key="variable_selector"  # Ajout d'une clé unique
         )
 
         # Nettoyer le session_state quand on change de variable
@@ -1451,17 +1469,19 @@ def main():
             st.session_state.current_variable = var
         elif st.session_state.current_variable != var:
             
-            # La variable a changé, on réinitialise le state
-            if 'original_data' in st.session_state:
-                del st.session_state.original_data
-            if 'groupings' in st.session_state:
-                del st.session_state.groupings
-            if 'current_data' in st.session_state:
-                del st.session_state.current_data
-            if 'value_counts' in st.session_state:
-                del st.session_state.value_counts
-            st.session_state.current_variable = var
-            st.rerun()  # Recharger la page pour réinitialiser complètement
+        # Nettoyer le session_state quand on change de variable
+        if 'current_variable' not in st.session_state:
+            st.session_state.current_variable = selected_var
+        elif st.session_state.current_variable != selected_var:
+            # Réinitialisation complète du state
+            keys_to_delete = ['original_data', 'groupings', 'current_data', 
+                             'value_counts', 'variable_selector']
+            for key in keys_to_delete:
+                if key in st.session_state:
+                    del st.session_state[key]
+            st.session_state.clear()  # Nettoyage complet du state
+            st.session_state.current_variable = selected_var
+            st.rerun()
         
         if var != "---":
             # Préparation des données
