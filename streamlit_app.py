@@ -988,7 +988,6 @@ def save_test_indicator(test_data):
 
 # Structure principale de l'application
 def create_interactive_qualitative_table(data_series, var_name, exclude_missing=False, missing_label="Non réponse"):
-    """Crée un tableau interactif pour l'analyse des variables qualitatives."""
     try:
         # Initialisation des variables
         missing_values = [None, np.nan, '', 'nan', 'NaN', 'NA', 'nr', 'NR']
@@ -1125,6 +1124,10 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
         final_df['Modalité'] = final_df['Nouvelle modalité']
         final_df = final_df.drop('Nouvelle modalité', axis=1)
         final_df.columns = [var_name_display, 'Effectif', 'Taux (%)']
+
+        # Exclure les non-réponses du tableau final si nécessaire
+        if exclude_missing:
+            final_df = final_df[~final_df[var_name_display].isin([missing_label] + missing_values)]
 
         # Styles CSS pour le tableau
         st.markdown("""
