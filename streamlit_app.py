@@ -1423,6 +1423,32 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
 
             # Affichage du graphique
             st.plotly_chart(fig, use_container_width=True)
+            # Ajout d'une option d'export pour le graphique
+            buf = BytesIO()
+            if graph_type != "Treemap":  # Les treemaps nécessitent un traitement spécial
+                fig.write_image(
+                    buf, 
+                    format="png", 
+                    width=1920,  # Largeur en pixels
+                    height=1080,  # Hauteur en pixels
+                    scale=2  # Facteur d'échelle pour améliorer la résolution
+                )
+            else:
+                # Pour les treemaps, ajuster la taille différemment
+                fig.write_image(
+                    buf, 
+                    format="png", 
+                    width=1600,
+                    height=1600,  # Format carré pour les treemaps
+                    scale=2
+                )
+            
+            st.download_button(
+                label="💾 Télécharger le graphique (HD)",
+                data=buf.getvalue(),
+                file_name=f"graphique_{var_name.lower().replace(' ', '_')}.png",
+                mime="image/png"
+            )
 
         except Exception as e:
             st.error(f"Erreur lors de la génération du graphique : {str(e)}")
