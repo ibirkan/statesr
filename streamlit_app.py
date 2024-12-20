@@ -309,8 +309,15 @@ def plot_qualitative_bar(data, title, x_label, y_label, color_palette, show_valu
     value_col = 'Effectif'
     
     n_categories = len(data[category_col])
-    bar_width = min(0.5, 1.0 / (n_categories + 1))
+    base_width = 300  # Largeur de base pour 2 catégories ou moins
+    if n_categories <= 2:
+        width = base_width
+        margin_x = width * 0.3
+    else:
+        width = min(1000, base_width + (150 * n_categories))
+        margin_x = 50
     
+    bar_width = min(0.5, 1.0 / (n_categories + 1))
     max_value = data[value_col].max()
     y_max = max_value * 1.2
     
@@ -318,34 +325,45 @@ def plot_qualitative_bar(data, title, x_label, y_label, color_palette, show_valu
         go.Bar(
             x=data[category_col],
             y=data[value_col],
-            marker_color=color_palette[0],
-            width=[bar_width] * n_categories
+            marker_color=color_palette[3],  # Couleur plus foncée
+            width=[bar_width] * n_categories,
+            hovertemplate="<b>%{x}</b><br>Valeur: <b>%{y:.1f}</b><extra></extra>"
         )
     ])
     
-    width = max(400, min(800, 200 * n_categories))
-    
     fig.update_layout(
-        title=title,
-        xaxis_title=x_label,
-        yaxis_title=y_label,
+        title=dict(
+            text=title,
+            font=dict(size=16, color='#1f1f1f')
+        ),
         width=width,
         height=500,
-        margin=dict(t=100, b=100, l=50, r=50),
+        margin=dict(t=100, b=100, l=margin_x, r=margin_x),
         showlegend=False,
         plot_bgcolor='white',
+        paper_bgcolor='white',
         xaxis=dict(
             showgrid=False,
-            gridcolor='lightgray',
-            tickangle=45 if n_categories > 2 else 0
+            tickangle=45 if n_categories > 2 else 0,
+            type='category',
+            tickfont=dict(size=12, color='#1f1f1f'),
+            title=dict(
+                text=x_label,
+                font=dict(size=14, color='#1f1f1f')
+            )
         ),
         yaxis=dict(
             showgrid=True,
-            gridcolor='lightgray',
+            gridcolor='#e0e0e0',
             zeroline=True,
-            zerolinewidth=1,
-            zerolinecolor='lightgray',
-            range=[0, y_max]
+            zerolinewidth=2,
+            zerolinecolor='#a0a0a0',
+            range=[0, y_max],
+            tickfont=dict(size=12, color='#1f1f1f'),
+            title=dict(
+                text=y_label,
+                font=dict(size=14, color='#1f1f1f')
+            )
         )
     )
 
@@ -354,9 +372,28 @@ def plot_qualitative_bar(data, title, x_label, y_label, color_palette, show_valu
         fig.update_traces(
             text=data[value_col].round(1),
             textposition=text_positions,
-            texttemplate='%{text:.1f}',
-            textfont=dict(size=12)
+            texttemplate='<b>%{text:.1f}</b>',
+            textfont=dict(
+                size=13,
+                color='#1f1f1f',
+                family='Arial'
+            )
         )
+        # Ajuster la position des valeurs
+        for i, (val, pos) in enumerate(zip(data[value_col], text_positions)):
+            if pos == 'outside':
+                fig.add_annotation(
+                    x=data[category_col].iloc[i],
+                    y=val,
+                    text=f"<b>{val:.1f}</b>",
+                    showarrow=False,
+                    font=dict(
+                        size=13,
+                        color='#1f1f1f',
+                        family='Arial'
+                    ),
+                    yshift=15  # Décalage vertical
+                )
 
     return fig
 
@@ -483,21 +520,36 @@ def plot_qualitative_treemap(data, title, color_palette):
     category_col = columns[0]
     value_col = 'Effectif'
     
+    # Utiliser des couleurs plus foncées de la palette
+    darker_colors = color_palette[3:]  # Prendre les couleurs plus foncées
+    
     fig = go.Figure(go.Treemap(
         labels=data[category_col],
         parents=[''] * len(data),
         values=data[value_col],
         textinfo='label+value',
-        marker=dict(colors=color_palette),
-        texttemplate='%{label}<br>%{value:.1f}',
-        hovertemplate='%{label}<br>Valeur: %{value:.1f}<extra></extra>'
+        marker=dict(
+            colors=darker_colors,
+            line=dict(width=2, color='white')  # Ajouter une bordure blanche
+        ),
+        texttemplate='<b>%{label}</b><br>%{value:.1f}',
+        hovertemplate='<b>%{label}</b><br>Valeur: <b>%{value:.1f}</b><extra></extra>',
+        textfont=dict(
+            size=13,
+            color='#1f1f1f',
+            family='Arial'
+        )
     ))
     
     fig.update_layout(
-        title=title,
+        title=dict(
+            text=title,
+            font=dict(size=16, color='#1f1f1f')
+        ),
         width=800,
         height=500,
-        margin=dict(t=100, b=100, l=20, r=20)
+        margin=dict(t=100, b=100, l=20, r=20),
+        paper_bgcolor='white'
     )
     
     return fig
