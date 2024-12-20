@@ -988,488 +988,488 @@ def save_test_indicator(test_data):
 
 # Structure principale de l'application
 def create_interactive_qualitative_table(data_series, var_name, exclude_missing=False, missing_label="Non réponse"):
-    """Crée un tableau statistique interactif pour les variables qualitatives et gère la visualisation."""
-    # Initialisation des variables
-    missing_values = [None, np.nan, '', 'nan', 'NaN', 'NA', 'nr', 'NR']
+    try:
+        # Initialisation des variables
+        missing_values = [None, np.nan, '', 'nan', 'NaN', 'NA', 'nr', 'NR']
 
-    # Initialisation du state si nécessaire
-    if 'original_data' not in st.session_state:
-        st.session_state.original_data = data_series.copy()
-        st.session_state.groupings = []
-        st.session_state.current_data = data_series.copy()
+        # Initialisation du state si nécessaire
+        if 'original_data' not in st.session_state:
+            st.session_state.original_data = data_series.copy()
+            st.session_state.groupings = []
+            st.session_state.current_data = data_series.copy()
 
-    # Préparation des données
-    processed_series = st.session_state.current_data.copy()
-    if exclude_missing:
-        processed_series = processed_series.replace(missing_values, np.nan).dropna()
-    else:
-        processed_series = processed_series.replace(missing_values, missing_label)
+        # Préparation des données
+        processed_series = st.session_state.current_data.copy()
+        if exclude_missing:
+            processed_series = processed_series.replace(missing_values, np.nan).dropna()
+        else:
+            processed_series = processed_series.replace(missing_values, missing_label)
 
-    # Création du DataFrame initial
-    value_counts = processed_series.value_counts().reset_index()
-    value_counts.columns = ['Modalité', 'Effectif']
-    value_counts['Taux (%)'] = (value_counts['Effectif'] / len(processed_series) * 100).round(2)
-    value_counts['Nouvelle modalité'] = value_counts['Modalité']
+        # Création du DataFrame initial
+        value_counts = processed_series.value_counts().reset_index()
+        value_counts.columns = ['Modalité', 'Effectif']
+        value_counts['Taux (%)'] = (value_counts['Effectif'] / len(processed_series) * 100).round(2)
+        value_counts['Nouvelle modalité'] = value_counts['Modalité']
 
-    # Configuration des options avancées dans un expander
-    with st.expander("Options avancées du tableau statistique"):
-        col1, col2, col3 = st.columns(3)
+        # Configuration des options avancées dans un expander
+        with st.expander("Options avancées du tableau statistique"):
+            col1, col2, col3 = st.columns(3)
 
-        with col1:
-            st.write("##### Édition des modalités")
+            with col1:
+                st.write("##### Édition des modalités")
 
-            # Interface pour créer un nouveau regroupement
-            st.write("**Nouveau regroupement**")
+                # Interface pour créer un nouveau regroupement
+                st.write("**Nouveau regroupement**")
 
-            # Obtenir toutes les modalités disponibles
-            available_modalities = value_counts['Modalité'].tolist()
+                # Obtenir toutes les modalités disponibles
+                available_modalities = value_counts['Modalité'].tolist()
 
-            # Sélection multiple des modalités à regrouper
-            selected_modalities = st.multiselect(
-                "Sélectionner les modalités à regrouper",
-                options=available_modalities
-            )
-
-            if selected_modalities:
-                new_group_name = st.text_input(
-                    "Nom du nouveau groupe",
-                    value=f"Groupe {', '.join(selected_modalities)}"
+                # Sélection multiple des modalités à regrouper
+                selected_modalities = st.multiselect(
+                    "Sélectionner les modalités à regrouper",
+                    options=available_modalities
                 )
 
-                if st.button("Appliquer le regroupement"):
-                    # Sauvegarder le regroupement
-                    st.session_state.groupings.append({
-                        'modalites': selected_modalities,
-                        'nouveau_nom': new_group_name
-                    })
+                if selected_modalities:
+                    new_group_name = st.text_input(
+                        "Nom du nouveau groupe",
+                        value=f"Groupe {', '.join(selected_modalities)}"
+                    )
 
-                    # Appliquer tous les regroupements depuis le début
-                    processed_series = st.session_state.original_data.copy()
-                    for group in st.session_state.groupings:
-                        processed_series = processed_series.replace(
-                            group['modalites'],
-                            group['nouveau_nom']
+                    if st.button("Appliquer le regroupement"):
+                        # Sauvegarder le regroupement
+                        st.session_state.groupings.append({
+                            'modalites': selected_modalities,
+                            'nouveau_nom': new_group_name
+                        })
+
+                        # Appliquer tous les regroupements depuis le début
+                        processed_series = st.session_state.original_data.copy()
+                        for group in st.session_state.groupings:
+                            processed_series = processed_series.replace(
+                                group['modalites'],
+                                group['nouveau_nom']
+                            )
+
+                        st.session_state.current_data = processed_series
+                        st.rerun()
+
+                # Afficher les regroupements existants
+                if st.session_state.groupings:
+                    st.write("**Regroupements existants:**")
+                    for idx, group in enumerate(st.session_state.groupings):
+                        st.info(
+                            f"Groupe {idx + 1}: {', '.join(group['modalites'])} → {group['nouveau_nom']}"
                         )
 
-                    st.session_state.current_data = processed_series
+                # Bouton pour réinitialiser
+                if st.button("Réinitialiser tous les regroupements"):
+                    st.session_state.groupings = []
+                    st.session_state.current_data = st.session_state.original_data.copy()
                     st.rerun()
 
-            # Afficher les regroupements existants
-            if st.session_state.groupings:
-                st.write("**Regroupements existants:**")
-                for idx, group in enumerate(st.session_state.groupings):
-                    st.info(
-                        f"Groupe {idx + 1}: {', '.join(group['modalites'])} → {group['nouveau_nom']}"
+                st.write("##### Renommer les modalités")
+                for idx, row in value_counts.iterrows():
+                    value_counts.at[idx, 'Nouvelle modalité'] = st.text_input(
+                        f"Renommer '{row['Modalité']}'",
+                        value=row['Nouvelle modalité'],
+                        key=f"modal_{idx}",
+                        label_visibility="collapsed"
                     )
 
-            # Bouton pour réinitialiser
-            if st.button("Réinitialiser tous les regroupements"):
-                st.session_state.groupings = []
-                st.session_state.current_data = st.session_state.original_data.copy()
-                st.rerun()
-
-            st.write("##### Renommer les modalités")
-            for idx, row in value_counts.iterrows():
-                value_counts.at[idx, 'Nouvelle modalité'] = st.text_input(
-                    f"Renommer '{row['Modalité']}'",
-                    value=row['Nouvelle modalité'],
-                    key=f"modal_{idx}",
-                    label_visibility="collapsed"
+            with col2:
+                st.write("##### Paramètres du tableau")
+                table_title = st.text_input(
+                    "Titre du tableau",
+                    value=f"Distribution de la variable {var_name}"
+                )
+                var_name_display = st.text_input(
+                    "Nom de la variable :",
+                    value="Modalités"
+                )
+                table_source = st.text_input(
+                    "Source",
+                    placeholder="Ex: Enquête XX, 2023"
+                )
+                table_note = st.text_input(
+                    "Note de lecture",
+                    placeholder="Ex: Lecture : XX% des répondants..."
                 )
 
-        with col2:
-            st.write("##### Paramètres du tableau")
-            table_title = st.text_input(
-                "Titre du tableau",
-                value=f"Distribution de la variable {var_name}"
-            )
-            var_name_display = st.text_input(
-                "Nom de la variable :",
-                value="Modalités"
-            )
-            table_source = st.text_input(
-                "Source",
-                placeholder="Ex: Enquête XX, 2023"
-            )
-            table_note = st.text_input(
-                "Note de lecture",
-                placeholder="Ex: Lecture : XX% des répondants..."
-            )
+            with col3:
+                st.write("##### Gestion des non-réponses")
+                exclude_missing = st.checkbox("Exclure les non-réponses")
+                if not exclude_missing:
+                    missing_label = st.text_input(
+                        "Libellé pour les non-réponses",
+                        value="Non réponse"
+                    )
+                # Application immédiate du traitement des non-réponses
+                if exclude_missing:
+                    processed_series = data_series.replace(missing_values, np.nan).dropna()
+                else:
+                    processed_series = data_series.replace(missing_values, missing_label)
 
-        with col3:
-            st.write("##### Gestion des non-réponses")
-            exclude_missing = st.checkbox("Exclure les non-réponses")
-            if not exclude_missing:
-                missing_label = st.text_input(
-                    "Libellé pour les non-réponses",
-                    value="Non réponse"
-                )
-            # Application immédiate du traitement des non-réponses
-            if exclude_missing:
-                processed_series = data_series.replace(missing_values, np.nan).dropna()
-            else:
-                processed_series = data_series.replace(missing_values, missing_label)
+                # Seulement mettre à jour value_counts si on n'a pas de regroupements actifs
+                if not st.session_state.groupings:
+                    value_counts = processed_series.value_counts().reset_index()
+                    value_counts.columns = ['Modalité', 'Effectif']
+                    value_counts['Taux (%)'] = (value_counts['Effectif'] / len(processed_series) * 100).round(2)
+                    value_counts['Nouvelle modalité'] = value_counts['Modalité']
+                    st.session_state.value_counts = value_counts.copy()
 
-            # Seulement mettre à jour value_counts si on n'a pas de regroupements actifs
-            if not st.session_state.groupings:
-                value_counts = processed_series.value_counts().reset_index()
-                value_counts.columns = ['Modalité', 'Effectif']
-                value_counts['Taux (%)'] = (value_counts['Effectif'] / len(processed_series) * 100).round(2)
-                value_counts['Nouvelle modalité'] = value_counts['Modalité']
-                st.session_state.value_counts = value_counts.copy()
+        # Création du DataFrame final
+        final_df = value_counts.copy()
+        final_df['Modalité'] = final_df['Nouvelle modalité']
+        final_df = final_df.drop('Nouvelle modalité', axis=1)
 
-    # Création du DataFrame final
-    final_df = value_counts.copy()
-    final_df['Modalité'] = final_df['Nouvelle modalité']
-    final_df = final_df.drop('Nouvelle modalité', axis=1)
+        # Renommer la première colonne avec le nom de variable personnalisé
+        final_df.columns = [var_name_display, 'Effectif', 'Taux (%)']
 
-    # Renommer la première colonne avec le nom de variable personnalisé
-    final_df.columns = [var_name_display, 'Effectif', 'Taux (%)']
+        # CSS personnalisé pour le tableau
+        st.markdown("""
+            <style>
+            [data-testid="stDataFrame"] > div {
+                width: auto !important;
+                max-width: 800px !important;
+                margin: 0 auto;
+            }
 
-    # CSS personnalisé pour le tableau
-    st.markdown("""
-        <style>
-        [data-testid="stDataFrame"] > div {
-            width: auto !important;
-            max-width: 800px !important;
-            margin: 0 auto;
-        }
+            .dataframe {
+                width: 100% !important;
+                margin: 0 !important;
+            }
 
-        .dataframe {
-            width: 100% !important;
-            margin: 0 !important;
-        }
+            .dataframe td, .dataframe th {
+                text-align: center !important;
+                white-space: nowrap !important;
+                padding: 8px !important;
+            }
 
-        .dataframe td, .dataframe th {
-            text-align: center !important;
-            white-space: nowrap !important;
-            padding: 8px !important;
-        }
+            .dataframe td:first-child {
+                text-align: left !important;
+            }
 
-        .dataframe td:first-child {
-            text-align: left !important;
-        }
+            .dataframe td:first-child { width: 60% !important; }
+            .dataframe td:nth-child(2) { width: 20% !important; }
+            .dataframe td:nth-child(3) { width: 20% !important; }
+            </style>
+        """, unsafe_allow_html=True)
 
-        .dataframe td:first-child { width: 60% !important; }
-        .dataframe td:nth-child(2) { width: 20% !important; }
-        .dataframe td:nth-child(3) { width: 20% !important; }
-        </style>
-    """, unsafe_allow_html=True)
+        # Style du tableau
+        styled_df = final_df.style\
+            .format({
+                'Effectif': '{:,.0f}',
+                'Taux (%)': '{:.1f}%'
+            })\
+            .set_properties(**{
+                'font-family': 'Marianne, sans-serif',
+                'font-size': '14px',
+                'padding': '8px'
+            })\
+            .set_table_styles([
+                {'selector': 'th',
+                 'props': [
+                     ('background-color', '#f0f2f6'),
+                     ('color', '#262730'),
+                     ('font-weight', 'bold'),
+                     ('text-align', 'center'),
+                     ('padding', '10px'),
+                     ('font-size', '14px')
+                 ]},
+                {'selector': 'td:nth-child(1)',
+                 'props': [
+                     ('text-align', 'left'),
+                     ('width', '60%'),
+                     ('padding-left', '15px')
+                 ]},
+                {'selector': 'td:nth-child(2)',
+                 'props': [
+                     ('text-align', 'center'),
+                     ('width', '20%')
+                 ]},
+                {'selector': 'td:nth-child(3)',
+                 'props': [
+                     ('text-align', 'center'),
+                     ('width', '20%')
+                 ]},
+                {'selector': 'tbody tr:nth-child(even)',
+                 'props': [('background-color', '#f9f9f9')]},
+                {'selector': 'tbody tr:nth-child(odd)',
+                 'props': [('background-color', 'white')]}
+            ])
 
-    # Style du tableau
-    styled_df = final_df.style\
-        .format({
-            'Effectif': '{:,.0f}',
-            'Taux (%)': '{:.1f}%'
-        })\
-        .set_properties(**{
-            'font-family': 'Marianne, sans-serif',
-            'font-size': '14px',
-            'padding': '8px'
-        })\
-        .set_table_styles([
-            {'selector': 'th',
-             'props': [
-                 ('background-color', '#f0f2f6'),
-                 ('color', '#262730'),
-                 ('font-weight', 'bold'),
-                 ('text-align', 'center'),
-                 ('padding', '10px'),
-                 ('font-size', '14px')
-             ]},
-            {'selector': 'td:nth-child(1)',
-             'props': [
-                 ('text-align', 'left'),
-                 ('width', '60%'),
-                 ('padding-left', '15px')
-             ]},
-            {'selector': 'td:nth-child(2)',
-             'props': [
-                 ('text-align', 'center'),
-                 ('width', '20%')
-             ]},
-            {'selector': 'td:nth-child(3)',
-             'props': [
-                 ('text-align', 'center'),
-                 ('width', '20%')
-             ]},
-            {'selector': 'tbody tr:nth-child(even)',
-             'props': [('background-color', '#f9f9f9')]},
-            {'selector': 'tbody tr:nth-child(odd)',
-             'props': [('background-color', 'white')]}
-        ])
+        # Affichage du tableau et des métadonnées
+        if table_title:
+            st.markdown(f"### {table_title}")
 
-    # Affichage du tableau et des métadonnées
-    if table_title:
-        st.markdown(f"### {table_title}")
-
-    # Conteneur personnalisé pour le tableau
-    st.markdown('<div style="max-width: 800px; margin: 0 auto;">', unsafe_allow_html=True)
-    st.dataframe(
-        styled_df,
-        hide_index=True,
-        height=min(35 * (len(final_df) + 1), 400)
-    )
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    # Source et note
-    if table_source or table_note:
-        st.markdown('<div style="max-width: 800px; margin: 5px auto;">', unsafe_allow_html=True)
-        if table_source:
-            st.caption(f"Source : {table_source}")
-        if table_note:
-            st.caption(f"Note : {table_note}")
+        # Conteneur personnalisé pour le tableau
+        st.markdown('<div style="max-width: 800px; margin: 0 auto;">', unsafe_allow_html=True)
+        st.dataframe(
+            styled_df,
+            hide_index=True,
+            height=min(35 * (len(final_df) + 1), 400)
+        )
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # Options d'export
-    with st.expander("Options d'export"):
-        col1, col2 = st.columns(2)
+        # Source et note
+        if table_source or table_note:
+            st.markdown('<div style="max-width: 800px; margin: 5px auto;">', unsafe_allow_html=True)
+            if table_source:
+                st.caption(f"Source : {table_source}")
+            if table_note:
+                st.caption(f"Note : {table_note}")
+            st.markdown('</div>', unsafe_allow_html=True)
 
-        with col1:
-            if st.button("Exporter en image"):
-                        # Création de la figure avec un style personnalisé
-                        fig, ax = plt.subplots(figsize=(12, len(final_df) + 2))
-                        ax.axis('off')
+        # Options d'export
+        with st.expander("Options d'export"):
+            col1, col2 = st.columns(2)
 
-                        # Configuration du style de base
-                        plt.rcParams['font.family'] = 'sans-serif'
-                        plt.rcParams['font.sans-serif'] = ['Arial']
+            with col1:
+                if st.button("Exporter en image"):
+                    # Création de la figure avec un style personnalisé
+                    fig, ax = plt.subplots(figsize=(12, len(final_df) + 2))
+                    ax.axis('off')
 
-                        # Préparation des données pour l'affichage
-                        cell_text = final_df.values.astype(str)
+                    # Configuration du style de base
+                    plt.rcParams['font.family'] = 'sans-serif'
+                    plt.rcParams['font.sans-serif'] = ['Arial']
 
-                        # Création du tableau
-                        table = ax.table(
-                            cellText=cell_text,
-                            colLabels=[var_name_display, 'Effectif', 'Taux (%)'],  # Utiliser le nom personnalisé ici
-                            loc='center',
-                            cellLoc='center',
-                            bbox=[0, 0.1, 1, 0.9]
-                        )
+                    # Préparation des données pour l'affichage
+                    cell_text = final_df.values.astype(str)
 
-                        # Style du tableau
-                        table.auto_set_font_size(False)
-                        table.set_fontsize(9)
+                    # Création du tableau
+                    table = ax.table(
+                        cellText=cell_text,
+                        colLabels=[var_name_display, 'Effectif', 'Taux (%)'],  # Utiliser le nom personnalisé ici
+                        loc='center',
+                        cellLoc='center',
+                        bbox=[0, 0.1, 1, 0.9]
+                    )
 
-                        # Largeurs des colonnes
-                        col_widths = [0.6, 0.2, 0.2]
-                        for idx, width in enumerate(col_widths):
-                            table.auto_set_column_width([idx])
-                            for cell in table._cells:
-                                if cell[1] == idx:
-                                    table._cells[cell].set_width(width)
+                    # Style du tableau
+                    table.auto_set_font_size(False)
+                    table.set_fontsize(9)
 
-                        # Style des en-têtes
-                        header_color = '#f0f2f6'
-                        header_text_color = '#262730'
-                        for j, cell in enumerate(table._cells[(0, j)] for j in range(len(final_df.columns))):
-                            cell.set_facecolor(header_color)
-                            cell.set_text_props(weight='bold', color=header_text_color)
-                            cell.set_height(0.1)
+                    # Largeurs des colonnes
+                    col_widths = [0.6, 0.2, 0.2]
+                    for idx, width in enumerate(col_widths):
+                        table.auto_set_column_width([idx])
+                        for cell in table._cells:
+                            if cell[1] == idx:
+                                table._cells[cell].set_width(width)
+
+                    # Style des en-têtes
+                    header_color = '#f0f2f6'
+                    header_text_color = '#262730'
+                    for j, cell in enumerate(table._cells[(0, j)] for j in range(len(final_df.columns))):
+                        cell.set_facecolor(header_color)
+                        cell.set_text_props(weight='bold', color=header_text_color)
+                        cell.set_height(0.1)
+                        cell.set_edgecolor('#e6e6e6')
+
+                    # Style des cellules
+                    for i in range(len(final_df) + 1):  # +1 pour inclure l'en-tête
+                        for j in range(len(final_df.columns)):
+                            cell = table._cells[(i, j)]
                             cell.set_edgecolor('#e6e6e6')
 
-                        # Style des cellules
-                        for i in range(len(final_df) + 1):  # +1 pour inclure l'en-tête
-                            for j in range(len(final_df.columns)):
-                                cell = table._cells[(i, j)]
-                                cell.set_edgecolor('#e6e6e6')
+                            # Alignement du texte
+                            if j == 0 and i > 0:  # Première colonne (Modalités) mais pas l'en-tête
+                                cell.get_text().set_horizontalalignment('left')
+                                # Ajouter un peu d'espace à gauche
+                                cell.get_text().set_x(0.1)  # Ajuster cette valeur entre 0 et 1 pour le padding gauche
 
-                                # Alignement du texte
-                                if j == 0 and i > 0:  # Première colonne (Modalités) mais pas l'en-tête
-                                    cell.get_text().set_horizontalalignment('left')
-                                    # Ajouter un peu d'espace à gauche
-                                    cell.get_text().set_x(0.1)  # Ajuster cette valeur entre 0 et 1 pour le padding gauche
+                            # Lignes alternées
+                            if i > 0:  # Exclure l'en-tête
+                                if i % 2 == 0:
+                                    cell.set_facecolor('#f9f9f9')
+                                else:
+                                    cell.set_facecolor('white')
 
-                                # Lignes alternées
-                                if i > 0:  # Exclure l'en-tête
-                                    if i % 2 == 0:
-                                        cell.set_facecolor('#f9f9f9')
-                                    else:
-                                        cell.set_facecolor('white')
+                            # Ajustement de la hauteur des cellules
+                            cell.set_height(0.05)
 
-                                # Ajustement de la hauteur des cellules
-                                cell.set_height(0.05)
+                    # Titre
+                    if table_title:
+                        plt.title(table_title, pad=20, fontsize=12, fontweight='bold')
 
-                        # Titre
-                        if table_title:
-                            plt.title(table_title, pad=20, fontsize=12, fontweight='bold')
+                    # Notes de bas de page
+                    footer_text = []
+                    if table_source:
+                        footer_text.append(f"Source : {table_source}")
+                    if table_note:
+                        footer_text.append(f"Note : {table_note}")
 
-                        # Notes de bas de page
-                        footer_text = []
+                    if footer_text:
+                        plt.figtext(0.1, 0.02, '\n'.join(footer_text), fontsize=8)
+
+                    # Ajustement de la mise en page
+                    plt.tight_layout()
+
+                    # Sauvegarde avec fond blanc
+                    buf = BytesIO()
+                    plt.savefig(buf, format='png',
+                              bbox_inches='tight',
+                              dpi=300,
+                              facecolor='white',
+                              edgecolor='none',
+                              pad_inches=0.1)
+                    plt.close()
+
+                    # Téléchargement
+                    st.download_button(
+                        label="Télécharger l'image",
+                        data=buf.getvalue(),
+                        file_name="tableau_statistique.png",
+                        mime="image/png"
+                    )
+
+            with col2:
+                if st.button("Copier pour Excel"):
+                    # Préparation des données pour Excel
+                    excel_data = []
+                    if table_title:
+                        excel_data.append(table_title)
+                        excel_data.append("")  # Ligne vide
+
+                    # En-têtes et données
+                    excel_data.append("\t".join(final_df.columns))
+                    for _, row in final_df.iterrows():
+                        excel_data.append("\t".join(str(val) for val in row))
+
+                    # Métadonnées
+                    if table_source or table_note:
+                        excel_data.append("")  # Ligne vide
                         if table_source:
-                            footer_text.append(f"Source : {table_source}")
+                            excel_data.append(f"Source : {table_source}")
                         if table_note:
-                            footer_text.append(f"Note : {table_note}")
+                            excel_data.append(f"Note : {table_note}")
 
-                        if footer_text:
-                            plt.figtext(0.1, 0.02, '\n'.join(footer_text), fontsize=8)
+                    # Conversion en texte tabulé
+                    copy_text = "\n".join(excel_data)
 
-                        # Ajustement de la mise en page
-                        plt.tight_layout()
+                    # Affichage dans un textarea pour faciliter la copie
+                    st.text_area(
+                        "Copiez le texte ci-dessous pour Excel :",
+                        value=copy_text,
+                        height=150
+                    )
 
-                        # Sauvegarde avec fond blanc
-                        buf = BytesIO()
-                        plt.savefig(buf, format='png',
-                                  bbox_inches='tight',
-                                  dpi=300,
-                                  facecolor='white',
-                                  edgecolor='none',
-                                  pad_inches=0.1)
-                        plt.close()
+        # Ajout de la partie visualisation
+        st.write("### Configuration de la visualisation")
+        viz_col1, viz_col2 = st.columns([1, 2])
 
-                        # Téléchargement
-                        st.download_button(
-                            label="Télécharger l'image",
-                            data=buf.getvalue(),
-                            file_name="tableau_statistique.png",
-                            mime="image/png"
+        with viz_col1:
+            graph_type = st.selectbox(
+                "Type de graphique",
+                ["Bar plot", "Lollipop plot", "Treemap"],
+                key="graph_type_qual_viz"
+            )
+
+        with viz_col2:
+            color_scheme = st.selectbox(
+                "Palette de couleurs",
+                list(COLOR_PALETTES.keys()),
+                key="color_scheme_qual_viz"
+            )
+
+        # Options avancées pour la visualisation
+        with st.expander("Options avancées de visualisation"):
+            adv_col1, adv_col2 = st.columns(2)
+
+            with adv_col1:
+                viz_title = st.text_input("Titre du graphique", f"Distribution de {var_name}", key="viz_title")
+                x_axis = st.text_input("Titre de l'axe X", var_name, key="x_axis_qual")
+                y_axis = st.text_input("Titre de l'axe Y", "Valeur", key="y_axis_qual")
+                show_values = st.checkbox("Afficher les valeurs", True, key="show_values_qual")
+
+            with adv_col2:
+                viz_source = st.text_input("Source des données", "", key="viz_source")
+                viz_note = st.text_input("Note de lecture", "", key="viz_note")
+                value_type = st.radio("Type de valeur à afficher", ["Effectif", "Taux (%)"], key="value_type_qual")
+
+        # Génération du graphique
+        if st.button("Générer la visualisation", key="generate_qual_viz"):
+            try:
+                # Préparation des données pour le graphique
+                data_to_plot = final_df.copy()
+
+                # Ajustement des données selon le type de valeur choisi
+                if value_type == "Taux (%)":
+                    data_to_plot['Effectif'] = data_to_plot['Taux (%)']
+                    y_axis = "Taux (%)" if y_axis == "Valeur" else y_axis
+
+                # Création du graphique selon le type choisi
+                if graph_type == "Bar plot":
+                    fig = plot_qualitative_bar(
+                        data_to_plot, viz_title, x_axis, y_axis,
+                        COLOR_PALETTES[color_scheme], show_values
+                    )
+                elif graph_type == "Lollipop plot":
+                    fig = plot_qualitative_lollipop(
+                        data_to_plot, viz_title, x_axis, y_axis,
+                        COLOR_PALETTES[color_scheme], show_values
+                    )
+                else:  # Treemap
+                    fig = plot_qualitative_treemap(
+                        data_to_plot, viz_title,
+                        COLOR_PALETTES[color_scheme]
+                    )
+
+                # Ajout des annotations si nécessaire
+                if viz_source or viz_note:
+                    is_treemap = (graph_type == "Treemap")
+                    fig = add_annotations(fig, viz_source, viz_note, is_treemap=is_treemap)
+
+                # Affichage du graphique
+                st.plotly_chart(fig, use_container_width=True)
+                # Ajout d'une option d'export pour le graphique avec des dimensions réduites
+                try:
+                    buf = BytesIO()
+                    if graph_type != "Treemap":
+                        fig.write_image(
+                            buf,
+                            format="png",
+                            width=1200,  # Réduit de 1920 à 1200
+                            height=800,   # Réduit de 1080 à 800
+                            scale=1.5     # Réduit de 2 à 1.5
+                        )
+                    else:
+                        fig.write_image(
+                            buf,
+                            format="png",
+                            width=1000,   # Réduit de 1600 à 1000
+                            height=1000,  # Maintien du format carré
+                            scale=1.5     # Réduit de 2 à 1.5
                         )
 
-        with col2:
-            if st.button("Copier pour Excel"):
-                # Préparation des données pour Excel
-                excel_data = []
-                if table_title:
-                    excel_data.append(table_title)
-                    excel_data.append("")  # Ligne vide
+                    # Récupérer les données du buffer
+                    buf.seek(0)
+                    image_data = buf.getvalue()
 
-                # En-têtes et données
-                excel_data.append("\t".join(final_df.columns))
-                for _, row in final_df.iterrows():
-                    excel_data.append("\t".join(str(val) for val in row))
-
-                # Métadonnées
-                if table_source or table_note:
-                    excel_data.append("")  # Ligne vide
-                    if table_source:
-                        excel_data.append(f"Source : {table_source}")
-                    if table_note:
-                        excel_data.append(f"Note : {table_note}")
-
-                # Conversion en texte tabulé
-                copy_text = "\n".join(excel_data)
-
-                # Affichage dans un textarea pour faciliter la copie
-                st.text_area(
-                    "Copiez le texte ci-dessous pour Excel :",
-                    value=copy_text,
-                    height=150
-                )
-
-    # Ajout de la partie visualisation
-    st.write("### Configuration de la visualisation")
-    viz_col1, viz_col2 = st.columns([1, 2])
-
-    with viz_col1:
-        graph_type = st.selectbox(
-            "Type de graphique",
-            ["Bar plot", "Lollipop plot", "Treemap"],
-            key="graph_type_qual_viz"
-        )
-
-    with viz_col2:
-        color_scheme = st.selectbox(
-            "Palette de couleurs",
-            list(COLOR_PALETTES.keys()),
-            key="color_scheme_qual_viz"
-        )
-
-    # Options avancées pour la visualisation
-    with st.expander("Options avancées de visualisation"):
-        adv_col1, adv_col2 = st.columns(2)
-
-        with adv_col1:
-            viz_title = st.text_input("Titre du graphique", f"Distribution de {var_name}", key="viz_title")
-            x_axis = st.text_input("Titre de l'axe X", var_name, key="x_axis_qual")
-            y_axis = st.text_input("Titre de l'axe Y", "Valeur", key="y_axis_qual")
-            show_values = st.checkbox("Afficher les valeurs", True, key="show_values_qual")
-
-        with adv_col2:
-            viz_source = st.text_input("Source des données", "", key="viz_source")
-            viz_note = st.text_input("Note de lecture", "", key="viz_note")
-            value_type = st.radio("Type de valeur à afficher", ["Effectif", "Taux (%)"], key="value_type_qual")
-
-    # Génération du graphique
-    if st.button("Générer la visualisation", key="generate_qual_viz"):
-        try:
-            # Préparation des données pour le graphique
-            data_to_plot = final_df.copy()
-
-            # Ajustement des données selon le type de valeur choisi
-            if value_type == "Taux (%)":
-                data_to_plot['Effectif'] = data_to_plot['Taux (%)']
-                y_axis = "Taux (%)" if y_axis == "Valeur" else y_axis
-
-            # Création du graphique selon le type choisi
-            if graph_type == "Bar plot":
-                fig = plot_qualitative_bar(
-                    data_to_plot, viz_title, x_axis, y_axis,
-                    COLOR_PALETTES[color_scheme], show_values
-                )
-            elif graph_type == "Lollipop plot":
-                fig = plot_qualitative_lollipop(
-                    data_to_plot, viz_title, x_axis, y_axis,
-                    COLOR_PALETTES[color_scheme], show_values
-                )
-            else:  # Treemap
-                fig = plot_qualitative_treemap(
-                    data_to_plot, viz_title,
-                    COLOR_PALETTES[color_scheme]
-                )
-
-            # Ajout des annotations si nécessaire
-            if viz_source or viz_note:
-                is_treemap = (graph_type == "Treemap")
-                fig = add_annotations(fig, viz_source, viz_note, is_treemap=is_treemap)
-
-            # Affichage du graphique
-            st.plotly_chart(fig, use_container_width=True)
-            # Ajout d'une option d'export pour le graphique avec des dimensions réduites
-            try:
-                buf = BytesIO()
-                if graph_type != "Treemap":
-                    fig.write_image(
-                        buf,
-                        format="png",
-                        width=1200,  # Réduit de 1920 à 1200
-                        height=800,   # Réduit de 1080 à 800
-                        scale=1.5     # Réduit de 2 à 1.5
-                    )
-                else:
-                    fig.write_image(
-                        buf,
-                        format="png",
-                        width=1000,   # Réduit de 1600 à 1000
-                        height=1000,  # Maintien du format carré
-                        scale=1.5     # Réduit de 2 à 1.5
-                    )
-
-                # Récupérer les données du buffer
-                buf.seek(0)
-                image_data = buf.getvalue()
-
-                # Vérifier la taille de l'image
-                image_size_mb = len(image_data) / (1024 * 1024)  # Convertir en MB
-                
-                if image_size_mb > 50:  # Si l'image fait plus de 50MB
-                    st.warning("⚠️ L'image générée est trop volumineuse. Essayez de réduire le nombre de données ou la complexité du graphique.")
-                else:
-                    st.download_button(
-                        label="💾 Télécharger le graphique (HD)",
-                        data=image_data,
-                        file_name=f"graphique_{var_name.lower().replace(' ', '_')}.png",
-                        mime="image/png",
-                        key="download_graph"
-                    )
+                    # Vérifier la taille de l'image
+                    image_size_mb = len(image_data) / (1024 * 1024)  # Convertir en MB
                     
-            except Exception as e:
-                if "kaleido" in str(export_error):
-                    st.warning("⚠️ L'export en haute résolution nécessite le package 'kaleido'. Veuillez l'installer avec : pip install kaleido")
-                else:
-                    st.error(f"Erreur lors de l'export : {str(export_error)}")
-                    st.write("DEBUG export error:", str(export_error))
-
-        return final_df, var_name_display
+                    if image_size_mb > 50:  # Si l'image fait plus de 50MB
+                        st.warning("⚠️ L'image générée est trop volumineuse. Essayez de réduire le nombre de données ou la complexité du graphique.")
+                    else:
+                        st.download_button(
+                            label="💾 Télécharger le graphique (HD)",
+                            data=image_data,
+                            file_name=f"graphique_{var_name.lower().replace(' ', '_')}.png",
+                            mime="image/png",
+                            key="download_graph"
+                        )
+                        
+                except Exception as export_error:
+                    if "kaleido" in str(export_error):
+                        st.warning("⚠️ L'export en haute résolution nécessite le package 'kaleido'. Veuillez l'installer avec : pip install kaleido")
+                    else:
+                        st.error(f"Erreur lors de l'export : {str(export_error)}")
+                        st.write("DEBUG export error:", str(export_error))
+    
+            return final_df, var_name_display
         
     except Exception as e:
         st.error(f"Erreur dans create_interactive_qualitative_table : {str(e)}")
