@@ -1473,7 +1473,12 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
             st.error(f"Erreur lors de la génération du graphique : {str(e)}")
             st.error(f"Détails : {str(type(e).__name__)}")
 
-        return final_df, var_name_display  # Move this inside the function
+    # Déplacer le return en dehors du if st.button()
+    try:
+        return final_df, var_name_display
+    except UnboundLocalError:
+        # Si final_df ou var_name_display n'ont pas été créés
+        return None, None
                 
 def main():
     st.title("Analyse des données ESR")
