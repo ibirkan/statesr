@@ -991,7 +991,7 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
     """Crée un tableau statistique interactif pour les variables qualitatives et gère la visualisation."""
     # Initialisation des variables
     missing_values = [None, np.nan, '', 'nan', 'NaN', 'NA', 'nr', 'NR']
-    
+
     # Initialisation du state si nécessaire
     if 'original_data' not in st.session_state:
         st.session_state.original_data = data_series.copy()
@@ -1004,7 +1004,7 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
         processed_series = processed_series.replace(missing_values, np.nan).dropna()
     else:
         processed_series = processed_series.replace(missing_values, missing_label)
-    
+
     # Création du DataFrame initial
     value_counts = processed_series.value_counts().reset_index()
     value_counts.columns = ['Modalité', 'Effectif']
@@ -1017,13 +1017,13 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
 
         with col1:
             st.write("##### Édition des modalités")
-            
+
             # Interface pour créer un nouveau regroupement
             st.write("**Nouveau regroupement**")
-            
+
             # Obtenir toutes les modalités disponibles
             available_modalities = value_counts['Modalité'].tolist()
-            
+
             # Sélection multiple des modalités à regrouper
             selected_modalities = st.multiselect(
                 "Sélectionner les modalités à regrouper",
@@ -1042,7 +1042,7 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                         'modalites': selected_modalities,
                         'nouveau_nom': new_group_name
                     })
-                    
+
                     # Appliquer tous les regroupements depuis le début
                     processed_series = st.session_state.original_data.copy()
                     for group in st.session_state.groupings:
@@ -1050,7 +1050,7 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                             group['modalites'],
                             group['nouveau_nom']
                         )
-                    
+
                     st.session_state.current_data = processed_series
                     st.rerun()
 
@@ -1109,7 +1109,7 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                 processed_series = data_series.replace(missing_values, np.nan).dropna()
             else:
                 processed_series = data_series.replace(missing_values, missing_label)
-            
+
             # Seulement mettre à jour value_counts si on n'a pas de regroupements actifs
             if not st.session_state.groupings:
                 value_counts = processed_series.value_counts().reset_index()
@@ -1122,7 +1122,7 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
     final_df = value_counts.copy()
     final_df['Modalité'] = final_df['Nouvelle modalité']
     final_df = final_df.drop('Nouvelle modalité', axis=1)
-    
+
     # Renommer la première colonne avec le nom de variable personnalisé
     final_df.columns = [var_name_display, 'Effectif', 'Taux (%)']
 
@@ -1134,22 +1134,22 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
             max-width: 800px !important;
             margin: 0 auto;
         }
-        
+
         .dataframe {
             width: 100% !important;
             margin: 0 !important;
         }
-        
+
         .dataframe td, .dataframe th {
             text-align: center !important;
             white-space: nowrap !important;
             padding: 8px !important;
         }
-        
+
         .dataframe td:first-child {
             text-align: left !important;
         }
-        
+
         .dataframe td:first-child { width: 60% !important; }
         .dataframe td:nth-child(2) { width: 20% !important; }
         .dataframe td:nth-child(3) { width: 20% !important; }
@@ -1224,20 +1224,20 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
     # Options d'export
     with st.expander("Options d'export"):
         col1, col2 = st.columns(2)
-        
+
         with col1:
             if st.button("Exporter en image"):
                         # Création de la figure avec un style personnalisé
                         fig, ax = plt.subplots(figsize=(12, len(final_df) + 2))
                         ax.axis('off')
-                        
+
                         # Configuration du style de base
                         plt.rcParams['font.family'] = 'sans-serif'
                         plt.rcParams['font.sans-serif'] = ['Arial']
-                        
+
                         # Préparation des données pour l'affichage
                         cell_text = final_df.values.astype(str)
-                        
+
                         # Création du tableau
                         table = ax.table(
                             cellText=cell_text,
@@ -1246,11 +1246,11 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                             cellLoc='center',
                             bbox=[0, 0.1, 1, 0.9]
                         )
-                        
+
                         # Style du tableau
                         table.auto_set_font_size(False)
                         table.set_fontsize(9)
-                        
+
                         # Largeurs des colonnes
                         col_widths = [0.6, 0.2, 0.2]
                         for idx, width in enumerate(col_widths):
@@ -1258,7 +1258,7 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                             for cell in table._cells:
                                 if cell[1] == idx:
                                     table._cells[cell].set_width(width)
-        
+
                         # Style des en-têtes
                         header_color = '#f0f2f6'
                         header_text_color = '#262730'
@@ -1267,56 +1267,56 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                             cell.set_text_props(weight='bold', color=header_text_color)
                             cell.set_height(0.1)
                             cell.set_edgecolor('#e6e6e6')
-        
+
                         # Style des cellules
                         for i in range(len(final_df) + 1):  # +1 pour inclure l'en-tête
                             for j in range(len(final_df.columns)):
                                 cell = table._cells[(i, j)]
                                 cell.set_edgecolor('#e6e6e6')
-                                
+
                                 # Alignement du texte
                                 if j == 0 and i > 0:  # Première colonne (Modalités) mais pas l'en-tête
                                     cell.get_text().set_horizontalalignment('left')
                                     # Ajouter un peu d'espace à gauche
                                     cell.get_text().set_x(0.1)  # Ajuster cette valeur entre 0 et 1 pour le padding gauche
-                                
+
                                 # Lignes alternées
                                 if i > 0:  # Exclure l'en-tête
                                     if i % 2 == 0:
                                         cell.set_facecolor('#f9f9f9')
                                     else:
                                         cell.set_facecolor('white')
-        
+
                                 # Ajustement de la hauteur des cellules
                                 cell.set_height(0.05)
-        
+
                         # Titre
                         if table_title:
                             plt.title(table_title, pad=20, fontsize=12, fontweight='bold')
-                        
+
                         # Notes de bas de page
                         footer_text = []
                         if table_source:
                             footer_text.append(f"Source : {table_source}")
                         if table_note:
                             footer_text.append(f"Note : {table_note}")
-                        
+
                         if footer_text:
                             plt.figtext(0.1, 0.02, '\n'.join(footer_text), fontsize=8)
-                        
+
                         # Ajustement de la mise en page
                         plt.tight_layout()
-                        
+
                         # Sauvegarde avec fond blanc
                         buf = BytesIO()
-                        plt.savefig(buf, format='png', 
-                                  bbox_inches='tight', 
+                        plt.savefig(buf, format='png',
+                                  bbox_inches='tight',
                                   dpi=300,
                                   facecolor='white',
                                   edgecolor='none',
                                   pad_inches=0.1)
                         plt.close()
-                        
+
                         # Téléchargement
                         st.download_button(
                             label="Télécharger l'image",
@@ -1359,7 +1359,7 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
     # Ajout de la partie visualisation
     st.write("### Configuration de la visualisation")
     viz_col1, viz_col2 = st.columns([1, 2])
-    
+
     with viz_col1:
         graph_type = st.selectbox(
             "Type de graphique",
@@ -1377,7 +1377,7 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
     # Options avancées pour la visualisation
     with st.expander("Options avancées de visualisation"):
         adv_col1, adv_col2 = st.columns(2)
-        
+
         with adv_col1:
             viz_title = st.text_input("Titre du graphique", f"Distribution de {var_name}", key="viz_title")
             x_axis = st.text_input("Titre de l'axe X", var_name, key="x_axis_qual")
@@ -1394,7 +1394,7 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
         try:
             # Préparation des données pour le graphique
             data_to_plot = final_df.copy()
-            
+
             # Ajustement des données selon le type de valeur choisi
             if value_type == "Taux (%)":
                 data_to_plot['Effectif'] = data_to_plot['Taux (%)']
@@ -1429,25 +1429,25 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                 buf = BytesIO()
                 if graph_type != "Treemap":
                     fig.write_image(
-                        buf, 
-                        format="png", 
+                        buf,
+                        format="png",
                         width=1200,  # Réduit de 1920 à 1200
                         height=800,   # Réduit de 1080 à 800
                         scale=1.5     # Réduit de 2 à 1.5
                     )
                 else:
                     fig.write_image(
-                        buf, 
-                        format="png", 
+                        buf,
+                        format="png",
                         width=1000,   # Réduit de 1600 à 1000
                         height=1000,  # Maintien du format carré
                         scale=1.5     # Réduit de 2 à 1.5
                     )
-                
+
                 # Récupérer les données du buffer
                 buf.seek(0)
                 image_data = buf.getvalue()
-                
+
                 # Vérifier la taille de l'image
                 image_size_mb = len(image_data) / (1024 * 1024)  # Convertir en MB
                 
