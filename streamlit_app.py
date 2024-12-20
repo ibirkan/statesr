@@ -1465,11 +1465,10 @@ def main():
             st.session_state.current_variable = var
         elif st.session_state.current_variable != var:
             # Réinitialisation complète du state
-            keys_to_delete = ['original_data', 'groupings', 'current_data', 'value_counts', 'variable_selector']
+            keys_to_delete = ['original_data', 'groupings', 'current_data', 'value_counts']
             for key in keys_to_delete:
                 if key in st.session_state:
                     del st.session_state[key]
-            st.session_state.clear()  # Nettoyage complet du state
             st.session_state.current_variable = var
             st.rerun()
     
