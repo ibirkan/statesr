@@ -457,7 +457,7 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
     if show_values:
         for cat, val in zip(data[category_col], data[value_col]):
             text_pos = 'top center' if val / max_value > 0.15 else 'middle center'
-            y_pos = val + (max_value * 0.02 if text_pos == 'top center' else 0)
+            y_pos = val + (max_value * 0.05 if text_pos == 'top center' else 0)
             fig.add_annotation(
                 x=cat,
                 y=y_pos,
@@ -468,7 +468,7 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
                     color='#1f1f1f',  # Texte plus foncé
                     family='Arial'
                 ),
-                yshift=5 if text_pos == 'top center' else 0
+                yshift=15 if text_pos == 'top center' else 0
             )
 
     return fig
