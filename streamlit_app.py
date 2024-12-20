@@ -993,33 +993,25 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
         # Initialisation des variables
         missing_values = [None, np.nan, '', 'nan', 'NaN', 'NA', 'nr', 'NR']
 
-        # Traitement initial des non-réponses
-        initial_series = data_series.copy()
-        if exclude_missing:
-            initial_series = initial_series.replace(missing_values, np.nan).dropna()
-        else:
-            initial_series = initial_series.replace(missing_values, missing_label)
-        
         # Initialisation du state si nécessaire
         if 'original_data' not in st.session_state:
             st.session_state.original_data = data_series.copy()
             st.session_state.groupings = []
             st.session_state.current_data = data_series.copy()
 
-        # Application des regroupements existants
+        # Traitement des non-réponses sur les données originales
         processed_series = st.session_state.original_data.copy()
+        if exclude_missing:
+            processed_series = processed_series.replace(missing_values, np.nan).dropna()
+        else:
+            processed_series = processed_series.replace(missing_values, missing_label)
+
+        # Appliquer les regroupements existants
         for group in st.session_state.groupings:
             processed_series = processed_series.replace(
                 group['modalites'],
                 group['nouveau_nom']
             )
-
-        # Préparation des données
-        processed_series = st.session_state.current_data.copy()
-        if exclude_missing:
-            processed_series = processed_series.replace(missing_values, np.nan).dropna()
-        else:
-            processed_series = processed_series.replace(missing_values, missing_label)
 
         st.session_state.current_data = processed_series.copy()
 
@@ -1033,10 +1025,26 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
         with st.expander("Options avancées du tableau statistique"):
             col1, col2, col3 = st.columns(3)
 
+            with col3:
+                st.write("##### Gestion des non-réponses")
+                exclude_missing = st.checkbox("Exclure les non-réponses")
+                if not exclude_missing:
+                    missing_label = st.text_input(
+                        "Libellé pour les non-réponses",
+                        value="Non réponse"
+                    )
+
+            # Filtrer les modalités disponibles pour le regroupement
+            available_modalities = value_counts['Modalité'].tolist()
+            if exclude_missing:
+                available_modalities = [mod for mod in available_modalities 
+                                     if mod not in [missing_label] + missing_values]
+
             with col1:
                 st.write("##### Édition des modalités")
                 st.write("**Nouveau regroupement**")
-                available_modalities = value_counts['Modalité'].tolist()
+                
+                # Utiliser les modalités filtrées pour le multiselect
                 selected_modalities = st.multiselect(
                     "Sélectionner les modalités à regrouper",
                     options=available_modalities
@@ -1053,12 +1061,20 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                             'modalites': selected_modalities,
                             'nouveau_nom': new_group_name
                         })
+                        
+                        # Réappliquer le traitement des données depuis le début
                         processed_series = st.session_state.original_data.copy()
+                        if exclude_missing:
+                            processed_series = processed_series.replace(missing_values, np.nan).dropna()
+                        else:
+                            processed_series = processed_series.replace(missing_values, missing_label)
+                            
                         for group in st.session_state.groupings:
                             processed_series = processed_series.replace(
                                 group['modalites'],
                                 group['nouveau_nom']
                             )
+                        
                         st.session_state.current_data = processed_series
                         st.rerun()
 
@@ -1074,14 +1090,16 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                     st.session_state.current_data = st.session_state.original_data.copy()
                     st.rerun()
 
+                # Afficher uniquement les modalités filtrées dans la section de renommage
                 st.write("##### Renommer les modalités")
                 for idx, row in value_counts.iterrows():
-                    value_counts.at[idx, 'Nouvelle modalité'] = st.text_input(
-                        f"Renommer '{row['Modalité']}'",
-                        value=row['Nouvelle modalité'],
-                        key=f"modal_{idx}",
-                        label_visibility="collapsed"
-                    )
+                    if row['Modalité'] not in ([missing_label] if exclude_missing else []):
+                        value_counts.at[idx, 'Nouvelle modalité'] = st.text_input(
+                            f"Renommer '{row['Modalité']}'",
+                            value=row['Nouvelle modalité'],
+                            key=f"modal_{idx}",
+                            label_visibility="collapsed"
+                        )
 
             with col2:
                 st.write("##### Paramètres du tableau")
@@ -1102,33 +1120,13 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                     placeholder="Ex: Lecture : XX% des répondants..."
                 )
 
-            with col3:
-                st.write("##### Gestion des non-réponses")
-                exclude_missing = st.checkbox("Exclure les non-réponses")
-                if not exclude_missing:
-                    missing_label = st.text_input(
-                        "Libellé pour les non-réponses",
-                        value="Non réponse"
-                    )
-                if exclude_missing:
-                    processed_series = data_series.replace(missing_values, np.nan).dropna()
-                else:
-                    processed_series = data_series.replace(missing_values, missing_label)
-
-                if not st.session_state.groupings:
-                    value_counts = processed_series.value_counts().reset_index()
-                    value_counts.columns = ['Modalité', 'Effectif']
-                    value_counts['Taux (%)'] = (value_counts['Effectif'] / len(processed_series) * 100).round(2)
-                    value_counts['Nouvelle modalité'] = value_counts['Modalité']
-                    st.session_state.value_counts = value_counts.copy()
-
         # Création du DataFrame final
         final_df = value_counts.copy()
         final_df['Modalité'] = final_df['Nouvelle modalité']
         final_df = final_df.drop('Nouvelle modalité', axis=1)
         final_df.columns = [var_name_display, 'Effectif', 'Taux (%)']
 
-        # Styles CSS et affichage du tableau
+        # Styles CSS pour le tableau
         st.markdown("""
             <style>
             [data-testid="stDataFrame"] > div {
@@ -1324,8 +1322,6 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                         st.warning("⚠️ L'export en haute résolution nécessite le package 'kaleido'. Veuillez l'installer avec : pip install kaleido")
                     else:
                         st.error(f"Erreur lors de l'export : {str(export_error)}")
-                        
-                return final_df, var_name_display
 
             except Exception as e:
                 st.error(f"Erreur lors de la génération du graphique : {str(e)}")
