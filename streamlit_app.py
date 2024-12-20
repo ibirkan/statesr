@@ -1624,12 +1624,22 @@ def main():
                         st.dataframe(value_counts)
     
                 if not is_numeric:
-                    # Pour les variables qualitatives, on utilise directement create_interactive_qualitative_table
+                    # Définir les variables de contrôle pour les non-réponses AVANT l'appel de la fonction
+                    exclude_missing = st.checkbox("Exclure les non-réponses", key="exclude_missing_checkbox")
+                    missing_label = "Non réponse"
+                    if not exclude_missing:
+                        missing_label = st.text_input(
+                            "Libellé pour les non-réponses",
+                            value="Non réponse",
+                            key="missing_label_input"
+                        )
+                
+                    # Appel de la fonction avec les paramètres définis
                     value_counts, var_name_display = create_interactive_qualitative_table(
                         plot_data, 
                         var, 
-                        exclude_missing=exclude_missing if 'exclude_missing' in locals() else False,
-                        missing_label=missing_label if 'missing_label' in locals() else "Non réponse"
+                        exclude_missing=exclude_missing,
+                        missing_label=missing_label
                     )
     
                 else:
