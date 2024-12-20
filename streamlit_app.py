@@ -1424,42 +1424,50 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
 
             # Affichage du graphique
             st.plotly_chart(fig, use_container_width=True)
-            # Ajout d'une option d'export pour le graphique
-            buf = BytesIO()
-            if graph_type != "Treemap":  # Les treemaps nécessitent un traitement spécial
-                fig.write_image(
-                    buf, 
-                    format="png", 
-                    width=1920,  # Largeur en pixels
-                    height=1080,  # Hauteur en pixels
-                    scale=2  # Facteur d'échelle pour améliorer la résolution
-                )
-            else:
-                # Pour les treemaps, ajuster la taille différemment
-                fig.write_image(
-                    buf, 
-                    format="png", 
-                    width=1600,
-                    height=1600,  # Format carré pour les treemaps
-                    scale=2
-                )
-            
-            st.download_button(
-                label="💾 Télécharger le graphique (HD)",
-                data=buf.getvalue(),
-                file_name=f"graphique_{var_name.lower().replace(' ', '_')}.png",
-                mime="image/png"
-            )
-
-        except Exception as e:
-            st.error(f"Erreur lors de la génération du graphique : {str(e)}")
-            st.error(f"Détails : {str(type(e).__name__)}")
-            st.write("DEBUG état des variables:", {
-                'data_to_plot shape': data_to_plot.shape if 'data_to_plot' in locals() else None,
-                'colonnes': list(data_to_plot.columns) if 'data_to_plot' in locals() else None,
-                'graph_type': graph_type,
-                'value_type': value_type
-            })
+            # Ajout d'une option d'export pour le graphique avec des dimensions réduites
+            try:
+                buf = BytesIO()
+                if graph_type != "Treemap":
+                    fig.write_image(
+                        buf, 
+                        format="png", 
+                        width=1200,  # Réduit de 1920 à 1200
+                        height=800,   # Réduit de 1080 à 800
+                        scale=1.5     # Réduit de 2 à 1.5
+                    )
+                else:
+                    fig.write_image(
+                        buf, 
+                        format="png", 
+                        width=1000,   # Réduit de 1600 à 1000
+                        height=1000,  # Maintien du format carré
+                        scale=1.5     # Réduit de 2 à 1.5
+                    )
+                
+                # Récupérer les données du buffer
+                buf.seek(0)
+                image_data = buf.getvalue()
+                
+                # Vérifier la taille de l'image
+                image_size_mb = len(image_data) / (1024 * 1024)  # Convertir en MB
+                
+                if image_size_mb > 50:  # Si l'image fait plus de 50MB
+                    st.warning("⚠️ L'image générée est trop volumineuse. Essayez de réduire le nombre de données ou la complexité du graphique.")
+                else:
+                    st.download_button(
+                        label="💾 Télécharger le graphique (HD)",
+                        data=image_data,
+                        file_name=f"graphique_{var_name.lower().replace(' ', '_')}.png",
+                        mime="image/png",
+                        key="download_graph"
+                    )
+                    
+            except Exception as export_error:
+                if "kaleido" in str(export_error):
+                    st.warning("⚠️ L'export en haute résolution nécessite le package 'kaleido'. Veuillez l'installer avec : pip install kaleido")
+                else:
+                    st.error(f"Erreur lors de l'export : {str(export_error)}")
+                    st.write("DEBUG export error:", str(export_error))
 
     return final_df, var_name_display
                 
