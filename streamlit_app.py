@@ -376,27 +376,32 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
     
     fig = go.Figure()
     
-    # Ajouter les lignes
-    fig.add_trace(go.Scatter(
-        x=data[category_col],
-        y=data[value_col],
-        mode='lines',
-        line=dict(color=color_palette[0], width=2),
-        showlegend=False
-    ))
-    
-    # Ajouter les points
-    fig.add_trace(go.Scatter(
-        x=data[category_col],
-        y=data[value_col],
-        mode='markers',
-        marker=dict(
-            color=color_palette[0],
-            size=12,
-            line=dict(color='white', width=1)
-        ),
-        showlegend=False
-    ))
+    # Pour chaque catégorie, créer une ligne verticale
+    for i, (cat, val) in enumerate(zip(data[category_col], data[value_col])):
+        # Ajouter la ligne verticale
+        fig.add_trace(go.Scatter(
+            x=[cat, cat],  # Même x pour ligne verticale
+            y=[0, val],    # De 0 à la valeur
+            mode='lines',
+            line=dict(color=color_palette[0], width=2),
+            showlegend=False,
+            hoverinfo='none'
+        ))
+        
+        # Ajouter le point
+        fig.add_trace(go.Scatter(
+            x=[cat],
+            y=[val],
+            mode='markers',
+            marker=dict(
+                color=color_palette[0],
+                size=12,
+                line=dict(color='white', width=1)
+            ),
+            showlegend=False,
+            name=cat,
+            hovertemplate=f"{cat}<br>Valeur: %{{y:.1f}}<extra></extra>"
+        ))
     
     width = max(400, min(800, 200 * n_categories))
     
@@ -411,7 +416,8 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
         xaxis=dict(
             showgrid=False,
             gridcolor='lightgray',
-            tickangle=45 if n_categories > 2 else 0
+            tickangle=45 if n_categories > 2 else 0,
+            type='category'  # Force l'axe x à être catégoriel
         ),
         yaxis=dict(
             showgrid=True,
@@ -424,17 +430,18 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
     )
 
     if show_values:
-        text_positions = ['top center' if val / max_value > 0.15 else 'middle center' for val in data[value_col]]
-        fig.add_trace(go.Scatter(
-            x=data[category_col],
-            y=data[value_col],
-            mode='text',
-            text=data[value_col].round(1),
-            textposition=text_positions,
-            texttemplate='%{text:.1f}',
-            textfont=dict(size=12),
-            showlegend=False
-        ))
+        # Ajouter les valeurs au-dessus des points
+        for cat, val in zip(data[category_col], data[value_col]):
+            text_pos = 'top center' if val / max_value > 0.15 else 'middle center'
+            y_pos = val + (max_value * 0.02 if text_pos == 'top center' else 0)  # Légèrement au-dessus du point
+            fig.add_annotation(
+                x=cat,
+                y=y_pos,
+                text=f"{val:.1f}",
+                showarrow=False,
+                font=dict(size=12),
+                yshift=5 if text_pos == 'top center' else 0
+            )
 
     return fig
 
