@@ -403,7 +403,19 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
             hovertemplate=f"{cat}<br>Valeur: %{{y:.1f}}<extra></extra>"
         ))
     
-    width = max(400, min(800, 200 * n_categories))
+    # Ajuster la largeur en fonction du nombre de catégories
+    if n_categories <= 2:
+        width = 400  # Largeur fixe plus étroite pour 2 modalités ou moins
+    else:
+        width = min(800, 200 * n_categories)  # Largeur adaptative pour plus de modalités
+        
+    # Ajuster les marges en fonction du nombre de catégories
+    left_margin = 50
+    right_margin = 50
+    if n_categories <= 2:
+        # Augmenter les marges latérales pour réduire l'espace entre les points
+        left_margin = 150
+        right_margin = 150
     
     fig.update_layout(
         title=title,
@@ -411,7 +423,7 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
         yaxis_title=y_label,
         width=width,
         height=500,
-        margin=dict(t=100, b=100, l=50, r=50),
+        margin=dict(t=100, b=100, l=left_margin, r=right_margin),
         plot_bgcolor='white',
         xaxis=dict(
             showgrid=False,
@@ -433,7 +445,7 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
         # Ajouter les valeurs au-dessus des points
         for cat, val in zip(data[category_col], data[value_col]):
             text_pos = 'top center' if val / max_value > 0.15 else 'middle center'
-            y_pos = val + (max_value * 0.02 if text_pos == 'top center' else 0)  # Légèrement au-dessus du point
+            y_pos = val + (max_value * 0.02 if text_pos == 'top center' else 0)
             fig.add_annotation(
                 x=cat,
                 y=y_pos,
