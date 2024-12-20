@@ -1459,55 +1459,45 @@ def main():
             options=["---"] + list(st.session_state.merged_data.columns),
             key="variable_selector"  # Ajout d'une clé unique
         )
-
+    
         # Nettoyer le session_state quand on change de variable
         if 'current_variable' not in st.session_state:
             st.session_state.current_variable = var
         elif st.session_state.current_variable != var:
-            
-        # Nettoyer le session_state quand on change de variable
-        if 'current_variable' not in st.session_state:
-            st.session_state.current_variable = selected_var
-        elif st.session_state.current_variable != selected_var:
             # Réinitialisation complète du state
-            keys_to_delete = ['original_data', 'groupings', 'current_data', 
-                             'value_counts', 'variable_selector']
+            keys_to_delete = ['original_data', 'groupings', 'current_data', 'value_counts', 'variable_selector']
             for key in keys_to_delete:
                 if key in st.session_state:
                     del st.session_state[key]
             st.session_state.clear()  # Nettoyage complet du state
-            st.session_state.current_variable = selected_var
+            st.session_state.current_variable = var
             st.rerun()
-        
+    
         if var != "---":
             # Préparation des données
             plot_data = st.session_state.merged_data[var].copy()
             plot_data = plot_data.dropna()
-            
+    
             if plot_data is not None and not plot_data.empty:
                 # Détection du type de variable
                 is_numeric = pd.api.types.is_numeric_dtype(plot_data)
                 st.write(f"### Statistiques principales de la variable {var}")
-                
+    
                 if is_numeric:
                     # Gestion des doublons pour variables numériques
                     has_duplicates = st.session_state.merged_data.duplicated(subset=[var]).any()
                     if has_duplicates:
                         st.warning("⚠️ Certaines observations sont répétées dans le jeu de données. "
-                                 "Vous pouvez choisir d'agréger les données avant l'analyse.")
+                                   "Vous pouvez choisir d'agréger les données avant l'analyse.")
                         do_aggregate = st.checkbox("Agréger les données avant l'analyse")
-                        
+    
                         if do_aggregate:
                             groupby_cols = [col for col in st.session_state.merged_data.columns if col != var]
                             groupby_col = st.selectbox("Sélectionner la colonne d'agrégation", groupby_cols)
                             agg_method = st.radio(
                                 "Méthode d'agrégation", 
                                 ['sum', 'mean', 'median'],
-                                format_func=lambda x: {
-                                    'sum': 'Somme',
-                                    'mean': 'Moyenne',
-                                    'median': 'Médiane'
-                                }[x]
+                                format_func=lambda x: {'sum': 'Somme', 'mean': 'Moyenne', 'median': 'Médiane'}[x]
                             )
                             clean_data = st.session_state.merged_data.dropna(subset=[var, groupby_col])
                             agg_data = clean_data.groupby(groupby_col).agg({var: agg_method}).reset_index()
@@ -1542,25 +1532,22 @@ def main():
                             ["Quartile (4 groupes)", "Quintile (5 groupes)", "Décile (10 groupes)"]
                         )
                         n_groups = {"Quartile (4 groupes)": 4, "Quintile (5 groupes)": 5, "Décile (10 groupes)": 10}[quantile_type]
-                        
+    
                         # Création des labels personnalisés selon le type de quantile
                         if quantile_type == "Quartile (4 groupes)":
-                            labels = [f"{i}er quartile" if i == 1 else f"{i}ème quartile" 
-                                     for i in range(1, 5)]
+                            labels = [f"{i}er quartile" if i == 1 else f"{i}ème quartile" for i in range(1, 5)]
                         elif quantile_type == "Quintile (5 groupes)":
-                            labels = [f"{i}er quintile" if i == 1 else f"{i}ème quintile" 
-                                     for i in range(1, 6)]
+                            labels = [f"{i}er quintile" if i == 1 else f"{i}ème quintile" for i in range(1, 6)]
                         else:  # Déciles
-                            labels = [f"{i}er décile" if i == 1 else f"{i}ème décile" 
-                                     for i in range(1, 11)]
-                        
+                            labels = [f"{i}er décile" if i == 1 else f"{i}ème décile" for i in range(1, 11)]
+    
                         # Création des groupes avec les labels personnalisés
                         grouped_data = pd.qcut(plot_data, q=n_groups, labels=labels)
                         value_counts = pd.DataFrame({
                             'Groupe': labels,
                             'Effectif': grouped_data.value_counts().reindex(labels)
                         })
-                        
+    
                         # Calcul des taux avec entiers si approprié
                         value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100)
                         if is_integer_variable:
@@ -1568,7 +1555,7 @@ def main():
                             value_counts['Taux (%)'] = value_counts['Taux (%)'].apply(
                                 lambda x: int(x) if x.is_integer() else round(x, 1)
                             )
-                        
+    
                         # Statistiques par groupe
                         group_stats = plot_data.groupby(grouped_data).agg(['sum', 'mean', 'max'])
                         if is_integer_variable:
@@ -1576,18 +1563,18 @@ def main():
                         else:
                             group_stats = group_stats.round(2)
                         group_stats.columns = ['Somme', 'Moyenne', 'Maximum']
-                        
+    
                         st.write("### Statistiques par groupe")
                         st.dataframe(pd.concat([value_counts, group_stats], axis=1))
     
                     elif grouping_method == "Manuelle":
                         n_groups = st.number_input("Nombre de groupes", min_value=2, value=3)
                         breaks = []
-                        
+    
                         # Conversion en float pour assurer la cohérence des types
                         min_val = float(plot_data.min())
                         max_val = float(plot_data.max())
-                        
+    
                         for i in range(n_groups + 1):
                             if i == 0:
                                 val = min_val
@@ -1612,24 +1599,24 @@ def main():
                                         step=0.1
                                     )
                             breaks.append(val)
-                        
+    
                         grouped_data = pd.cut(plot_data, bins=breaks)
                         value_counts = grouped_data.value_counts().reset_index()
                         value_counts.columns = ['Groupe', 'Effectif']
-                        
+    
                         # Tri et formatage
                         value_counts = value_counts.sort_values('Groupe', key=lambda x: x.map(lambda y: y.left))
                         value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100)
-                        
+    
                         if is_integer_variable:
                             value_counts['Effectif'] = value_counts['Effectif'].astype(int)
                             value_counts['Taux (%)'] = value_counts['Taux (%)'].apply(
                                 lambda x: int(x) if x.is_integer() else round(x, 1)
                             )
-                        
+    
                         st.write("### Répartition des groupes")
                         st.dataframe(value_counts)
-
+    
                 if not is_numeric:
                     # Pour les variables qualitatives, on utilise directement create_interactive_qualitative_table
                     value_counts, var_name_display = create_interactive_qualitative_table(
@@ -1638,12 +1625,12 @@ def main():
                         exclude_missing=exclude_missing if 'exclude_missing' in locals() else False,
                         missing_label=missing_label if 'missing_label' in locals() else "Non réponse"
                     )
-                
+    
                 else:
                     # Configuration de la visualisation pour les variables numériques
                     st.write("### Configuration de la visualisation")
                     viz_col1, viz_col2 = st.columns([1, 2])
-                    
+    
                     with viz_col1:
                         if grouping_method == "Aucune":
                             graph_type = st.selectbox("Type de graphique", ["Histogramme", "Density plot"], key="graph_type_no_group")
@@ -1655,10 +1642,10 @@ def main():
                             )
                         else:
                             graph_type = st.selectbox("Type de graphique", ["Bar plot", "Lollipop plot", "Treemap"], key="graph_type_group")
-                    
+    
                     with viz_col2:
                         color_scheme = st.selectbox("Palette de couleurs", list(COLOR_PALETTES.keys()), key="color_scheme")
-                                    
+    
                     # Options avancées pour les variables numériques
                     with st.expander("Options avancées"):
                         adv_col1, adv_col2 = st.columns(2)
@@ -1670,7 +1657,7 @@ def main():
                             source = st.text_input("Source des données", "", key="source_adv")
                             note = st.text_input("Note de lecture", "", key="note_adv")
                             show_values = st.checkbox("Afficher les valeurs", True, key="show_values_adv")
-                    
+    
                     # Génération du graphique pour les variables numériques
                     if st.button("Générer la visualisation", key="generate_num"):
                         try:
@@ -1681,7 +1668,7 @@ def main():
                                         fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
                                 else:  # Density plot
                                     fig = plot_density(plot_data, var, title, x_axis, y_axis)
-                            
+    
                             elif grouping_method == "Quantile":
                                 fig = plot_quantile_distribution(
                                     data=plot_data,
@@ -1691,29 +1678,29 @@ def main():
                                     plot_type=graph_type,
                                     is_integer_variable=is_integer_variable
                                 )
-                            
+    
                             else:  # Groupement manuel
                                 data_to_plot = pd.DataFrame({
                                     'Modalité': value_counts['Groupe'].astype(str),
                                     'Effectif': value_counts['Effectif' if value_type == "Effectif" else 'Taux (%)']
                                 })
-                                
+    
                                 if graph_type == "Bar plot":
                                     fig = plot_qualitative_bar(data_to_plot, title, x_axis, y_axis, COLOR_PALETTES[color_scheme], show_values)
                                 elif graph_type == "Lollipop plot":
                                     fig = plot_qualitative_lollipop(data_to_plot, title, x_axis, y_axis, COLOR_PALETTES[color_scheme], show_values)
                                 else:  # Treemap
                                     fig = plot_qualitative_treemap(data_to_plot, title, COLOR_PALETTES[color_scheme])
-                            
+    
                             # Ajout des annotations si nécessaire
                             if fig is not None and (source or note):
                                 is_treemap = (graph_type == "Treemap")
                                 fig = add_annotations(fig, source, note, is_treemap=is_treemap)
-
+    
                             # Affichage du graphique
                             if fig is not None:
                                 st.plotly_chart(fig, use_container_width=True)
-                                
+    
                         except Exception as e:
                             st.error(f"Erreur lors de la génération du graphique : {str(e)}")
                             st.error(f"Détails : {str(type(e).__name__)}")
