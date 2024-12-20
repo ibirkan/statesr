@@ -1513,7 +1513,7 @@ def main():
             "Sélectionnez les tables à analyser", 
             options=list(tables_dict.keys())  # Les clés sont les noms affichables
         )
-
+    
         if len(table_names) > 1:  # Seulement si plus d'une table est sélectionnée
             # Stocker les noms des tables sélectionnées
             table_selections = table_names
@@ -1555,7 +1555,7 @@ def main():
         if not table_names:
             st.warning("Veuillez sélectionner au moins une table pour l'analyse.")
             return
-
+    
         if len(table_names) == 1:
             table_id = tables_dict[table_names[0]]
             df = get_grist_data(table_id)
@@ -1567,17 +1567,16 @@ def main():
         else:
             dataframes = []
             merge_configs = []
-
+    
             for table_name in table_names:
                 table_id = tables_dict[table_name]
                 df = get_grist_data(table_id)
                 if df is not None:
                     dataframes.append(df)
-
+    
             if len(dataframes) < 2:
                 st.warning("Impossible de charger les tables sélectionnées.")
                 return
-        
     # Vérification des données fusionnées
     if st.session_state.merged_data is None:
         st.error("Erreur lors du chargement ou de la fusion des tables.")
