@@ -1017,13 +1017,18 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
         # Création du DataFrame initial
         value_counts = processed_series.value_counts().reset_index()
         value_counts.columns = ['Modalité', 'Effectif']
+        
+        # Calcul du total avant exclusion des non-réponses
+        total_effectif = value_counts['Effectif'].sum()
+        
+        # Exclusion des non-réponses si demandé
         if exclude_missing:
             value_counts = value_counts[~value_counts['Modalité'].isin([missing_label] + missing_values)]
+            # Recalcul du total après exclusion des non-réponses
+            total_effectif = value_counts['Effectif'].sum()
         
-        # Recalcule des pourcentages sans les non-réponses
-        total_effectif = value_counts['Effectif'].sum()
+        # Calcul des pourcentages avec le total approprié
         value_counts['Taux (%)'] = (value_counts['Effectif'] / total_effectif * 100).round(2)
-        value_counts['Nouvelle modalité'] = value_counts['Modalité']
 
         # Configuration des options avancées dans un expander
         with st.expander("Options avancées du tableau statistique"):
