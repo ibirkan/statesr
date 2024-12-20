@@ -1456,7 +1456,7 @@ def main():
         # Sélection de la variable
         var = st.selectbox(
             "Sélectionnez la variable:", 
-            options=["---"] + list(st.session_state.merged_data.columns)
+            options=["---"] + list(st.session_state.merged_data.columns),
             key="variable_selector"  # Ajout d'une clé unique
         )
 
