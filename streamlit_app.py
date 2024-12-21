@@ -1023,11 +1023,12 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
             st.session_state.original_data = data_series.copy()
             st.session_state.groupings = []
             st.session_state.current_data = data_series.copy()
-            # Ajout des nouvelles variables de session
             st.session_state.table_source = ""
             st.session_state.table_note = ""
             st.session_state.var_name_display = ""
             st.session_state.table_title = "" 
+            st.session_state.modalities_order = None
+            st.session_state.sync_options = True
 
         # Traitement des données avec gestion des non-réponses
         processed_series = st.session_state.original_data.copy()
@@ -1142,65 +1143,68 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                     st.rerun()
 
                 # Afficher uniquement les modalités filtrées dans la section de renommage
-                st.write("##### Renommer et réordonner les modalités")
+                show_rename_reorder = st.checkbox("Afficher les options de renommage et réorganisation des modalités de la variable sélectionnée", False)
 
-                # Créer un dictionnaire pour stocker l'ordre des modalités
-                if 'modalities_order' not in st.session_state:
-                    st.session_state.modalities_order = {mod: i+1 for i, mod in enumerate(value_counts['Modalité'])}
+                if show_rename_reorder:
+                    st.write("##### Renommer et réordonner les modalités")
 
-                # S'assurer que modalities_order contient toutes les modalités actuelles
-                current_modalities = set(value_counts['Modalité'])
-                stored_modalities = set(st.session_state.modalities_order.keys())
+                    # Créer un dictionnaire pour stocker l'ordre des modalités
+                    if 'modalities_order' not in st.session_state:
+                        st.session_state.modalities_order = {mod: i+1 for i, mod in enumerate(value_counts['Modalité'])}
 
-                # Ajouter les nouvelles modalités
-                for mod in current_modalities - stored_modalities:
-                    st.session_state.modalities_order[mod] = len(st.session_state.modalities_order) + 1
+                    # S'assurer que modalities_order contient toutes les modalités actuelles
+                    current_modalities = set(value_counts['Modalité'])
+                    stored_modalities = set(st.session_state.modalities_order.keys())
 
-                # Supprimer les modalités qui n'existent plus
-                for mod in stored_modalities - current_modalities:
-                    del st.session_state.modalities_order[mod]
+                    # Ajouter les nouvelles modalités
+                    for mod in current_modalities - stored_modalities:
+                        st.session_state.modalities_order[mod] = len(st.session_state.modalities_order) + 1
 
-                # Réajuster les numéros pour s'assurer qu'ils sont consécutifs
-                sorted_mods = sorted(st.session_state.modalities_order.items(), key=lambda x: x[1])
-                for i, (mod, _) in enumerate(sorted_mods):
-                    st.session_state.modalities_order[mod] = i + 1
+                    # Supprimer les modalités qui n'existent plus
+                    for mod in stored_modalities - current_modalities:
+                        del st.session_state.modalities_order[mod]
 
-                # Créer des colonnes pour l'ordre et le renommage
-                order_col, name_col = st.columns([1, 3])
+                    # Réajuster les numéros pour s'assurer qu'ils sont consécutifs
+                    sorted_mods = sorted(st.session_state.modalities_order.items(), key=lambda x: x[1])
+                    for i, (mod, _) in enumerate(sorted_mods):
+                        st.session_state.modalities_order[mod] = i + 1
 
-                with order_col:
-                    st.write("Ordre")
-                    order_inputs = {}
-                    n_modalities = len(value_counts)  # Nombre actuel de modalités
-                    for idx, row in value_counts.iterrows():
-                        current_order = st.session_state.modalities_order.get(row['Modalité'], idx + 1)
-                        order_inputs[row['Modalité']] = st.number_input(
-                            f"Ordre de '{row['Modalité']}'",
-                            min_value=1,
-                            max_value=n_modalities,  # Utiliser le nombre actuel de modalités
-                            value=min(current_order, n_modalities),  # S'assurer que la valeur ne dépasse pas le max
-                            key=f"order_{idx}",
-                            label_visibility="collapsed"
-                        )
+                    # Créer des colonnes pour l'ordre et le renommage
+                    order_col, name_col = st.columns([1, 3])
 
-                with name_col:
-                    st.write("Nouvelle modalité")
-                    for idx, row in value_counts.iterrows():
-                        if row['Modalité'] not in ([missing_label] if exclude_missing else []):
-                            value_counts.at[idx, 'Nouvelle modalité'] = st.text_input(
-                                f"Renommer '{row['Modalité']}'",
-                                value=row['Nouvelle modalité'],
-                                key=f"modal_{idx}",
+                    with order_col:
+                        st.write("Ordre")
+                        order_inputs = {}
+                        n_modalities = len(value_counts)  # Nombre actuel de modalités
+                        for idx, row in value_counts.iterrows():
+                            current_order = st.session_state.modalities_order.get(row['Modalité'], idx + 1)
+                            order_inputs[row['Modalité']] = st.number_input(
+                                f"Ordre de '{row['Modalité']}'",
+                                min_value=1,
+                                max_value=n_modalities,  # Utiliser le nombre actuel de modalités
+                                value=min(current_order, n_modalities),  # S'assurer que la valeur ne dépasse pas le max
+                                key=f"order_{idx}",
                                 label_visibility="collapsed"
                             )
 
-                # Mettre à jour l'ordre dans le state
-                st.session_state.modalities_order = order_inputs
+                    with name_col:
+                        st.write("Nouvelle modalité")
+                        for idx, row in value_counts.iterrows():
+                            if row['Modalité'] not in ([missing_label] if exclude_missing else []):
+                                value_counts.at[idx, 'Nouvelle modalité'] = st.text_input(
+                                    f"Renommer '{row['Modalité']}'",
+                                    value=row['Nouvelle modalité'],
+                                    key=f"modal_{idx}",
+                                    label_visibility="collapsed"
+                                )
 
-                # Réorganiser le DataFrame selon l'ordre spécifié
-                sorted_indices = sorted(range(len(value_counts)), 
-                                    key=lambda x: order_inputs[value_counts.iloc[x]['Modalité']])
-                value_counts = value_counts.iloc[sorted_indices].reset_index(drop=True)
+                    # Mettre à jour l'ordre dans le state
+                    st.session_state.modalities_order = order_inputs
+
+                    # Réorganiser le DataFrame selon l'ordre spécifié
+                    sorted_indices = sorted(range(len(value_counts)), 
+                                        key=lambda x: order_inputs[value_counts.iloc[x]['Modalité']])
+                    value_counts = value_counts.iloc[sorted_indices].reset_index(drop=True)
 
             with col2:
                 st.write("##### Paramètres du tableau")
@@ -1493,9 +1497,14 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                 show_values = st.checkbox("Afficher les valeurs", True, key="show_values_qual")
 
             with adv_col2:
-                viz_source = st.text_input("Source des données", "", key="viz_source")
+                viz_source = st.text_input("Source", "", key="viz_source")
                 viz_note = st.text_input("Note de lecture", "", key="viz_note")
                 value_type = st.radio("Type de valeur à afficher", ["Effectif", "Taux (%)"], key="value_type_qual")
+    
+            # Synchroniser automatiquement les modifications vers les options du tableau
+            st.session_state.table_title = viz_title
+            st.session_state.table_source = viz_source
+            st.session_state.table_note = viz_note
 
         # Génération du graphique
         if st.button("Générer la visualisation", key="generate_qual_viz"):
