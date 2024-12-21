@@ -1126,6 +1126,7 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                     temp_source = st.session_state.table_source
                     temp_note = st.session_state.table_note
                     temp_var_name = st.session_state.var_name_display
+                    temp_order = st.session_state.modalities_order 
                     
                     # Réinitialiser les groupements
                     st.session_state.groupings = []
@@ -1136,19 +1137,70 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                     st.session_state.table_source = temp_source
                     st.session_state.table_note = temp_note
                     st.session_state.var_name_display = temp_var_name
+                    st.session_state.modalities_order = temp_order 
                     
                     st.rerun()
 
                 # Afficher uniquement les modalités filtrées dans la section de renommage
-                st.write("##### Renommer les modalités")
-                for idx, row in value_counts.iterrows():
-                    if row['Modalité'] not in ([missing_label] if exclude_missing else []):
-                        value_counts.at[idx, 'Nouvelle modalité'] = st.text_input(
-                            f"Renommer '{row['Modalité']}'",
-                            value=row['Nouvelle modalité'],
-                            key=f"modal_{idx}",
+                st.write("##### Renommer et réordonner les modalités")
+
+                # Créer un dictionnaire pour stocker l'ordre des modalités
+                if 'modalities_order' not in st.session_state:
+                    st.session_state.modalities_order = {mod: i+1 for i, mod in enumerate(value_counts['Modalité'])}
+
+                # S'assurer que modalities_order contient toutes les modalités actuelles
+                current_modalities = set(value_counts['Modalité'])
+                stored_modalities = set(st.session_state.modalities_order.keys())
+
+                # Ajouter les nouvelles modalités
+                for mod in current_modalities - stored_modalities:
+                    st.session_state.modalities_order[mod] = len(st.session_state.modalities_order) + 1
+
+                # Supprimer les modalités qui n'existent plus
+                for mod in stored_modalities - current_modalities:
+                    del st.session_state.modalities_order[mod]
+
+                # Réajuster les numéros pour s'assurer qu'ils sont consécutifs
+                sorted_mods = sorted(st.session_state.modalities_order.items(), key=lambda x: x[1])
+                for i, (mod, _) in enumerate(sorted_mods):
+                    st.session_state.modalities_order[mod] = i + 1
+
+                # Créer des colonnes pour l'ordre et le renommage
+                order_col, name_col = st.columns([1, 3])
+
+                with order_col:
+                    st.write("Ordre")
+                    order_inputs = {}
+                    n_modalities = len(value_counts)  # Nombre actuel de modalités
+                    for idx, row in value_counts.iterrows():
+                        current_order = st.session_state.modalities_order.get(row['Modalité'], idx + 1)
+                        order_inputs[row['Modalité']] = st.number_input(
+                            f"Ordre de '{row['Modalité']}'",
+                            min_value=1,
+                            max_value=n_modalities,  # Utiliser le nombre actuel de modalités
+                            value=min(current_order, n_modalities),  # S'assurer que la valeur ne dépasse pas le max
+                            key=f"order_{idx}",
                             label_visibility="collapsed"
                         )
+
+                with name_col:
+                    st.write("Nouvelle modalité")
+                    for idx, row in value_counts.iterrows():
+                        if row['Modalité'] not in ([missing_label] if exclude_missing else []):
+                            value_counts.at[idx, 'Nouvelle modalité'] = st.text_input(
+                                f"Renommer '{row['Modalité']}'",
+                                value=row['Nouvelle modalité'],
+                                key=f"modal_{idx}",
+                                label_visibility="collapsed"
+                            )
+
+                # Mettre à jour l'ordre dans le state
+                st.session_state.modalities_order = order_inputs
+
+                # Réorganiser le DataFrame selon l'ordre spécifié
+                sorted_indices = sorted(range(len(value_counts)), 
+                                    key=lambda x: order_inputs[value_counts.iloc[x]['Modalité']])
+                value_counts = value_counts.iloc[sorted_indices].reset_index(drop=True)
 
             with col2:
                 st.write("##### Paramètres du tableau")
@@ -1277,58 +1329,68 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
             
             with col1:
                 if st.button("Exporter en image"):
-                    # Création de la figure avec un style personnalisé
-                    fig, ax = plt.subplots(figsize=(12, len(final_df) + 2))
+                    # Création de la figure avec un style personnalisé et une taille plus grande
+                    fig, ax = plt.subplots(figsize=(15, len(final_df) + 3))  # Augmentation de la largeur et ajout d'espace vertical
                     ax.axis('off')
                     
-                    # Configuration du style de base
+                    # Configuration du style de base avec une police plus grande
                     plt.rcParams['font.family'] = 'sans-serif'
                     plt.rcParams['font.sans-serif'] = ['Arial']
-                    
+
                     # Préparation des données pour l'affichage
-                    cell_text = final_df.values.astype(str)
+                    cell_text = []
+                    for _, row in final_df.iterrows():
+                        # Formatage des valeurs numériques
+                        formatted_row = [
+                            str(row[var_name_display]),  # Première colonne (modalités)
+                            f"{row['Effectif']:,.0f}",   # Deuxième colonne (effectifs)
+                            f"{row['Taux (%)']:.1f}%"    # Troisième colonne (pourcentages)
+                        ]
+                        cell_text.append(formatted_row)
                     
                     # Création du tableau
                     table = ax.table(
                         cellText=cell_text,
-                        colLabels=[var_name_display, 'Effectif', 'Taux (%)'],  # Utiliser le nom personnalisé ici
+                        colLabels=[var_name_display, 'Effectif', 'Taux (%)'],
                         loc='center',
                         cellLoc='center',
                         bbox=[0, 0.1, 1, 0.9]
                     )
                     
-                    # Style du tableau
+                    # Style du tableau avec une taille de police plus grande
                     table.auto_set_font_size(False)
-                    table.set_fontsize(9)
+                    table.set_fontsize(12)  # Augmentation de la taille de la police
                     
-                    # Largeurs des colonnes
-                    col_widths = [0.6, 0.2, 0.2]
+                    # Largeurs des colonnes ajustées
+                    col_widths = [0.5, 0.25, 0.25]  # Ajustement des proportions
                     for idx, width in enumerate(col_widths):
                         table.auto_set_column_width([idx])
                         for cell in table._cells:
                             if cell[1] == idx:
                                 table._cells[cell].set_width(width)
-    
+
                     # Style des en-têtes
                     header_color = '#f0f2f6'
                     header_text_color = '#262730'
                     for j, cell in enumerate(table._cells[(0, j)] for j in range(len(final_df.columns))):
                         cell.set_facecolor(header_color)
-                        cell.set_text_props(weight='bold', color=header_text_color)
-                        cell.set_height(0.1)
+                        cell.set_text_props(weight='bold', color=header_text_color, fontsize=13)  # Police plus grande pour les en-têtes
+                        cell.set_height(0.12)  # Hauteur augmentée pour les en-têtes
                         cell.set_edgecolor('#e6e6e6')
-    
+
                     # Style des cellules
-                    for i in range(len(final_df) + 1):  # +1 pour inclure l'en-tête
+                    for i in range(len(final_df) + 1):
                         for j in range(len(final_df.columns)):
                             cell = table._cells[(i, j)]
                             cell.set_edgecolor('#e6e6e6')
                             
+                            # Ajustement de la hauteur des cellules
+                            cell.set_height(0.08)  # Hauteur augmentée pour toutes les cellules
+                            
                             # Alignement du texte
                             if j == 0 and i > 0:  # Première colonne (Modalités) mais pas l'en-tête
                                 cell.get_text().set_horizontalalignment('left')
-                                # Ajouter un peu d'espace à gauche
-                                cell.get_text().set_x(0.1)  # Ajuster cette valeur entre 0 et 1 pour le padding gauche
+                                cell.get_text().set_x(0.1)
                             
                             # Lignes alternées
                             if i > 0:  # Exclure l'en-tête
@@ -1336,15 +1398,12 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                                     cell.set_facecolor('#f9f9f9')
                                 else:
                                     cell.set_facecolor('white')
-    
-                            # Ajustement de la hauteur des cellules
-                            cell.set_height(0.05)
-    
-                    # Titre
+
+                    # Titre avec une taille de police plus grande
                     if table_title:
-                        plt.title(table_title, pad=20, fontsize=12, fontweight='bold')
+                        plt.title(table_title, pad=20, fontsize=14, fontweight='bold')
                     
-                    # Notes de bas de page
+                    # Notes de bas de page avec une taille de police légèrement plus grande
                     footer_text = []
                     if table_source:
                         footer_text.append(f"Source : {table_source}")
@@ -1352,19 +1411,19 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                         footer_text.append(f"Note : {table_note}")
                     
                     if footer_text:
-                        plt.figtext(0.1, 0.02, '\n'.join(footer_text), fontsize=8)
+                        plt.figtext(0.1, 0.02, '\n'.join(footer_text), fontsize=10)
                     
                     # Ajustement de la mise en page
                     plt.tight_layout()
                     
-                    # Sauvegarde avec fond blanc
+                    # Sauvegarde avec une résolution plus élevée
                     buf = BytesIO()
                     plt.savefig(buf, format='png', 
-                              bbox_inches='tight', 
-                              dpi=300,
-                              facecolor='white',
-                              edgecolor='none',
-                              pad_inches=0.1)
+                                bbox_inches='tight', 
+                                dpi=300,  # Augmentation de la résolution
+                                facecolor='white',
+                                edgecolor='none',
+                                pad_inches=0.2)  # Augmentation de la marge
                     plt.close()
                     
                     # Téléchargement
