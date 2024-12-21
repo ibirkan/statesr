@@ -1023,6 +1023,11 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
             st.session_state.original_data = data_series.copy()
             st.session_state.groupings = []
             st.session_state.current_data = data_series.copy()
+            # Ajout des nouvelles variables de session
+            st.session_state.table_source = ""
+            st.session_state.table_note = ""
+            st.session_state.var_name_display = ""
+            st.session_state.table_title = "" 
 
         # Traitement des données avec gestion des non-réponses
         processed_series = st.session_state.original_data.copy()
@@ -1116,8 +1121,22 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                         )
 
                 if st.button("Réinitialiser tous les regroupements"):
+                    # Sauvegarder temporairement les informations
+                    temp_title = st.session_state.table_title
+                    temp_source = st.session_state.table_source
+                    temp_note = st.session_state.table_note
+                    temp_var_name = st.session_state.var_name_display
+                    
+                    # Réinitialiser les groupements
                     st.session_state.groupings = []
                     st.session_state.current_data = st.session_state.original_data.copy()
+                    
+                    # Restaurer les informations
+                    st.session_state.table_title = temp_title
+                    st.session_state.table_source = temp_source
+                    st.session_state.table_note = temp_note
+                    st.session_state.var_name_display = temp_var_name
+                    
                     st.rerun()
 
                 # Afficher uniquement les modalités filtrées dans la section de renommage
@@ -1135,20 +1154,28 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                 st.write("##### Paramètres du tableau")
                 table_title = st.text_input(
                     "Titre du tableau",
-                    value=f"Distribution de la variable {var_name}"
+                    value=st.session_state.table_title if st.session_state.table_title else f"Distribution de la variable {var_name}"
                 )
                 var_name_display = st.text_input(
                     "Nom de la variable :",
-                    value="Modalités"
+                    value=st.session_state.var_name_display if st.session_state.var_name_display else "Modalités"
                 )
                 table_source = st.text_input(
                     "Source",
+                    value=st.session_state.table_source,
                     placeholder="Ex: Enquête XX, 2023"
                 )
                 table_note = st.text_input(
                     "Note de lecture",
+                    value=st.session_state.table_note,
                     placeholder="Ex: Lecture : XX% des répondants..."
                 )
+
+                # Sauvegarder les nouvelles valeurs dans le state
+                st.session_state.table_title = table_title
+                st.session_state.table_source = table_source
+                st.session_state.table_note = table_note
+                st.session_state.var_name_display = var_name_display
 
         # Création du DataFrame final
         final_df = value_counts.copy()
