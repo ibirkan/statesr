@@ -1244,119 +1244,6 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                 st.caption(f"Note : {table_note}")
             st.markdown('</div>', unsafe_allow_html=True)
 
-        # Configuration de la visualisation
-        st.write("### Configuration de la visualisation")
-        viz_col1, viz_col2 = st.columns([1, 2])
-
-        with viz_col1:
-            graph_type = st.selectbox(
-                "Type de graphique",
-                ["Bar plot", "Lollipop plot", "Treemap"],
-                key="graph_type_qual_viz"
-            )
-
-        with viz_col2:
-            color_scheme = st.selectbox(
-                "Palette de couleurs",
-                list(COLOR_PALETTES.keys()),
-                key="color_scheme_qual_viz"
-            )
-
-        with st.expander("Options avancées de visualisation"):
-            adv_col1, adv_col2 = st.columns(2)
-
-            with adv_col1:
-                viz_title = st.text_input("Titre du graphique", f"Distribution de {var_name}", key="viz_title")
-                x_axis = st.text_input("Titre de l'axe X", var_name, key="x_axis_qual")
-                y_axis = st.text_input("Titre de l'axe Y", "Valeur", key="y_axis_qual")
-                show_values = st.checkbox("Afficher les valeurs", True, key="show_values_qual")
-
-            with adv_col2:
-                viz_source = st.text_input("Source des données", "", key="viz_source")
-                viz_note = st.text_input("Note de lecture", "", key="viz_note")
-                value_type = st.radio("Type de valeur à afficher", ["Effectif", "Taux (%)"], key="value_type_qual")
-
-        # Génération du graphique
-        if st.button("Générer la visualisation", key="generate_qual_viz"):
-            try:
-                # Préparation des données pour le graphique
-                data_to_plot = final_df.copy()
-
-                # Ajustement des données selon le type de valeur choisi
-                if value_type == "Taux (%)":
-                    data_to_plot['Effectif'] = data_to_plot['Taux (%)']
-                    y_axis = "Taux (%)" if y_axis == "Valeur" else y_axis
-
-                # Création du graphique selon le type choisi
-                if graph_type == "Bar plot":
-                    fig = plot_qualitative_bar(
-                        data_to_plot, viz_title, x_axis, y_axis,
-                        COLOR_PALETTES[color_scheme], show_values
-                    )
-                elif graph_type == "Lollipop plot":
-                    fig = plot_qualitative_lollipop(
-                        data_to_plot, viz_title, x_axis, y_axis,
-                        COLOR_PALETTES[color_scheme], show_values
-                    )
-                else:  # Treemap
-                    fig = plot_qualitative_treemap(
-                        data_to_plot, viz_title,
-                        COLOR_PALETTES[color_scheme]
-                    )
-
-                # Ajout des annotations si nécessaire
-                if viz_source or viz_note:
-                    is_treemap = (graph_type == "Treemap")
-                    fig = add_annotations(fig, viz_source, viz_note, is_treemap=is_treemap)
-
-                # Affichage du graphique
-                st.plotly_chart(fig, use_container_width=True)
-
-                # Export du graphique
-                try:
-                    buf = BytesIO()
-                    if graph_type != "Treemap":
-                        fig.write_image(
-                            buf,
-                            format="png",
-                            width=1200,
-                            height=800,
-                            scale=1.5
-                        )
-                    else:
-                        fig.write_image(
-                            buf,
-                            format="png",
-                            width=1000,
-                            height=1000,
-                            scale=1.5
-                        )
-
-                    buf.seek(0)
-                    image_data = buf.getvalue()
-                    image_size_mb = len(image_data) / (1024 * 1024)
-
-                    if image_size_mb > 50:
-                        st.warning("⚠️ L'image générée est trop volumineuse. Essayez de réduire le nombre de données ou la complexité du graphique.")
-                    else:
-                        st.download_button(
-                            label="💾 Télécharger le graphique (HD)",
-                            data=image_data,
-                            file_name=f"graphique_{var_name.lower().replace(' ', '_')}.png",
-                            mime="image/png",
-                            key="download_graph"
-                        )
-
-                except Exception as export_error:
-                    if "kaleido" in str(export_error):
-                        st.warning("⚠️ L'export en haute résolution nécessite le package 'kaleido'. Veuillez l'installer avec : pip install kaleido")
-                    else:
-                        st.error(f"Erreur lors de l'export : {str(export_error)}")
-
-            except Exception as e:
-                st.error(f"Erreur lors de la génération du graphique : {str(e)}")
-                return None, None
-
         # Options d'export
         with st.expander("Options d'export"):
             col1, col2 = st.columns(2)
@@ -1492,11 +1379,125 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                         height=150
                     )
 
+        # Configuration de la visualisation
+        st.write("### Configuration de la visualisation")
+        viz_col1, viz_col2 = st.columns([1, 2])
+
+        with viz_col1:
+            graph_type = st.selectbox(
+                "Type de graphique",
+                ["Bar plot", "Lollipop plot", "Treemap"],
+                key="graph_type_qual_viz"
+            )
+
+        with viz_col2:
+            color_scheme = st.selectbox(
+                "Palette de couleurs",
+                list(COLOR_PALETTES.keys()),
+                key="color_scheme_qual_viz"
+            )
+
+        with st.expander("Options avancées de visualisation"):
+            adv_col1, adv_col2 = st.columns(2)
+
+            with adv_col1:
+                viz_title = st.text_input("Titre du graphique", f"Distribution de {var_name}", key="viz_title")
+                x_axis = st.text_input("Titre de l'axe X", var_name, key="x_axis_qual")
+                y_axis = st.text_input("Titre de l'axe Y", "Valeur", key="y_axis_qual")
+                show_values = st.checkbox("Afficher les valeurs", True, key="show_values_qual")
+
+            with adv_col2:
+                viz_source = st.text_input("Source des données", "", key="viz_source")
+                viz_note = st.text_input("Note de lecture", "", key="viz_note")
+                value_type = st.radio("Type de valeur à afficher", ["Effectif", "Taux (%)"], key="value_type_qual")
+
+        # Génération du graphique
+        if st.button("Générer la visualisation", key="generate_qual_viz"):
+            try:
+                # Préparation des données pour le graphique
+                data_to_plot = final_df.copy()
+
+                # Ajustement des données selon le type de valeur choisi
+                if value_type == "Taux (%)":
+                    data_to_plot['Effectif'] = data_to_plot['Taux (%)']
+                    y_axis = "Taux (%)" if y_axis == "Valeur" else y_axis
+
+                # Création du graphique selon le type choisi
+                if graph_type == "Bar plot":
+                    fig = plot_qualitative_bar(
+                        data_to_plot, viz_title, x_axis, y_axis,
+                        COLOR_PALETTES[color_scheme], show_values
+                    )
+                elif graph_type == "Lollipop plot":
+                    fig = plot_qualitative_lollipop(
+                        data_to_plot, viz_title, x_axis, y_axis,
+                        COLOR_PALETTES[color_scheme], show_values
+                    )
+                else:  # Treemap
+                    fig = plot_qualitative_treemap(
+                        data_to_plot, viz_title,
+                        COLOR_PALETTES[color_scheme]
+                    )
+
+                # Ajout des annotations si nécessaire
+                if viz_source or viz_note:
+                    is_treemap = (graph_type == "Treemap")
+                    fig = add_annotations(fig, viz_source, viz_note, is_treemap=is_treemap)
+
+                # Affichage du graphique
+                st.plotly_chart(fig, use_container_width=True)
+
+                # Export du graphique
+                try:
+                    buf = BytesIO()
+                    if graph_type != "Treemap":
+                        fig.write_image(
+                            buf,
+                            format="png",
+                            width=1200,
+                            height=800,
+                            scale=1.5
+                        )
+                    else:
+                        fig.write_image(
+                            buf,
+                            format="png",
+                            width=1000,
+                            height=1000,
+                            scale=1.5
+                        )
+
+                    buf.seek(0)
+                    image_data = buf.getvalue()
+                    image_size_mb = len(image_data) / (1024 * 1024)
+
+                    if image_size_mb > 50:
+                        st.warning("⚠️ L'image générée est trop volumineuse. Essayez de réduire le nombre de données ou la complexité du graphique.")
+                    else:
+                        st.download_button(
+                            label="💾 Télécharger le graphique (HD)",
+                            data=image_data,
+                            file_name=f"graphique_{var_name.lower().replace(' ', '_')}.png",
+                            mime="image/png",
+                            key="download_graph"
+                        )
+
+                except Exception as export_error:
+                    if "kaleido" in str(export_error):
+                        st.warning("⚠️ L'export en haute résolution nécessite le package 'kaleido'. Veuillez l'installer avec : pip install kaleido")
+                    else:
+                        st.error(f"Erreur lors de l'export : {str(export_error)}")
+
+            except Exception as e:
+                st.error(f"Erreur lors de la génération du graphique : {str(e)}")
+                return None, None
+
         # Return par défaut si le bouton n'est pas cliqué
         return final_df, var_name_display
 
     except Exception as e:
-        st.error(f"Erreur dans create
+        st.error(f"Erreur dans create_interactive_qualitative_table : {str(e)}")
+        return
         
 def main():
     st.title("Analyse des données ESR")
