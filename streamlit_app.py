@@ -1357,12 +1357,146 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                 st.error(f"Erreur lors de la génération du graphique : {str(e)}")
                 return None, None
 
+        # Options d'export
+        with st.expander("Options d'export"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if st.button("Exporter en image"):
+                    # Création de la figure avec un style personnalisé
+                    fig, ax = plt.subplots(figsize=(12, len(final_df) + 2))
+                    ax.axis('off')
+                    
+                    # Configuration du style de base
+                    plt.rcParams['font.family'] = 'sans-serif'
+                    plt.rcParams['font.sans-serif'] = ['Arial']
+                    
+                    # Préparation des données pour l'affichage
+                    cell_text = final_df.values.astype(str)
+                    
+                    # Création du tableau
+                    table = ax.table(
+                        cellText=cell_text,
+                        colLabels=[var_name_display, 'Effectif', 'Taux (%)'],  # Utiliser le nom personnalisé ici
+                        loc='center',
+                        cellLoc='center',
+                        bbox=[0, 0.1, 1, 0.9]
+                    )
+                    
+                    # Style du tableau
+                    table.auto_set_font_size(False)
+                    table.set_fontsize(9)
+                    
+                    # Largeurs des colonnes
+                    col_widths = [0.6, 0.2, 0.2]
+                    for idx, width in enumerate(col_widths):
+                        table.auto_set_column_width([idx])
+                        for cell in table._cells:
+                            if cell[1] == idx:
+                                table._cells[cell].set_width(width)
+    
+                    # Style des en-têtes
+                    header_color = '#f0f2f6'
+                    header_text_color = '#262730'
+                    for j, cell in enumerate(table._cells[(0, j)] for j in range(len(final_df.columns))):
+                        cell.set_facecolor(header_color)
+                        cell.set_text_props(weight='bold', color=header_text_color)
+                        cell.set_height(0.1)
+                        cell.set_edgecolor('#e6e6e6')
+    
+                    # Style des cellules
+                    for i in range(len(final_df) + 1):  # +1 pour inclure l'en-tête
+                        for j in range(len(final_df.columns)):
+                            cell = table._cells[(i, j)]
+                            cell.set_edgecolor('#e6e6e6')
+                            
+                            # Alignement du texte
+                            if j == 0 and i > 0:  # Première colonne (Modalités) mais pas l'en-tête
+                                cell.get_text().set_horizontalalignment('left')
+                                # Ajouter un peu d'espace à gauche
+                                cell.get_text().set_x(0.1)  # Ajuster cette valeur entre 0 et 1 pour le padding gauche
+                            
+                            # Lignes alternées
+                            if i > 0:  # Exclure l'en-tête
+                                if i % 2 == 0:
+                                    cell.set_facecolor('#f9f9f9')
+                                else:
+                                    cell.set_facecolor('white')
+    
+                            # Ajustement de la hauteur des cellules
+                            cell.set_height(0.05)
+    
+                    # Titre
+                    if table_title:
+                        plt.title(table_title, pad=20, fontsize=12, fontweight='bold')
+                    
+                    # Notes de bas de page
+                    footer_text = []
+                    if table_source:
+                        footer_text.append(f"Source : {table_source}")
+                    if table_note:
+                        footer_text.append(f"Note : {table_note}")
+                    
+                    if footer_text:
+                        plt.figtext(0.1, 0.02, '\n'.join(footer_text), fontsize=8)
+                    
+                    # Ajustement de la mise en page
+                    plt.tight_layout()
+                    
+                    # Sauvegarde avec fond blanc
+                    buf = BytesIO()
+                    plt.savefig(buf, format='png', 
+                              bbox_inches='tight', 
+                              dpi=300,
+                              facecolor='white',
+                              edgecolor='none',
+                              pad_inches=0.1)
+                    plt.close()
+                    
+                    # Téléchargement
+                    st.download_button(
+                        label="Télécharger l'image",
+                        data=buf.getvalue(),
+                        file_name="tableau_statistique.png",
+                        mime="image/png"
+                    )
+
+            with col2:
+                if st.button("Copier pour Excel"):
+                    # Préparation des données pour Excel
+                    excel_data = []
+                    if table_title:
+                        excel_data.append(table_title)
+                        excel_data.append("")  # Ligne vide
+
+                    # En-têtes et données
+                    excel_data.append("\t".join(final_df.columns))
+                    for _, row in final_df.iterrows():
+                        excel_data.append("\t".join(str(val) for val in row))
+
+                    # Métadonnées
+                    if table_source or table_note:
+                        excel_data.append("")  # Ligne vide
+                        if table_source:
+                            excel_data.append(f"Source : {table_source}")
+                        if table_note:
+                            excel_data.append(f"Note : {table_note}")
+
+                    # Conversion en texte tabulé
+                    copy_text = "\n".join(excel_data)
+
+                    # Affichage dans un textarea pour faciliter la copie
+                    st.text_area(
+                        "Copiez le texte ci-dessous pour Excel :",
+                        value=copy_text,
+                        height=150
+                    )
+
         # Return par défaut si le bouton n'est pas cliqué
         return final_df, var_name_display
 
     except Exception as e:
-        st.error(f"Erreur dans create_interactive_qualitative_table : {str(e)}")
-        return
+        st.error(f"Erreur dans create
         
 def main():
     st.title("Analyse des données ESR")
