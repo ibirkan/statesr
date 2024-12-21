@@ -727,49 +727,37 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
     
     return fig
 
-def add_annotations(fig, source=None, note=None, is_treemap=False):
-    """
-    Ajoute les annotations (source et note) au graphique de manière adaptée selon le type.
-    
-    Args:
-        fig: Figure plotly
-        source: Source des données
-        note: Note explicative
-        is_treemap: Boolean indiquant si c'est un treemap (nécessite un traitement spécial)
-    """
-    annotations = []
-    
-    if is_treemap:
-        # Pour les treemaps, positionner les annotations différemment
-        current_y = -0.1
-        x_pos = 0.02
-    else:
-        # Pour les autres types de graphiques
-        current_y = -0.2
-        x_pos = 0.02
-    
-    if source:
-        annotations.append(dict(
-            text=f"Source : {source}",
-            xref="paper", yref="paper",
-            x=x_pos, y=current_y,
-            showarrow=False,
-            font=dict(size=10),
-            align="left"
-        ))
-        current_y -= 0.07
-    
-    if note:
-        annotations.append(dict(
-            text=f"Note : {note}",
-            xref="paper", yref="paper",
-            x=x_pos, y=current_y,
-            showarrow=False,
-            font=dict(size=10),
-            align="left"
-        ))
-    
-    fig.update_layout(annotations=annotations)
+def add_annotations(fig, source="", note="", is_treemap=False):
+    if source or note:
+        annotations_text = []
+        if source:
+            annotations_text.append(f"Source : {source}")
+        if note:
+            annotations_text.append(f"Note : {note}")
+        
+        # Calcul de la position Y en fonction du type de graphique
+        if is_treemap:
+            y_position = -0.1
+        else:
+            y_position = -0.15
+        
+        # Ajout des annotations
+        fig.update_layout(
+            annotations=[
+                dict(
+                    text='<br>'.join(annotations_text),
+                    align='left',
+                    showarrow=False,
+                    xref='paper',
+                    yref='paper',
+                    x=0,
+                    y=y_position,
+                    font=dict(size=10),
+                )
+            ],
+            # Augmenter les marges du bas pour les annotations
+            margin=dict(b=100 if (source or note) else 50)
+        )
     return fig
 
 # Fonctions d'analyse bivariée
@@ -1027,7 +1015,7 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
             st.session_state.table_note = ""
             st.session_state.var_name_display = ""
             st.session_state.table_title = "" 
-            st.session_state.modalities_order = None
+            st.session_state.modalities_order = {}
             st.session_state.sync_options = True
 
         # Traitement des données avec gestion des non-réponses
@@ -1149,7 +1137,7 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                     st.write("##### Renommer et réordonner les modalités")
 
                     # Créer un dictionnaire pour stocker l'ordre des modalités
-                    if 'modalities_order' not in st.session_state:
+                    if not st.session_state.modalities_order:
                         st.session_state.modalities_order = {mod: i+1 for i, mod in enumerate(value_counts['Modalité'])}
 
                     # S'assurer que modalities_order contient toutes les modalités actuelles
@@ -1491,20 +1479,33 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
             adv_col1, adv_col2 = st.columns(2)
 
             with adv_col1:
-                viz_title = st.text_input("Titre du graphique", f"Distribution de {var_name}", key="viz_title")
-                x_axis = st.text_input("Titre de l'axe X", var_name, key="x_axis_qual")
+                # Utiliser les valeurs du tableau depuis le state
+                viz_title = st.text_input(
+                    "Titre du graphique", 
+                    value=st.session_state.table_title if st.session_state.table_title else f"Distribution de {var_name}", 
+                    key="viz_title"
+                )
+                x_axis = st.text_input(
+                    "Titre de l'axe X", 
+                    value=st.session_state.var_name_display if st.session_state.var_name_display else var_name, 
+                    key="x_axis_qual"
+                )
                 y_axis = st.text_input("Titre de l'axe Y", "Valeur", key="y_axis_qual")
                 show_values = st.checkbox("Afficher les valeurs", True, key="show_values_qual")
 
             with adv_col2:
-                viz_source = st.text_input("Source", "", key="viz_source")
-                viz_note = st.text_input("Note de lecture", "", key="viz_note")
+                # Utiliser les valeurs du tableau depuis le state
+                viz_source = st.text_input(
+                    "Source", 
+                    value=st.session_state.table_source if st.session_state.table_source else "", 
+                    key="viz_source"
+                )
+                viz_note = st.text_input(
+                    "Note de lecture", 
+                    value=st.session_state.table_note if st.session_state.table_note else "", 
+                    key="viz_note"
+                )
                 value_type = st.radio("Type de valeur à afficher", ["Effectif", "Taux (%)"], key="value_type_qual")
-    
-            # Synchroniser automatiquement les modifications vers les options du tableau
-            st.session_state.table_title = viz_title
-            st.session_state.table_source = viz_source
-            st.session_state.table_note = viz_note
 
         # Génération du graphique
         if st.button("Générer la visualisation", key="generate_qual_viz"):
@@ -1550,7 +1551,7 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                             buf,
                             format="png",
                             width=1200,
-                            height=800,
+                            height=900 if (viz_source or viz_note) else 800,
                             scale=1.5
                         )
                     else:
@@ -1558,7 +1559,7 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                             buf,
                             format="png",
                             width=1000,
-                            height=1000,
+                            height=1100 if (viz_source or viz_note) else 1000,
                             scale=1.5
                         )
 
