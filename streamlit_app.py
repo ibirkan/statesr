@@ -1664,130 +1664,33 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                 # Affichage du graphique
                 st.plotly_chart(fig, use_container_width=True)
 
-                # Export du graphique
+                # Export du graphique en image HD
                 try:
                     buf = BytesIO()
-                    if graph_type != "Treemap":
-                        # Déterminer la hauteur en fonction de la présence de source et note
-                        export_height = 800  # hauteur de base
-                        if viz_source and viz_note:
-                            export_height = 900  # hauteur si les deux sont présents
-                        elif viz_source or viz_note:
-                            export_height = 850  # hauteur si un seul est présent
-
-                        # Ajouter les annotations de la source et de la note à la figure
-                        if viz_source or viz_note:
-                            annotations = list(fig.layout.annotations) if fig.layout.annotations else []
-                            if viz_source:
-                                annotations.append(
-                                    dict(
-                                        text=f"Source : {viz_source}",
-                                        align='left',
-                                        showarrow=False,
-                                        xref='paper',
-                                        yref='paper',
-                                        x=0,
-                                        y=-0.15,  # Ajusté pour être au niveau du titre de l'axe x
-                                        font=dict(size=11)
-                                    )
-                                )
-                            if viz_note:
-                                annotations.append(
-                                    dict(
-                                        text=f"Note : {viz_note}",
-                                        align='left',
-                                        showarrow=False,
-                                        xref='paper',
-                                        yref='paper',
-                                        x=0,
-                                        y=-0.17,  # Ajusté pour être sous la source
-                                        font=dict(size=11)
-                                    )
-                                )
-                            fig.update_layout(
-                                annotations=annotations,
-                                margin=dict(b=200)  # Augmenter la marge inférieure
-                            )
-
-                        # Mettre en gras et définir la taille du titre du graphique
-                        fig.update_layout(
-                            title={
-                                'text': viz_title,
-                                'font': {
-                                    'weight': 'bold',
-                                    'size': 22  # Définir la taille de la police du titre
-                                }
-                            },
-                            # Définir la taille de la police et d'autres propriétés pour les noms des axes
-                            xaxis_title=dict(
-                                text=x_axis,
-                                font=dict(size=14)  # Définir la taille de la police du nom de l'axe x
-                            ),
-                            yaxis_title=dict(
-                                text=y_axis,
-                                font=dict(size=14)  # Définir la taille de la police du nom de l'axe y
-                            ),
-                            # Définir les propriétés de style pour les noms des modalités
-                            xaxis=dict(
-                                tickfont=dict(size=15)  # Taille de la police des noms des modalités
-                            ),
-                            yaxis=dict(
-                                tickfont=dict(size=15)  # Taille de la police des valeurs des modalités
-                            )
-                        )
-                        fig.write_image(
-                            buf,
-                            format="png",
-                            width=1200,
-                            height=export_height,
-                            scale=1.5
-                        )
-                    else:
-                        # Même logique pour le treemap
-                        export_height = 1000  # hauteur de base
-                        if viz_source and viz_note:
-                            export_height = 1100
-                        elif viz_source or viz_note:
-                            export_height = 1050
-
-                        # Ajouter les annotations de la source et de la note à la figure pour le treemap
-                        if viz_source or viz_note:
-                            annotations = list(fig.layout.annotations) if fig.layout.annotations else []
-                            if viz_source:
-                                annotations.append(
-                                    dict(
-                                        text=f"Source : {viz_source}",
-                                        align='left',
-                                        showarrow=False,
-                                        xref='paper',
-                                        yref='paper',
-                                        x=0,
-                                        y=-0.10,
-                                        font=dict(size=11)
-                                    )
-                                )
-                            if viz_note:
-                                annotations.append(
-                                    dict(
-                                        text=f"Note : {viz_note}",
-                                        align='left',
-                                        showarrow=False,
-                                        xref='paper',
-                                        yref='paper',
-                                        x=0,
-                                        y=-0.20,  # Ajusté pour être sous la source
-                                        font=dict(size=11)
-                                    )
-                                )
-                            fig.update_layout(annotations=annotations)
-
-                        fig.write_image(
-                            buf,
-                            format="png",
-                            width=1000,
-                            height=export_height,
-                            scale=1.5
-                        )
+                    
+                    # Créer le graphique en utilisant une des fonctions de plot
+                    if graph_type == "Bar plot":
+                        fig = plot_qualitative_bar(data, viz_title, x_axis, y_axis, COLOR_PALETTES[color_scheme], show_values, viz_source, viz_note)
+                    elif graph_type == "Lollipop plot":
+                        fig = plot_qualitative_lollipop(data, viz_title, x_axis, y_axis, COLOR_PALETTES[color_scheme], show_values, viz_source, viz_note)
+                    elif graph_type == "Treemap":
+                        fig = plot_qualitative_treemap(data, viz_title, COLOR_PALETTES[color_scheme], viz_source, viz_note)
+                    
+                    # Déterminer la hauteur en fonction de la présence de source et note
+                    export_height = 800  # hauteur de base
+                    if viz_source and viz_note:
+                        export_height = 900  # hauteur si les deux sont présents
+                    elif viz_source or viz_note:
+                        export_height = 850  # hauteur si un seul est présent
+                    
+                    # Exporter le graphique en image
+                    fig.write_image(
+                        buf,
+                        format="png",
+                        width=1200,
+                        height=export_height,
+                        scale=1.5
+                    )
 
                     buf.seek(0)
                     image_data = buf.getvalue()
