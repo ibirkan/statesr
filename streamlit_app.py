@@ -13,6 +13,7 @@ from io import BytesIO
 import squarify
 import seaborn as sns
 from scipy import stats
+import math
 from kaleido.scopes.plotly import PlotlyScope
 
 # Configuration de la page Streamlit - DOIT ÊTRE LA PREMIÈRE COMMANDE STREAMLIT
@@ -297,177 +298,295 @@ def calculate_regression(x, y):
         except:
             return None, False
 
-# Fonctions de visualisation univariée
-def plot_qualitative_bar(data, title, x_label, y_label, color_palette, show_values=True):
-    """Crée un graphique en barres pour une variable qualitative avec une mise en page adaptative."""
-    if not isinstance(data, pd.DataFrame):
-        st.error("Les données ne sont pas dans le format attendu")
-        return None
+def plot_qualitative_bar(data, title, x_label, y_label, color_palette, show_values=True, source="", note=""):
+    fig = go.Figure()
+
+    # Renommer la colonne temporairement pour le traitement
+    data = data.copy()
+    old_column = data.columns[0]  # première colonne qui contient les modalités
+    data = data.rename(columns={old_column: 'Modalités'})
     
-    columns = data.columns.tolist()
-    category_col = columns[0]
-    value_col = 'Effectif'
+    # Calculer l'intervalle optimal pour l'axe y
+    y_max = data['Effectif'].max()
+    target_ticks = 8
+    raw_interval = y_max / target_ticks
+    magnitude = 10 ** math.floor(math.log10(raw_interval))
+    normalized = raw_interval / magnitude
     
-    n_categories = len(data[category_col])
-    base_width = 300
-    if n_categories <= 2:
-        width = base_width
-        margin_x = width * 0.3
+    if normalized < 1.5:
+        tick_interval = magnitude
+    elif normalized < 3:
+        tick_interval = 2 * magnitude
+    elif normalized < 7.5:
+        tick_interval = 5 * magnitude
     else:
-        width = min(1000, base_width + (150 * n_categories))
-        margin_x = 50
+        tick_interval = 10 * magnitude
+        
+    y_range_max = ((y_max + (y_max * 0.05)) // tick_interval + 1) * tick_interval
     
-    bar_width = min(0.5, 1.0 / (n_categories + 1))
-    max_value = data[value_col].max()
-    y_max = max_value * 1.2
+    # Ajouter les barres
+    fig.add_trace(go.Bar(
+        x=data['Modalités'],
+        y=data['Effectif'],
+        text=data['Effectif'] if show_values else None,
+        textposition='outside',
+        marker_color=color_palette[0],
+        showlegend=False
+    ))
     
-    fig = go.Figure(data=[
-        go.Bar(
-            x=data[category_col],
-            y=data[value_col],
-            marker_color=color_palette[2],  # Couleur modérément foncée
-            width=[bar_width] * n_categories,
-            hovertemplate="%{x}<br>Valeur: %{y:.1f}<extra></extra>"
-        )
-    ])
+    # Configuration de la mise en page
+    annotations = []
     
+    # Ajouter les modalités sur deux lignes si nécessaires
+    for i, modalite in enumerate(data['Modalités']):
+        words = str(modalite).split()
+        if len(words) > 2:
+            mid = len(words) // 2
+            line1 = ' '.join(words[:mid])
+            line2 = ' '.join(words[mid:])
+            annotations.append( #nom des axes
+                dict(
+                    x=i,
+                    y=0,
+                    text=f"{line1}<br>{line2}",
+                    showarrow=False,
+                    yshift=-30,
+                    xanchor='center',
+                    yanchor='top',
+                    font=dict(size=12)
+                )
+            )
+        else: #nom des modalités
+            annotations.append(
+                dict(
+                    x=i,
+                    y=0,
+                    text=modalite,
+                    showarrow=False,
+                    yshift=-15,
+                    xanchor='center',
+                    yanchor='top',
+                    font=dict(size=15)
+                )
+            )
+    
+    # Ajouter source et note si présentes
+    if source or note:
+        if source:
+            annotations.append(
+                dict(
+                    text=f"Source : {source}",
+                    align='left',
+                    showarrow=False,
+                    xref='paper',
+                    yref='paper',
+                    x=0,
+                    y=-0.40,  # Ajusté pour être au niveau du titre de l'axe x
+                    font=dict(size=10)
+                )
+            )
+        if note:
+            annotations.append(
+                dict(
+                    text=f"Note : {note}",
+                    align='left',
+                    showarrow=False,
+                    xref='paper',
+                    yref='paper',
+                    x=0,
+                    y=-0.45,  # Ajusté pour être sous la source
+                    font=dict(size=10)
+                )
+            )
+
     fig.update_layout(
         title=title,
-        width=width,
-        height=500,
-        margin=dict(t=100, b=100, l=margin_x, r=margin_x),
-        showlegend=False,
+        xaxis_title=dict(
+            text=x_label,
+            standoff=50
+        ),
+        yaxis_title=y_label,
         plot_bgcolor='white',
-        paper_bgcolor='white',
+        showlegend=False,
+        height=600,
+        margin=dict(b=180, l=50, r=50, t=100),  # Augmenté la marge du bas pour accommoder la source et la note
         xaxis=dict(
+            showticklabels=False,
             showgrid=False,
-            tickangle=45 if n_categories > 2 else 0,
-            type='category',
-            tickfont=dict(size=11),
-            title=dict(text=x_label)
+            title_standoff=50
         ),
         yaxis=dict(
+            range=[0, y_range_max],
             showgrid=True,
             gridcolor='#e0e0e0',
-            zeroline=True,
-            zerolinewidth=1,
-            zerolinecolor='#a0a0a0',
-            range=[0, y_max],
-            title=dict(text=y_label)
-        )
+            dtick=tick_interval
+        ),
+        annotations=annotations
     )
-
-    if show_values:
-        text_positions = ['outside' if val / max_value > 0.15 else 'auto' for val in data[value_col]]
-        fig.update_traces(
-            text=data[value_col].round(1),
-            textposition=text_positions,
-            texttemplate='%{text:.1f}',
-            textfont=dict(size=11)
-        )
-
+    
     return fig
 
-def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show_values=True):
-    """Crée un graphique en lollipop pour une variable qualitative."""
-    if not isinstance(data, pd.DataFrame):
-        st.error("Les données ne sont pas dans le format attendu")
-        return None
-    
-    columns = data.columns.tolist()
-    category_col = columns[0]
-    value_col = 'Effectif'
-    
-    n_categories = len(data[category_col])
-    max_value = data[value_col].max()
-    y_max = max_value * 1.2
-    
-    base_width = 300
-    if n_categories <= 2:
-        width = base_width
-        margin_x = width * 0.3
-    else:
-        width = min(1000, base_width + (150 * n_categories))
-        margin_x = 50
-    
+def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show_values=True, source="", note=""):
     fig = go.Figure()
+
+    # Renommer la colonne temporairement pour le traitement
+    data = data.copy()
+    old_column = data.columns[0]  # première colonne qui contient les modalités
+    data = data.rename(columns={old_column: 'Modalités'})
     
-    for i, (cat, val) in enumerate(zip(data[category_col], data[value_col])):
+    # Calculer l'intervalle optimal pour l'axe y
+    y_max = data['Effectif'].max()
+    target_ticks = 8
+    raw_interval = y_max / target_ticks
+    magnitude = 10 ** math.floor(math.log10(raw_interval))
+    normalized = raw_interval / magnitude
+    
+    if normalized < 1.5:
+        tick_interval = magnitude
+    elif normalized < 3:
+        tick_interval = 2 * magnitude
+    elif normalized < 7.5:
+        tick_interval = 5 * magnitude
+    else:
+        tick_interval = 10 * magnitude
+        
+    y_range_max = ((y_max + (y_max * 0.2)) // tick_interval + 1) * tick_interval
+    
+    # Pour chaque point, créer une ligne verticale séparée
+    for idx, (x, y) in enumerate(zip(data['Modalités'], data['Effectif'])):
         fig.add_trace(go.Scatter(
-            x=[cat, cat],
-            y=[0, val],
+            x=[x, x],
+            y=[0, y],
             mode='lines',
-            line=dict(
-                color=color_palette[2],
-                width=2
-            ),
+            line=dict(color='gray', width=2),
             showlegend=False,
             hoverinfo='none'
         ))
-        
-        fig.add_trace(go.Scatter(
-            x=[cat],
-            y=[val],
-            mode='markers',
-            marker=dict(
-                color=color_palette[2],
-                size=12,
-                line=dict(color='white', width=1)
-            ),
-            showlegend=False,
-            name=cat,
-            hovertemplate=f"{cat}<br>Valeur: {val:.1f}<extra></extra>"
-        ))
     
+    # Ajouter les points
+    fig.add_trace(go.Scatter(
+        x=data['Modalités'],
+        y=data['Effectif'],
+        mode='markers+text' if show_values else 'markers',
+        marker=dict(size=12, color=color_palette[0]),
+        text=data['Effectif'] if show_values else None,
+        textposition='top center',
+        showlegend=False,
+        hovertemplate="%{x}<br>Valeur: %{y:.1f}<extra></extra>"
+    ))
+
+    # Créer la liste des annotations
+    annotations = []
+    
+    # Ajouter les modalités sur deux lignes si nécessaires
+    for i, modalite in enumerate(data['Modalités']):
+        words = str(modalite).split()
+        if len(words) > 2:
+            mid = len(words) // 2
+            line1 = ' '.join(words[:mid])
+            line2 = ' '.join(words[mid:])
+            annotations.append(
+                dict(
+                    x=i,
+                    y=0,
+                    text=f"{line1}<br>{line2}",
+                    showarrow=False,
+                    yshift=-30,
+                    xanchor='center',
+                    yanchor='top',
+                    font=dict(size=11)
+                )
+            )
+        else:
+            annotations.append(
+                dict(
+                    x=i,
+                    y=0,
+                    text=modalite,
+                    showarrow=False,
+                    yshift=-15,
+                    xanchor='center',
+                    yanchor='top',
+                    font=dict(size=11)
+                )
+            )
+    
+    # Ajouter source et note si présentes
+    if source or note:
+        if source:
+            annotations.append(
+                dict(
+                    text=f"Source : {source}",
+                    align='left',
+                    showarrow=False,
+                    xref='paper',
+                    yref='paper',
+                    x=0,
+                    y=-0.30,  # Ajusté pour être au niveau du titre de l'axe x
+                    font=dict(size=10)
+                )
+            )
+        if note:
+            annotations.append(
+                dict(
+                    text=f"Note : {note}",
+                    align='left',
+                    showarrow=False,
+                    xref='paper',
+                    yref='paper',
+                    x=0,
+                    y=-0.35,  # Ajusté pour être sous la source
+                    font=dict(size=10)
+                )
+            )
+
+    # Configuration de la mise en page
     fig.update_layout(
         title=title,
-        width=width,
-        height=500,
-        margin=dict(t=100, b=100, l=margin_x, r=margin_x),
+        xaxis_title=dict(
+            text=x_label,
+            standoff=50
+        ),
+        yaxis_title=y_label,
         plot_bgcolor='white',
-        paper_bgcolor='white',
+        showlegend=False,
+        height=600,
+        margin=dict(b=180, l=50, r=50, t=100),  # Augmenté la marge du bas pour accommoder la source et la note
         xaxis=dict(
+            showticklabels=False,
             showgrid=False,
-            tickangle=45 if n_categories > 2 else 0,
-            type='category',
-            tickfont=dict(size=11),
-            title=dict(text=x_label)
+            title_standoff=50
         ),
         yaxis=dict(
+            range=[0, y_range_max],
             showgrid=True,
             gridcolor='#e0e0e0',
-            zeroline=True,
-            zerolinewidth=1,
-            zerolinecolor='#a0a0a0',
-            range=[0, y_max],
-            title=dict(text=y_label)
-        )
+            dtick=tick_interval
+        ),
+        annotations=annotations
     )
-
-    if show_values:
-        for cat, val in zip(data[category_col], data[value_col]):
-            text_pos = 'top center' if val / max_value > 0.15 else 'middle center'
-            y_pos = val + (max_value * 0.03 if text_pos == 'top center' else 0)
-            fig.add_annotation(
-                x=cat,
-                y=y_pos,
-                text=f"{val:.1f}",
-                showarrow=False,
-                font=dict(size=11),
-                yshift=10 if text_pos == 'top center' else 0
-            )
 
     return fig
 
-def plot_qualitative_treemap(data, title, color_palette):
+def plot_qualitative_treemap(data, title, color_palette, source="", note=""):
     """Crée un treemap pour une variable qualitative."""
     if not isinstance(data, pd.DataFrame):
         st.error("Les données ne sont pas dans le format attendu")
         return None
     
-    columns = data.columns.tolist()
-    category_col = columns[0]
+    # Renommer la colonne temporairement pour le traitement
+    data = data.copy()
+    old_column = data.columns[0]
+    data = data.rename(columns={old_column: 'Modalités'})
+    category_col = 'Modalités'
     value_col = 'Effectif'
+    
+    # Vérifier si toutes les valeurs sont des entiers
+    is_integer = all(float(x).is_integer() for x in data[value_col])
+    
+    # Ajuster le format en fonction du type de données
+    texttemplate = '%{label}<br>%{value:.0f}' if is_integer else '%{label}<br>%{value:.1f}'
+    hovertemplate = '%{label}<br>Valeur: %{value:.0f}<extra></extra>' if is_integer else '%{label}<br>Valeur: %{value:.1f}<extra></extra>'
     
     fig = go.Figure(go.Treemap(
         labels=data[category_col],
@@ -478,17 +597,50 @@ def plot_qualitative_treemap(data, title, color_palette):
             colors=color_palette[1:],
             line=dict(width=1, color='white')
         ),
-        texttemplate='%{label}<br>%{value:.1f}',
-        hovertemplate='%{label}<br>Valeur: %{value:.1f}<extra></extra>',
+        texttemplate=texttemplate,
+        hovertemplate=hovertemplate,
         textfont=dict(size=11)
     ))
+    
+    # Créer la liste des annotations
+    annotations = []
+    
+    # Ajouter source et note si présentes
+    if source or note:
+        if source:
+            annotations.append(
+                dict(
+                    text=f"Source : {source}",
+                    align='left',
+                    showarrow=False,
+                    xref='paper',
+                    yref='paper',
+                    x=0,
+                    y=-0.10,
+                    font=dict(size=10)
+                )
+            )
+        if note:
+            annotations.append(
+                dict(
+                    text=f"Note : {note}",
+                    align='left',
+                    showarrow=False,
+                    xref='paper',
+                    yref='paper',
+                    x=0,
+                    y=-0.15,
+                    font=dict(size=10)
+                )
+            )
     
     fig.update_layout(
         title=title,
         width=800,
         height=500,
-        margin=dict(t=100, b=100, l=20, r=20),
-        paper_bgcolor='white'
+        margin=dict(t=100, b=180, l=20, r=20),  # Augmenté la marge du bas pour les annotations
+        paper_bgcolor='white',
+        annotations=annotations
     )
     
     return fig
@@ -725,39 +877,6 @@ def plot_quantitative_bivariate_interactive(df, var_x, var_y, color_scheme, plot
     fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
     fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
     
-    return fig
-
-def add_annotations(fig, source="", note="", is_treemap=False):
-    if source or note:
-        annotations_text = []
-        if source:
-            annotations_text.append(f"Source : {source}")
-        if note:
-            annotations_text.append(f"Note : {note}")
-        
-        # Calcul de la position Y en fonction du type de graphique
-        if is_treemap:
-            y_position = -0.1
-        else:
-            y_position = -0.15
-        
-        # Ajout des annotations
-        fig.update_layout(
-            annotations=[
-                dict(
-                    text='<br>'.join(annotations_text),
-                    align='left',
-                    showarrow=False,
-                    xref='paper',
-                    yref='paper',
-                    x=0,
-                    y=y_position,
-                    font=dict(size=10),
-                )
-            ],
-            # Augmenter les marges du bas pour les annotations
-            margin=dict(b=100 if (source or note) else 50)
-        )
     return fig
 
 # Fonctions d'analyse bivariée
@@ -1522,23 +1641,25 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                 if graph_type == "Bar plot":
                     fig = plot_qualitative_bar(
                         data_to_plot, viz_title, x_axis, y_axis,
-                        COLOR_PALETTES[color_scheme], show_values
+                        COLOR_PALETTES[color_scheme], show_values,
+                        source=viz_source, note=viz_note
                     )
                 elif graph_type == "Lollipop plot":
                     fig = plot_qualitative_lollipop(
                         data_to_plot, viz_title, x_axis, y_axis,
-                        COLOR_PALETTES[color_scheme], show_values
+                        COLOR_PALETTES[color_scheme], show_values,
+                        source=viz_source, note=viz_note
                     )
                 else:  # Treemap
                     fig = plot_qualitative_treemap(
                         data_to_plot, viz_title,
-                        COLOR_PALETTES[color_scheme]
+                        COLOR_PALETTES[color_scheme],
+                        source=viz_source, note=viz_note
                     )
 
                 # Ajout des annotations si nécessaire
                 if viz_source or viz_note:
                     is_treemap = (graph_type == "Treemap")
-                    fig = add_annotations(fig, viz_source, viz_note, is_treemap=is_treemap)
 
                 # Affichage du graphique
                 st.plotly_chart(fig, use_container_width=True)
@@ -1547,19 +1668,33 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                 try:
                     buf = BytesIO()
                     if graph_type != "Treemap":
+                        # Déterminer la hauteur en fonction de la présence de source et note
+                        export_height = 800  # hauteur de base
+                        if viz_source and viz_note:
+                            export_height = 850  # hauteur si les deux sont présents
+                        elif viz_source or viz_note:
+                            export_height = 825  # hauteur si un seul est présent
+
                         fig.write_image(
                             buf,
                             format="png",
                             width=1200,
-                            height=900 if (viz_source or viz_note) else 800,
+                            height=export_height,
                             scale=1.5
                         )
                     else:
+                        # Même logique pour le treemap
+                        export_height = 1000  # hauteur de base
+                        if viz_source and viz_note:
+                            export_height = 1050
+                        elif viz_source or viz_note:
+                            export_height = 1025
+
                         fig.write_image(
                             buf,
                             format="png",
                             width=1000,
-                            height=1100 if (viz_source or viz_note) else 1000,
+                            height=export_height,
                             scale=1.5
                         )
 
@@ -1965,7 +2100,6 @@ def main():
                             # Ajout des annotations si nécessaire
                             if fig is not None and (source or note):
                                 is_treemap = (graph_type == "Treemap")
-                                fig = add_annotations(fig, source, note, is_treemap=is_treemap)
     
                             # Affichage du graphique
                             if fig is not None:
