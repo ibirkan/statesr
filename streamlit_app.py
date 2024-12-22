@@ -90,12 +90,12 @@ sns.set_style("whitegrid")
 
 # Palettes de couleurs prédéfinies
 COLOR_PALETTES = {
-    "Bleu": sns.color_palette("Blues", 6).as_hex(),
-    "Vert": sns.color_palette("Greens", 6).as_hex(),
-    "Rouge": sns.color_palette("Reds", 6).as_hex(),
-    "Orange": sns.color_palette("Oranges", 6).as_hex(),
-    "Violet": sns.color_palette("Purples", 6).as_hex(),
-    "Gris": sns.color_palette("Greys", 6).as_hex()
+    "Bleu": ['#000091', '#000080', '#00006f', '#00005e', '#00004d', '#00003c'],  # Bleu Marianne
+    "Vert": ['#169B62', '#148957', '#12774C', '#106541', '#0E5336', '#0C412B'],  # Vert gouvernement
+    "Rouge": ['#E1000F', '#C9000E', '#B1000C', '#99000B', '#810009', '#690007'],  # Rouge gouvernement
+    "Orange": ['#FF9940', '#E68A39', '#CC7B33', '#B36C2D', '#995D26', '#804E20'],
+    "Violet": ['#4D2A7C', '#452570', '#3D2064', '#351B58', '#2D164C', '#251140'],
+    "Gris": ['#53657D', '#4A5B70', '#415163', '#384756', '#2F3D49', '#26333C']   # Gris gouvernement
 }
 
 # Configuration Plotly pour l'export haute qualité
@@ -436,6 +436,38 @@ def export_visualization(fig, export_type, var_name, source="", note="", data_to
         else:
             st.error(f"Erreur lors de l'export : {str(export_error)}")
         return False
+    
+def wrap_text(text, width):
+    """
+    Découpe un texte en lignes en fonction d'une largeur maximale.
+    
+    Args:
+        text (str): Le texte à découper
+        width (int): Le nombre maximum de caractères par ligne
+        
+    Returns:
+        str: Le texte avec des retours à la ligne HTML (<br>)
+    """
+    words = text.split()
+    lines = []
+    current_line = []
+    current_length = 0
+    
+    for word in words:
+        word_length = len(word)
+        if current_length + word_length + 1 <= width:
+            current_line.append(word)
+            current_length += word_length + 1
+        else:
+            if current_line:
+                lines.append(' '.join(current_line))
+            current_line = [word]
+            current_length = word_length
+    
+    if current_line:
+        lines.append(' '.join(current_line))
+    
+    return '<br>'.join(lines)
 
 def plot_qualitative_bar(data, title, x_label, y_label, color_palette, show_values=True, source="", note=""):
     fig = go.Figure()
@@ -1035,7 +1067,7 @@ def plot_horizontal_bar(data, title, subtitle=None, color="#8DBED8", source="", 
     
     return fig
 
-def plot_datawrapper_style(data, title, subtitle=None, color="#8DBED8", source="", note=""):
+def plot_datawrapper_style(data, title, colored_parts=None, subtitle=None, color="#5157a8", source="", note=""):
     fig = go.Figure()
 
     data = data.copy()
@@ -1043,6 +1075,17 @@ def plot_datawrapper_style(data, title, subtitle=None, color="#8DBED8", source="
     data = data.rename(columns={old_column: 'Modalités'})
     
     data['Effectif'] = pd.to_numeric(data['Effectif'], errors='coerce')
+
+    # Trouver la modalité la plus longue pour calculer la largeur du titre
+    max_modalite_length = max([len(str(m)) for m in data['Modalités']])
+    
+    # Calculer la longueur approximative pour le retour à la ligne (en caractères)
+    chars_per_line = max_modalite_length + 15  # Ajouter une marge pour les pourcentages
+
+    x_align = 0
+    x_bar_start = x_align
+    y_positions = list(range(len(data)))
+    y_positions = [y * 0.5 for y in y_positions]
     
     x_align = 0
     x_bar_start = x_align
@@ -1102,6 +1145,9 @@ def plot_datawrapper_style(data, title, subtitle=None, color="#8DBED8", source="
                     text,
                     f'<span style="color: {text_color}">{text}</span>'
                 )
+
+    # Wrapper le titre formaté
+    wrapped_title = wrap_text(formatted_title, chars_per_line)
 
     annotations.append(dict(
         text=f"<b>{formatted_title}</b>",
@@ -2174,8 +2220,11 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                     with col3:
                         if st.button("Ajouter"):
                             if new_word:  # Vérifier que le mot n'est pas vide
+                                if 'colored_parts' not in st.session_state:
+                                    st.session_state.colored_parts = []
                                 st.session_state.colored_parts.append((new_word, new_color))
-                                st.session_state.new_word = ""  # Réinitialiser le champ
+                                # Au lieu de modifier directement le widget, forcer un rerun
+                                st.rerun()
 
                 # Afficher et gérer les mots colorés actuels
                 if st.session_state.colored_parts:
