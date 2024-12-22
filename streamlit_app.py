@@ -350,7 +350,7 @@ def plot_qualitative_bar(data, title, x_label, y_label, color_palette, show_valu
                     y=0,
                     text=f"{line1}<br>{line2}",
                     showarrow=False,
-                    yshift=-30,
+                    yshift=-15,
                     xanchor='center',
                     yanchor='top',
                     font=dict(size=12)
@@ -363,7 +363,7 @@ def plot_qualitative_bar(data, title, x_label, y_label, color_palette, show_valu
                     y=0,
                     text=modalite,
                     showarrow=False,
-                    yshift=-15,
+                    yshift=-10,
                     xanchor='center',
                     yanchor='top',
                     font=dict(size=15)
@@ -381,8 +381,8 @@ def plot_qualitative_bar(data, title, x_label, y_label, color_palette, show_valu
                     xref='paper',
                     yref='paper',
                     x=0,
-                    y=-0.40,  # Ajusté pour être au niveau du titre de l'axe x
-                    font=dict(size=10)
+                    y=-0.22,  # Ajusté pour être au niveau du titre de l'axe x
+                    font=dict(size=11)
                 )
             )
         if note:
@@ -394,8 +394,8 @@ def plot_qualitative_bar(data, title, x_label, y_label, color_palette, show_valu
                     xref='paper',
                     yref='paper',
                     x=0,
-                    y=-0.45,  # Ajusté pour être sous la source
-                    font=dict(size=10)
+                    y=-0.25,  # Ajusté pour être sous la source
+                    font=dict(size=11)
                 )
             )
 
@@ -450,7 +450,7 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
     else:
         tick_interval = 10 * magnitude
         
-    y_range_max = ((y_max + (y_max * 0.2)) // tick_interval + 1) * tick_interval
+    y_range_max = ((y_max + (y_max * 0.1)) // tick_interval + 1) * tick_interval
     
     # Pour chaque point, créer une ligne verticale séparée
     for idx, (x, y) in enumerate(zip(data['Modalités'], data['Effectif'])):
@@ -494,7 +494,7 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
                     yshift=-30,
                     xanchor='center',
                     yanchor='top',
-                    font=dict(size=11)
+                    font=dict(size=13)
                 )
             )
         else:
@@ -507,7 +507,7 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
                     yshift=-15,
                     xanchor='center',
                     yanchor='top',
-                    font=dict(size=11)
+                    font=dict(size=15)
                 )
             )
     
@@ -522,8 +522,8 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
                     xref='paper',
                     yref='paper',
                     x=0,
-                    y=-0.30,  # Ajusté pour être au niveau du titre de l'axe x
-                    font=dict(size=10)
+                    y=-0.25,  # Ajusté pour être au niveau du titre de l'axe x
+                    font=dict(size=11)
                 )
             )
         if note:
@@ -535,8 +535,8 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
                     xref='paper',
                     yref='paper',
                     x=0,
-                    y=-0.35,  # Ajusté pour être sous la source
-                    font=dict(size=10)
+                    y=-0.28,  # Ajusté pour être sous la source
+                    font=dict(size=11)
                 )
             )
 
@@ -599,7 +599,7 @@ def plot_qualitative_treemap(data, title, color_palette, source="", note=""):
         ),
         texttemplate=texttemplate,
         hovertemplate=hovertemplate,
-        textfont=dict(size=11)
+        textfont=dict(size=25)
     ))
     
     # Créer la liste des annotations
@@ -617,7 +617,7 @@ def plot_qualitative_treemap(data, title, color_palette, source="", note=""):
                     yref='paper',
                     x=0,
                     y=-0.10,
-                    font=dict(size=10)
+                    font=dict(size=11)
                 )
             )
         if note:
@@ -630,7 +630,7 @@ def plot_qualitative_treemap(data, title, color_palette, source="", note=""):
                     yref='paper',
                     x=0,
                     y=-0.15,
-                    font=dict(size=10)
+                    font=dict(size=11)
                 )
             )
     
@@ -1670,11 +1670,11 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                     
                     # Créer le graphique en utilisant une des fonctions de plot
                     if graph_type == "Bar plot":
-                        fig = plot_qualitative_bar(data, viz_title, x_axis, y_axis, COLOR_PALETTES[color_scheme], show_values, viz_source, viz_note)
+                        fig = plot_qualitative_bar(data_to_plot, viz_title, x_axis, y_axis, COLOR_PALETTES[color_scheme], show_values, viz_source, viz_note)
                     elif graph_type == "Lollipop plot":
-                        fig = plot_qualitative_lollipop(data, viz_title, x_axis, y_axis, COLOR_PALETTES[color_scheme], show_values, viz_source, viz_note)
+                        fig = plot_qualitative_lollipop(data_to_plot, viz_title, x_axis, y_axis, COLOR_PALETTES[color_scheme], show_values, viz_source, viz_note)
                     elif graph_type == "Treemap":
-                        fig = plot_qualitative_treemap(data, viz_title, COLOR_PALETTES[color_scheme], viz_source, viz_note)
+                        fig = plot_qualitative_treemap(data_to_plot, viz_title, COLOR_PALETTES[color_scheme], viz_source, viz_note)
                     
                     # Déterminer la hauteur en fonction de la présence de source et note
                     export_height = 800  # hauteur de base
