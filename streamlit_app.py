@@ -98,6 +98,23 @@ COLOR_PALETTES = {
     "Gris": sns.color_palette("Greys", 6).as_hex()
 }
 
+# Configuration Plotly pour l'export haute qualité
+config = {
+    'toImageButtonOptions': {
+        'format': 'png',
+        'filename': 'graph_export',
+        'height': None,
+        'width': 1200,
+        'scale': 3
+    },
+    'displayModeBar': True,
+    'displaylogo': False,
+    'modeBarButtonsToRemove': [
+        'zoom2d', 'pan2d', 'select2d', 'lasso2d', 'zoomIn2d', 'zoomOut2d', 
+        'autoScale2d', 'resetScale2d', 'toggleSpikelines'
+    ]
+}
+
 # Configuration Grist
 API_KEY = st.secrets["grist_key"]
 DOC_ID = st.secrets["grist_doc_id"]
@@ -298,6 +315,128 @@ def calculate_regression(x, y):
         except:
             return None, False
 
+def export_visualization(fig, export_type, var_name, source="", note="", data_to_plot=None, is_plotly=True, graph_type="bar"):
+    try:
+        buf = BytesIO()
+        
+        if export_type == 'graph' and is_plotly:
+            # Configuration spécifique pour l'export
+            export_width = 1200
+            export_height = 800
+
+            # Si c'est un graphique style Datawrapper
+            if hasattr(fig.layout, '_is_datawrapper_style'):
+                if data_to_plot is not None:
+                    nb_modalites = len(data_to_plot)
+                    export_height = max(600, nb_modalites * 80 + 300)
+                
+                fig.update_layout(
+                    width=export_width,
+                    height=export_height,
+                    margin=dict(
+                        t=120,  # Marge haute pour le titre et sous-titre
+                        b=100,  # Marge basse pour source et note
+                        l=50,   # Marge gauche réduite car pas besoin d'espace pour les labels
+                        r=150   # Marge droite pour les valeurs de pourcentage
+                    )
+                )
+            
+            # Si c'est un graphique horizontal
+            elif hasattr(fig.layout, '_is_horizontal_bar'):
+                if data_to_plot is not None:
+                    nb_modalites = len(data_to_plot)
+                    export_height = max(800, nb_modalites * 50 + 300)
+                
+                # Configuration spécifique pour les graphiques horizontaux
+                fig.update_layout(
+                    width=export_width,
+                    height=export_height,
+                    margin=dict(
+                        t=100,
+                        b=150,
+                        l=400,  # Marge gauche augmentée
+                        r=100
+                    ),
+                    # Configuration des axes
+                    yaxis=dict(
+                        title_standoff=150,  # Décale le titre de l'axe Y vers la gauche
+                        autorange="reversed",
+                        showgrid=False,
+                        title=dict(
+                            standoff=100  # Espace supplémentaire pour le titre
+                        )
+                    ),
+                    xaxis=dict(
+                        title_standoff=50,  # Espace pour le titre de l'axe X
+                        showgrid=True,
+                        gridcolor='#e0e0e0'
+                    )
+                )
+
+            # Configuration standard pour les autres types
+            else:
+                if source and note:
+                    export_height = 900
+                elif source or note:
+                    export_height = 850
+                
+                fig.update_layout(
+                    width=export_width,
+                    height=export_height,
+                    margin=dict(
+                        t=100,
+                        b=200,
+                        l=50,
+                        r=50
+                    )
+                )
+            
+            # Exporter en PNG
+            fig.write_image(
+                buf,
+                format="png",
+                scale=1.0
+            )
+            
+        elif export_type == 'table':
+            plt.savefig(
+                buf, 
+                format='png',
+                bbox_inches='tight',
+                dpi=300,
+                facecolor='white',
+                edgecolor='none',
+                pad_inches=0.2
+            )
+            plt.close()
+
+        buf.seek(0)
+        image_data = buf.getvalue()
+        image_size_mb = len(image_data) / (1024 * 1024)
+
+        if image_size_mb > 50:
+            st.warning("⚠️ L'image générée est trop volumineuse. Essayez de réduire le nombre de données ou la complexité du graphique.")
+            return False
+            
+        file_suffix = "tableau" if export_type == 'table' else "graphique"
+        file_name = f"{file_suffix}_{var_name.lower().replace(' ', '_')}.png"
+
+        st.download_button(
+            label=f"💾 Télécharger le {file_suffix} (HD)",
+            data=image_data,
+            file_name=file_name,
+            mime="image/png",
+            key=f"download_{export_type}_{var_name}"
+        )
+        return True
+
+    except Exception as export_error:
+        if "kaleido" in str(export_error):
+            st.warning("⚠️ L'export en haute résolution nécessite le package 'kaleido'. Veuillez l'installer avec : pip install kaleido")
+        else:
+            st.error(f"Erreur lors de l'export : {str(export_error)}")
+        return False
+
 def plot_qualitative_bar(data, title, x_label, y_label, color_palette, show_values=True, source="", note=""):
     fig = go.Figure()
 
@@ -400,7 +539,15 @@ def plot_qualitative_bar(data, title, x_label, y_label, color_palette, show_valu
             )
 
     fig.update_layout(
-        title=title,
+        title=dict(
+            text=title,
+            font=dict(
+                size=20,
+                weight='bold'
+            ),
+            x=0.5,
+            xanchor='center'
+        ),
         xaxis_title=dict(
             text=x_label,
             standoff=50
@@ -542,7 +689,15 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
 
     # Configuration de la mise en page
     fig.update_layout(
-        title=title,
+        title=dict(
+            text=title,
+            font=dict(
+                size=20,
+                weight='bold'
+            ),
+            x=0.5,
+            xanchor='center'
+        ),
         xaxis_title=dict(
             text=x_label,
             standoff=50
@@ -635,16 +790,414 @@ def plot_qualitative_treemap(data, title, color_palette, source="", note=""):
             )
     
     fig.update_layout(
-        title=title,
+        title=dict(
+            text=title,
+            font=dict(
+                size=20,
+                weight='bold'
+            ),
+            x=0.5,
+            xanchor='center'
+        ),
         width=800,
         height=500,
-        margin=dict(t=100, b=180, l=20, r=20),  # Augmenté la marge du bas pour les annotations
+        margin=dict(t=100, b=200, l=20, r=20),  # Augmenté la marge du bas pour les annotations
         paper_bgcolor='white',
         annotations=annotations
     )
     
     return fig
+
+def plot_doughnut(data, title, color_palette, show_values=True, source="", note=""):
+    """
+    Crée un graphique en anneau (doughnut) avec Plotly
     
+    Parameters:
+    -----------
+    data : pd.DataFrame
+        DataFrame avec deux colonnes : modalités et effectifs
+    title : str
+        Titre du graphique
+    color_palette : list
+        Liste de couleurs pour le graphique
+    show_values : bool
+        Afficher les valeurs sur le graphique
+    source : str
+        Source des données
+    note : str
+        Note de lecture
+    """
+    fig = go.Figure()
+
+    # Renommer la colonne temporairement pour le traitement
+    data = data.copy()
+    old_column = data.columns[0]
+    data = data.rename(columns={old_column: 'Modalités'})
+    
+    # Calculer les pourcentages
+    total = data['Effectif'].sum()
+    percentages = (data['Effectif'] / total * 100).round(1)
+    
+    # Préparer les labels pour l'affichage
+    if show_values:
+        labels = [f"{mod}<br>({eff:,.0f}, {pct}%)" 
+                 for mod, eff, pct in zip(data['Modalités'], 
+                                        data['Effectif'], 
+                                        percentages)]
+    else:
+        labels = data['Modalités']
+
+    # Créer le graphique en anneau
+    fig.add_trace(go.Pie(
+        labels=labels,
+        values=data['Effectif'],
+        hole=0.5,  # Taille du trou central (0.5 = 50%)
+        marker_colors=color_palette,
+        textinfo='none' if not show_values else 'label',
+        textposition='outside',
+        textfont=dict(size=12)
+    ))
+
+    # Configuration de la mise en page
+    annotations = []
+    
+    # Ajouter le total au centre
+    annotations.append(dict(
+        text=f'Total<br>{total:,.0f}',
+        x=0.5,
+        y=0.5,
+        font=dict(size=20),
+        showarrow=False
+    ))
+    
+    # Ajouter source et note si présentes
+    if source:
+        annotations.append(dict(
+            text=f"Source : {source}",
+            align='left',
+            showarrow=False,
+            xref='paper',
+            yref='paper',
+            x=0,
+            y=-0.20,
+            font=dict(size=11)
+        ))
+    if note:
+        annotations.append(dict(
+            text=f"Note : {note}",
+            align='left',
+            showarrow=False,
+            xref='paper',
+            yref='paper',
+            x=0,
+            y=-0.25,
+            font=dict(size=11)
+        ))
+
+    fig.update_layout(
+        title=dict(
+            text=title,
+            font=dict(size=20, weight='bold'),
+            x=0.5,
+            xanchor='center'
+        ),
+        showlegend=False,
+        height=700,
+        margin=dict(b=150, l=50, r=50, t=100),
+        annotations=annotations
+    )
+    
+    return fig
+
+def plot_horizontal_bar(data, title, subtitle=None, color="#8DBED8", source="", note=""):
+    """
+    Crée un graphique en barres horizontales style Datawrapper
+    
+    Parameters:
+    -----------
+    data : pd.DataFrame
+        DataFrame avec deux colonnes : modalités et effectifs
+    title : str
+        Titre du graphique
+    subtitle : str
+        Sous-titre du graphique (optionnel)
+    color : str
+        Couleur des barres (code hex)
+    source : str
+        Source des données
+    note : str
+        Note de lecture
+    """
+    fig = go.Figure()
+
+    # Renommer la colonne temporairement pour le traitement
+    data = data.copy()
+    old_column = data.columns[0]
+    data = data.rename(columns={old_column: 'Modalités'})
+    
+    # Créer les barres horizontales
+    fig.add_trace(go.Bar(
+        x=data['Effectif'],
+        y=data['Modalités'],
+        orientation='h',
+        text=[f"{x:.1f}%" for x in data['Effectif']],  # Ajouter le symbole %
+        textposition='outside',
+        textfont=dict(
+            size=14,
+            color='black'
+        ),
+        marker_color=color,
+        marker=dict(line=dict(width=0)),  # Pas de bordure
+        showlegend=False
+    ))
+    
+    # Configuration des annotations pour le titre et sous-titre
+    annotations = []
+    
+    # Titre en gras
+    annotations.append(dict(
+        text=title,
+        x=0,
+        y=i-0.1,
+        xref='paper',
+        yref='paper',
+        showarrow=False,
+        font=dict(size=20, color='black'),
+        xanchor='left',
+        yanchor='bottom'
+    ))
+    
+    # Sous-titre si présent
+    if subtitle:
+        annotations.append(dict(
+            text=subtitle,
+            x=0,
+            y=1.1,
+            xref='paper',
+            yref='paper',
+            showarrow=False,
+            font=dict(size=14, color='black'),
+            xanchor='left',
+            yanchor='bottom'
+        ))
+    
+    # Source et note
+    if source:
+        annotations.append(dict(
+            text=f"Source: {source}",
+            x=0,
+            y=-0.15,
+            xref='paper',
+            yref='paper',
+            showarrow=False,
+            font=dict(size=12, color='gray'),
+            xanchor='left'
+        ))
+    
+    if note:
+        annotations.append(dict(
+            text=note,
+            x=0,
+            y=-0.25,
+            xref='paper',
+            yref='paper',
+            showarrow=False,
+            font=dict(size=12, color='gray', style='italic'),
+            xanchor='left'
+        ))
+
+    # Mise en page
+    fig.update_layout(
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        margin=dict(l=0, r=100, t=120, b=100),  # Marges ajustées
+        height=400,  # Hauteur de base
+        showlegend=False,
+        annotations=annotations,
+        # Configuration des axes
+        xaxis=dict(
+            showgrid=False,
+            zeroline=False,
+            showline=False,
+            showticklabels=False,
+            range=[0, max(data['Effectif']) * 1.1]  # Espace pour les étiquettes
+        ),
+        yaxis=dict(
+            showgrid=False,
+            zeroline=False,
+            showline=False,
+            tickfont=dict(size=14, color='black')
+        )
+    )
+
+    # Ajuster la hauteur en fonction du nombre de modalités
+    fig.update_layout(height=max(400, len(data) * 60 + 200))
+    
+    return fig
+
+def plot_datawrapper_style(data, title, subtitle=None, color="#8DBED8", source="", note=""):
+    fig = go.Figure()
+
+    data = data.copy()
+    old_column = data.columns[0]
+    data = data.rename(columns={old_column: 'Modalités'})
+    
+    data['Effectif'] = pd.to_numeric(data['Effectif'], errors='coerce')
+    
+    x_align = 0
+    x_bar_start = x_align
+
+    # Positions des barres - Réduire l'espacement
+    y_positions = list(range(len(data)))
+    y_positions = [y * 0.5 for y in y_positions]  # Réduire l'espacement entre les barres (était 1)
+    
+    # Créer les barres horizontales
+    fig.add_trace(go.Bar(
+        base=x_bar_start,
+        x=data['Effectif'],
+        y=y_positions,
+        orientation='h',
+        text=[f"{x:.1f}%" for x in data['Effectif']],
+        textposition='inside',
+        insidetextanchor='start',
+        textfont=dict(
+            size=14,
+            color='white'
+        ),
+        marker_color=color,
+        marker=dict(line=dict(width=0)),
+        showlegend=False,
+        width=0.25  # Réduire davantage la largeur des barres (était 0.4)
+    ))
+    
+    # Annotations
+    annotations = []
+    
+    # Ajouter les modalités - Réduire l'espace avec les barres
+    for i, modalite in enumerate(data['Modalités']):
+        annotations.append(dict(
+            text=str(modalite),
+            x=x_align,
+            y=y_positions[i],
+            xref='x',
+            yref='y',
+            yshift=35,  # Réduire le décalage vertical (était 35)
+            showarrow=False,
+            font=dict(
+                size=14,
+                color='black'
+            ),
+            xanchor='left',
+            yanchor='top'
+        ))
+
+    # Formater le titre avec plusieurs parties colorées
+    formatted_title = title
+    if colored_parts:
+        # Trier les parties par longueur décroissante pour éviter les problèmes de remplacement
+        sorted_parts = sorted(colored_parts, key=lambda x: len(x[0]), reverse=True)
+        for text, text_color in sorted_parts:
+            if text in formatted_title:
+                formatted_title = formatted_title.replace(
+                    text,
+                    f'<span style="color: {text_color}">{text}</span>'
+                )
+
+    annotations.append(dict(
+        text=f"<b>{formatted_title}</b>",
+        x=x_align,
+        y=1.15,
+        xref='paper',
+        yref='paper',
+        showarrow=False,
+        font=dict(
+            size=24,
+            color='black'
+        ),
+        xanchor='left',
+        yanchor='bottom'
+    ))
+
+    
+    # Sous-titre - Rapprocher du titre
+    if subtitle:
+        annotations.append(dict(
+            text=subtitle,
+            x=x_align,
+            y=1.05,  # Réduire (était 1.1)
+            xref='paper',
+            yref='paper',
+            showarrow=False,
+            font=dict(
+                size=18,
+                color='black'
+            ),
+            xanchor='left',
+            yanchor='bottom'
+        ))
+    
+    # Source et Note de lecture - Ajuster la position
+    y_position = -0.1  # Remonter légèrement (était -0.15)
+    if source:
+        annotations.append(dict(
+            text=f"Source : {source}",
+            x=x_align,
+            y=y_position,
+            xref='paper',
+            yref='paper',
+            showarrow=False,
+            font=dict(size=12, color='gray'),
+            xanchor='left'
+        ))
+        y_position -= 0.08  # Réduire l'espacement (était 0.1)
+
+    if note:
+        annotations.append(dict(
+            text=f"Lecture : {note}",
+            x=x_align,
+            y=y_position,
+            xref='paper',
+            yref='paper',
+            showarrow=False,
+            font=dict(size=12, color='gray', style='italic'),
+            xanchor='left'
+        ))
+
+    # Mise en page - Réduire les marges
+    fig.update_layout(
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        margin=dict(
+            l=40,  # Réduire (était 50)
+            r=120,  # Réduire (était 150)
+            t=100,  # Réduire (était 120)
+            b=100   # Réduire (était 150)
+        ),
+        height=max(350, len(data) * 70 + 150),  # Ajuster la hauteur (était 400 et 100)
+        showlegend=False,
+        annotations=annotations,
+        xaxis=dict(
+            showgrid=False,
+            zeroline=False,
+            showline=False,
+            showticklabels=False,
+            range=[x_align, max(data['Effectif']) * 1.1],  # Réduire légèrement (était 1.15)
+            constrain='domain'
+        ),
+        yaxis=dict(
+            showgrid=False,
+            zeroline=False,
+            showline=False,
+            showticklabels=False,
+            range=[-0.5, max(y_positions) + 0.5]  # Ajuster la plage (était -1 et +1)
+        ),
+        bargap=0,
+        bargroupgap=0
+    )
+    
+    fig.layout._is_datawrapper_style = True
+    return fig
+
 def plot_density(plot_data, var, title, x_axis, y_axis):
     """Crée un graphique de densité."""
     fig = ff.create_distplot(
@@ -1583,7 +2136,7 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
         with viz_col1:
             graph_type = st.selectbox(
                 "Type de graphique",
-                ["Bar plot", "Lollipop plot", "Treemap"],
+                ["Bar plot", "Horizontal bar plot", "Datawrapper style", "Doughnut", "Lollipop plot", "Treemap"],
                 key="graph_type_qual_viz"
             )
 
@@ -1598,18 +2151,57 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
             adv_col1, adv_col2 = st.columns(2)
 
             with adv_col1:
-                # Utiliser les valeurs du tableau depuis le state
+                # Titre principal (inchangé)
                 viz_title = st.text_input(
                     "Titre du graphique", 
                     value=st.session_state.table_title if st.session_state.table_title else f"Distribution de {var_name}", 
                     key="viz_title"
                 )
-                x_axis = st.text_input(
-                    "Titre de l'axe X", 
-                    value=st.session_state.var_name_display if st.session_state.var_name_display else var_name, 
-                    key="x_axis_qual"
-                )
-                y_axis = st.text_input("Titre de l'axe Y", "Valeur", key="y_axis_qual")
+                
+                # Initialiser la liste des parties colorées si elle n'existe pas
+                if 'colored_parts' not in st.session_state:
+                    st.session_state.colored_parts = []
+
+                # Interface pour ajouter des mots colorés
+                with st.container():
+                    st.write("Ajouter des mots colorés")
+                    col1, col2, col3 = st.columns([3, 1, 1])
+                    
+                    with col1:
+                        new_word = st.text_input("Mot à colorer", key="new_word")
+                    with col2:
+                        new_color = st.color_picker("Couleur", key="new_color")
+                    with col3:
+                        if st.button("Ajouter"):
+                            if new_word:  # Vérifier que le mot n'est pas vide
+                                st.session_state.colored_parts.append((new_word, new_color))
+                                st.session_state.new_word = ""  # Réinitialiser le champ
+
+                # Afficher et gérer les mots colorés actuels
+                if st.session_state.colored_parts:
+                    st.write("Mots colorés:")
+                    for i, (word, color) in enumerate(st.session_state.colored_parts):
+                        col1, col2 = st.columns([4, 1])
+                        with col1:
+                            st.write(f"'{word}' en {color}")
+                        with col2:
+                            if st.button("Supprimer", key=f"del_{i}"):
+                                st.session_state.colored_parts.pop(i)
+                                st.rerun()
+                
+                # Afficher les axes seulement pour les graphiques pertinents
+                if graph_type not in ["Doughnut", "Treemap"]:
+                    x_axis = st.text_input(
+                        "Titre de l'axe X" if graph_type != "Horizontal bar plot" else "Titre de l'axe Y", 
+                        value=st.session_state.var_name_display if st.session_state.var_name_display else var_name, 
+                        key="x_axis_qual"
+                    )
+                    y_axis = st.text_input(
+                        "Titre de l'axe Y" if graph_type != "Horizontal bar plot" else "Titre de l'axe X", 
+                        "Valeur", 
+                        key="y_axis_qual"
+                    )
+                
                 show_values = st.checkbox("Afficher les valeurs", True, key="show_values_qual")
 
             with adv_col2:
@@ -1644,6 +2236,28 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                         COLOR_PALETTES[color_scheme], show_values,
                         source=viz_source, note=viz_note
                     )
+                elif graph_type == "Datawrapper style":
+                    fig = plot_datawrapper_style(
+                        data=data_to_plot,
+                        title=viz_title,
+                        colored_parts=st.session_state.colored_parts if hasattr(st.session_state, 'colored_parts') and st.session_state.colored_parts else None,
+                        subtitle=x_axis,  # On utilise le titre de l'axe X comme sous-titre
+                        color=COLOR_PALETTES[color_scheme][0],  # On prend la première couleur de la palette
+                        source=viz_source,
+                        note=viz_note
+                    )
+                elif graph_type == "Horizontal bar plot":
+                    fig = plot_horizontal_bar(
+                        data_to_plot, viz_title, y_axis, x_axis,  # Inversion des axes x et y
+                        COLOR_PALETTES[color_scheme], show_values,
+                        source=viz_source, note=viz_note
+                    )
+                elif graph_type == "Doughnut":
+                    fig = plot_doughnut(
+                        data_to_plot, viz_title,
+                        COLOR_PALETTES[color_scheme], show_values,
+                        source=viz_source, note=viz_note
+                    )
                 elif graph_type == "Lollipop plot":
                     fig = plot_qualitative_lollipop(
                         data_to_plot, viz_title, x_axis, y_axis,
@@ -1657,60 +2271,8 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                         source=viz_source, note=viz_note
                     )
 
-                # Ajout des annotations si nécessaire
-                if viz_source or viz_note:
-                    is_treemap = (graph_type == "Treemap")
-
                 # Affichage du graphique
-                st.plotly_chart(fig, use_container_width=True)
-
-                # Export du graphique en image HD
-                try:
-                    buf = BytesIO()
-                    
-                    # Créer le graphique en utilisant une des fonctions de plot
-                    if graph_type == "Bar plot":
-                        fig = plot_qualitative_bar(data_to_plot, viz_title, x_axis, y_axis, COLOR_PALETTES[color_scheme], show_values, viz_source, viz_note)
-                    elif graph_type == "Lollipop plot":
-                        fig = plot_qualitative_lollipop(data_to_plot, viz_title, x_axis, y_axis, COLOR_PALETTES[color_scheme], show_values, viz_source, viz_note)
-                    elif graph_type == "Treemap":
-                        fig = plot_qualitative_treemap(data_to_plot, viz_title, COLOR_PALETTES[color_scheme], viz_source, viz_note)
-                    
-                    # Déterminer la hauteur en fonction de la présence de source et note
-                    export_height = 800  # hauteur de base
-                    if viz_source and viz_note:
-                        export_height = 900  # hauteur si les deux sont présents
-                    elif viz_source or viz_note:
-                        export_height = 850  # hauteur si un seul est présent
-                    
-                    # Exporter le graphique en image
-                    fig.write_image(
-                        buf,
-                        format="png",
-                        width=1200,
-                        height=export_height,
-                        scale=1.5
-                    )
-
-                    buf.seek(0)
-                    image_data = buf.getvalue()
-                    image_size_mb = len(image_data) / (1024 * 1024)
-
-                    if image_size_mb > 50:
-                        st.warning("⚠️ L'image générée est trop volumineuse. Essayez de réduire le nombre de données ou la complexité du graphique.")
-                    else:
-                        st.download_button(
-                            label="💾 Télécharger le graphique (HD)",
-                            data=image_data,
-                            file_name=f"graphique_{var_name.lower().replace(' ', '_')}.png",
-                            mime="image/png",
-                            key="download_graph"
-                        )
-                except Exception as export_error:
-                    if "kaleido" in str(export_error):
-                        st.warning("⚠️ L'export en haute résolution nécessite le package 'kaleido'. Veuillez l'installer avec : pip install kaleido")
-                    else:
-                        st.error(f"Erreur lors de l'export : {str(export_error)}")
+                st.plotly_chart(fig, use_container_width=True, config=config)
 
             except Exception as e:
                 st.error(f"Erreur lors de la génération du graphique : {str(e)}")
