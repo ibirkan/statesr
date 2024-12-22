@@ -1675,6 +1675,37 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                         elif viz_source or viz_note:
                             export_height = 825  # hauteur si un seul est présent
 
+                        # Ajouter les annotations de la source et de la note à la figure
+                        if viz_source or viz_note:
+                            annotations = fig.layout.annotations if fig.layout.annotations else []
+                            if viz_source:
+                                annotations.append(
+                                    dict(
+                                        text=f"Source : {viz_source}",
+                                        align='left',
+                                        showarrow=False,
+                                        xref='paper',
+                                        yref='paper',
+                                        x=0,
+                                        y=-0.30,  # Ajusté pour être au niveau du titre de l'axe x
+                                        font=dict(size=10)
+                                    )
+                                )
+                            if viz_note:
+                                annotations.append(
+                                    dict(
+                                        text=f"Note : {viz_note}",
+                                        align='left',
+                                        showarrow=False,
+                                        xref='paper',
+                                        yref='paper',
+                                        x=0,
+                                        y=-0.35,  # Ajusté pour être sous la source
+                                        font=dict(size=10)
+                                    )
+                                )
+                            fig.update_layout(annotations=annotations)
+
                         fig.write_image(
                             buf,
                             format="png",
@@ -1689,6 +1720,37 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                             export_height = 1050
                         elif viz_source or viz_note:
                             export_height = 1025
+
+                        # Ajouter les annotations de la source et de la note à la figure pour le treemap
+                        if viz_source or viz_note:
+                            annotations = fig.layout.annotations if fig.layout.annotations else []
+                            if viz_source:
+                                annotations.append(
+                                    dict(
+                                        text=f"Source : {viz_source}",
+                                        align='left',
+                                        showarrow=False,
+                                        xref='paper',
+                                        yref='paper',
+                                        x=0,
+                                        y=-0.10,
+                                        font=dict(size=10)
+                                    )
+                                )
+                            if viz_note:
+                                annotations.append(
+                                    dict(
+                                        text=f"Note : {viz_note}",
+                                        align='left',
+                                        showarrow=False,
+                                        xref='paper',
+                                        yref='paper',
+                                        x=0,
+                                        y=-0.15,
+                                        font=dict(size=10)
+                                    )
+                                )
+                            fig.update_layout(annotations=annotations)
 
                         fig.write_image(
                             buf,
@@ -1712,7 +1774,6 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                             mime="image/png",
                             key="download_graph"
                         )
-
                 except Exception as export_error:
                     if "kaleido" in str(export_error):
                         st.warning("⚠️ L'export en haute résolution nécessite le package 'kaleido'. Veuillez l'installer avec : pip install kaleido")
