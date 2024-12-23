@@ -1067,7 +1067,7 @@ def plot_horizontal_bar(data, title, subtitle=None, color="#8DBED8", source="", 
     
     return fig
 
-def plot_datawrapper_style(data, title, colored_parts=None, subtitle=None, color="#5157a8", source="", note=""):
+def plot_datawrapper_style(data, title, colored_parts=None, subtitle=None, color="#8DBED8", source="", note="", width=800):
     fig = go.Figure()
 
     data = data.copy()
@@ -1075,25 +1075,34 @@ def plot_datawrapper_style(data, title, colored_parts=None, subtitle=None, color
     data = data.rename(columns={old_column: 'Modalités'})
     
     data['Effectif'] = pd.to_numeric(data['Effectif'], errors='coerce')
-
-    # Trouver la modalité la plus longue pour calculer la largeur du titre
-    max_modalite_length = max([len(str(m)) for m in data['Modalités']])
     
-    # Calculer la longueur approximative pour le retour à la ligne (en caractères)
-    chars_per_line = max_modalite_length + 15  # Ajouter une marge pour les pourcentages
+    # Trouver la longueur approximative pour le retour à la ligne
+    max_modalite_width = max([len(str(m)) for m in data['Modalités']])
+    title_words = title.split()
+    
+    # Créer le titre avec retour à la ligne
+    formatted_title = title
+    if len(title) > max_modalite_width:
+        mid_point = len(title_words) // 2
+        first_half = ' '.join(title_words[:mid_point])
+        second_half = ' '.join(title_words[mid_point:])
+        formatted_title = f"{first_half}<br>{second_half}"
 
+    # Appliquer les couleurs si nécessaire
+    if colored_parts:
+        sorted_parts = sorted(colored_parts, key=lambda x: len(x[0]), reverse=True)
+        for text, text_color in sorted_parts:
+            if text in formatted_title:
+                formatted_title = formatted_title.replace(
+                    text,
+                    f'<span style="color: {text_color}">{text}</span>'
+                )
+    
     x_align = 0
     x_bar_start = x_align
     y_positions = list(range(len(data)))
     y_positions = [y * 0.5 for y in y_positions]
-    
-    x_align = 0
-    x_bar_start = x_align
 
-    # Positions des barres - Réduire l'espacement
-    y_positions = list(range(len(data)))
-    y_positions = [y * 0.5 for y in y_positions]  # Réduire l'espacement entre les barres (était 1)
-    
     # Créer les barres horizontales
     fig.add_trace(go.Bar(
         base=x_bar_start,
@@ -1110,13 +1119,13 @@ def plot_datawrapper_style(data, title, colored_parts=None, subtitle=None, color
         marker_color=color,
         marker=dict(line=dict(width=0)),
         showlegend=False,
-        width=0.25  # Réduire davantage la largeur des barres (était 0.4)
+        width=0.25
     ))
     
     # Annotations
     annotations = []
     
-    # Ajouter les modalités - Réduire l'espace avec les barres
+    # Ajouter les modalités
     for i, modalite in enumerate(data['Modalités']):
         annotations.append(dict(
             text=str(modalite),
@@ -1124,7 +1133,7 @@ def plot_datawrapper_style(data, title, colored_parts=None, subtitle=None, color
             y=y_positions[i],
             xref='x',
             yref='y',
-            yshift=35,  # Réduire le décalage vertical (était 35)
+            yshift=30,
             showarrow=False,
             font=dict(
                 size=14,
@@ -1134,21 +1143,7 @@ def plot_datawrapper_style(data, title, colored_parts=None, subtitle=None, color
             yanchor='top'
         ))
 
-    # Formater le titre avec plusieurs parties colorées
-    formatted_title = title
-    if colored_parts:
-        # Trier les parties par longueur décroissante pour éviter les problèmes de remplacement
-        sorted_parts = sorted(colored_parts, key=lambda x: len(x[0]), reverse=True)
-        for text, text_color in sorted_parts:
-            if text in formatted_title:
-                formatted_title = formatted_title.replace(
-                    text,
-                    f'<span style="color: {text_color}">{text}</span>'
-                )
-
-    # Wrapper le titre formaté
-    wrapped_title = wrap_text(formatted_title, chars_per_line)
-
+    # Ajouter le titre
     annotations.append(dict(
         text=f"<b>{formatted_title}</b>",
         x=x_align,
@@ -1161,16 +1156,16 @@ def plot_datawrapper_style(data, title, colored_parts=None, subtitle=None, color
             color='black'
         ),
         xanchor='left',
-        yanchor='bottom'
+        yanchor='bottom',
+        align='left'
     ))
 
-    
-    # Sous-titre - Rapprocher du titre
+    # Sous-titre
     if subtitle:
         annotations.append(dict(
             text=subtitle,
             x=x_align,
-            y=1.05,  # Réduire (était 1.1)
+            y=1.05,
             xref='paper',
             yref='paper',
             showarrow=False,
@@ -1182,8 +1177,8 @@ def plot_datawrapper_style(data, title, colored_parts=None, subtitle=None, color
             yanchor='bottom'
         ))
     
-    # Source et Note de lecture - Ajuster la position
-    y_position = -0.1  # Remonter légèrement (était -0.15)
+    # Source et Note de lecture
+    y_position = -0.1
     if source:
         annotations.append(dict(
             text=f"Source : {source}",
@@ -1195,7 +1190,7 @@ def plot_datawrapper_style(data, title, colored_parts=None, subtitle=None, color
             font=dict(size=12, color='gray'),
             xanchor='left'
         ))
-        y_position -= 0.08  # Réduire l'espacement (était 0.1)
+        y_position -= 0.08
 
     if note:
         annotations.append(dict(
@@ -1209,17 +1204,18 @@ def plot_datawrapper_style(data, title, colored_parts=None, subtitle=None, color
             xanchor='left'
         ))
 
-    # Mise en page - Réduire les marges
+    # Mise en page
     fig.update_layout(
         plot_bgcolor='white',
         paper_bgcolor='white',
         margin=dict(
-            l=40,  # Réduire (était 50)
-            r=120,  # Réduire (était 150)
-            t=100,  # Réduire (était 120)
-            b=100   # Réduire (était 150)
+            l=40,
+            r=120,
+            t=150,  # Augmenté pour accommoder le titre sur deux lignes
+            b=100
         ),
-        height=max(350, len(data) * 70 + 150),  # Ajuster la hauteur (était 400 et 100)
+        width=width,
+        height=max(350, len(data) * 70 + 150),
         showlegend=False,
         annotations=annotations,
         xaxis=dict(
@@ -1227,7 +1223,7 @@ def plot_datawrapper_style(data, title, colored_parts=None, subtitle=None, color
             zeroline=False,
             showline=False,
             showticklabels=False,
-            range=[x_align, max(data['Effectif']) * 1.1],  # Réduire légèrement (était 1.15)
+            range=[x_align, max(data['Effectif']) * 1.1],
             constrain='domain'
         ),
         yaxis=dict(
@@ -1235,7 +1231,7 @@ def plot_datawrapper_style(data, title, colored_parts=None, subtitle=None, color
             zeroline=False,
             showline=False,
             showticklabels=False,
-            range=[-0.5, max(y_positions) + 0.5]  # Ajuster la plage (était -1 et +1)
+            range=[-0.5, max(y_positions) + 0.5]
         ),
         bargap=0,
         bargroupgap=0
@@ -2266,7 +2262,12 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                     key="viz_note"
                 )
                 value_type = st.radio("Type de valeur à afficher", ["Effectif", "Taux (%)"], key="value_type_qual")
-
+                graph_width = st.number_input("Largeur du graphique", 
+                                            min_value=400, 
+                                            max_value=1200, 
+                                            value=800, 
+                                            step=50)
+                                            
         # Génération du graphique
         if st.button("Générer la visualisation", key="generate_qual_viz"):
             try:
@@ -2293,7 +2294,8 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                         subtitle=x_axis,  # On utilise le titre de l'axe X comme sous-titre
                         color=COLOR_PALETTES[color_scheme][0],  # On prend la première couleur de la palette
                         source=viz_source,
-                        note=viz_note
+                        note=viz_note,
+                        width=graph_width 
                     )
                 elif graph_type == "Horizontal bar plot":
                     fig = plot_horizontal_bar(
