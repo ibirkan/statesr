@@ -839,13 +839,12 @@ def plot_qualitative_treemap(data, title, color_palette, source="", note=""):
     return fig
 
 def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#8DBED8", source="", note="", width=800, x_start=0.2, value_type="Effectif"):
-    # Constantes de mise en page et positionnement
+    # Constantes
     TOP_POSITION = 1.2         # Position de base pour le titre
     SUBTITLE_OFFSET = 0.08     # Décalage par ligne de titre pour le sous-titre
-    SUBTITLE_TO_CONTENT = 1.2  # Distance entre sous-titre et première modalité
     SOURCE_POSITION = -0.15    # Position de base pour la source
     NOTE_OFFSET = 0.08         # Décalage pour la note
-    
+    EXTRA_TOP_MARGIN = 60      # Marge supplémentaire en pixels quand il y a un sous-titre
     BAR_HEIGHT = 30            # Hauteur des barres
     SPACE_BETWEEN = 80         # Espacement entre les groupes
     TEXT_BAR_SPACE = 20        # Distance entre le texte et sa barre
@@ -1020,7 +1019,7 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
         margin=dict(
             l=LEFT_MARGIN,
             r=RIGHT_MARGIN,
-            t=BOTTOM_MARGIN,
+            t=BOTTOM_MARGIN + (EXTRA_TOP_MARGIN if subtitle else 0),  # Ajouter la marge extra si sous-titre
             b=BOTTOM_MARGIN
         ),
         showlegend=False,
