@@ -844,7 +844,7 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
     SUBTITLE_OFFSET = 0.08     # Décalage par ligne de titre pour le sous-titre
     SOURCE_POSITION = -0.15    # Position de base pour la source
     NOTE_OFFSET = 0.08         # Décalage pour la note
-    EXTRA_TOP_MARGIN = 60      # Marge supplémentaire en pixels quand il y a un sous-titre
+    EXTRA_TOP_MARGIN = 120      # Marge supplémentaire en pixels quand il y a un sous-titre
     BAR_HEIGHT = 30            # Hauteur des barres
     SPACE_BETWEEN = 80         # Espacement entre les groupes
     TEXT_BAR_SPACE = 20        # Distance entre le texte et sa barre
