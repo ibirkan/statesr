@@ -887,21 +887,24 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
                     text,
                     f'<span style="color: {text_color}">{text}</span>'
                 )
+
+# En haut du code, définir les ratios d'espacement
+    TEXT_TO_BAR_RATIO = 1/4    # Espace entre une modalité et sa barre
+    BAR_TO_TEXT_RATIO = 1/2    # Espace entre une barre et la modalité suivante
+
     # Calcul dynamique de la hauteur et des positions
     n_modalites = len(data)
-    bar_height = 30  # hauteur fixe de chaque barre
-    min_spacing = 120  # espacement minimum entre les barres
-    available_height = 800  # hauteur de base disponible
-    title_space = top_margin + 100  # espace pour le titre
-    bottom_space = 100  # espace pour le bas du graphique
+    bar_height = 30  
+    min_spacing = 120  
+    available_height = 800  
+    title_space = top_margin + 100
+    bottom_space = 100
     
-    # Ajuster le spacing si besoin pour les cas avec beaucoup de modalités
     spacing = min(min_spacing, max(80, (available_height - title_space - bottom_space) / (n_modalites + 1)))
-    
     total_height = max(500, n_modalites * spacing + title_space + bottom_space)
-    
-    # Positions des barres
-    y_positions = [i * spacing for i in range(n_modalites)]
+
+    # Positions des barres en tenant compte de l'espace avec la modalité du dessus
+    y_positions = [(i * spacing) + (spacing * BAR_TO_TEXT_RATIO) for i in range(n_modalites)]
 
     # Format du texte des valeurs
     text_format = ([f"{int(x)}%" if x.is_integer() else f"{x:.1f}%" for x in data['Effectif']] 
@@ -928,7 +931,7 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
     # Annotations pour les modalités et le titre
     annotations = []
     
-    # Modalités placées au-dessus des barres
+    # Dans les annotations des modalités
     for i, modalite in enumerate(data['Modalités']):
         annotations.append(dict(
             text=str(modalite),
@@ -936,7 +939,7 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
             y=y_positions[i],
             xref='x',
             yref='y',
-            yshift=20,  # augmenté pour plus d'espace entre le texte et la barre
+            yshift=spacing * TEXT_TO_BAR_RATIO,  # Espace entre la modalité et sa barre
             showarrow=False,
             font=dict(size=15, color='black'),
             xanchor='left',
