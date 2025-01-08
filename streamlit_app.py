@@ -889,7 +889,7 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
                 )
 
     # En haut du code
-    TEXT_TO_BAR_RATIO = 1/4    # Garde uniquement ce ratio
+    TEXT_TO_BAR_RATIO = 1/5    # Garde uniquement ce ratio
 
     # Calcul dynamique de la hauteur et des positions
     n_modalites = len(data)
@@ -924,7 +924,7 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
         marker_color=color,
         marker=dict(line=dict(width=0)),
         showlegend=False,
-        width=8.00
+        width=10.00
     ))
 
     # Annotations pour les modalités et le titre
