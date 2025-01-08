@@ -845,7 +845,7 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
     SUBTITLE_CONTENT_SPACE = 60 # Espace entre sous-titre et contenu
     TEXT_BAR_SPACE = 20        # Distance entre le texte et sa barre
     BAR_HEIGHT = 30          # Hauteur des barres
-    SPACE_BETWEEN = 50         # Espacement entre les groupes
+    SPACE_BETWEEN = 80         # Espacement entre les groupes
     SOURCE_NOTE_SPACE = 20     # Espace entre source et note
     BOTTOM_MARGIN = 100        # Marge du bas
     LEFT_MARGIN = 150          # Marge gauche
