@@ -842,6 +842,7 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
     # Constantes de mise en page et positionnement
     TOP_POSITION = 1.2         # Position de base pour le titre
     SUBTITLE_OFFSET = 0.08     # Décalage par ligne de titre pour le sous-titre
+    SUBTITLE_TO_CONTENT = 0.2  # Distance entre sous-titre et première modalité
     SOURCE_POSITION = -0.15    # Position de base pour la source
     NOTE_OFFSET = 0.08         # Décalage pour la note
     
