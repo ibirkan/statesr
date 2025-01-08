@@ -91,11 +91,15 @@ sns.set_style("whitegrid")
 # Palettes de couleurs prédéfinies
 COLOR_PALETTES = {
     "Bleu": ['#000091', '#000080', '#00006f', '#00005e', '#00004d', '#00003c'],  # Bleu Marianne
-    "Vert": ['#169B62', '#148957', '#12774C', '#106541', '#0E5336', '#0C412B'],  # Vert gouvernement
-    "Rouge": ['#E1000F', '#C9000E', '#B1000C', '#99000B', '#810009', '#690007'],  # Rouge gouvernement
-    "Orange": ['#FF9940', '#E68A39', '#CC7B33', '#B36C2D', '#995D26', '#804E20'],
-    "Violet": ['#4D2A7C', '#452570', '#3D2064', '#351B58', '#2D164C', '#251140'],
-    "Gris": ['#53657D', '#4A5B70', '#415163', '#384756', '#2F3D49', '#26333C']   # Gris gouvernement
+    "Rouge": ['#E1000F', '#C9000E', '#B1000C', '#99000B', '#810009', '#690007'],  # Rouge Marianne
+    "Vert": ['#169B62', '#148957', '#12774C', '#106541', '#0E5336', '#0C412B'],  # Vert Marianne
+    "Gris": ['#53657D', '#4A5B70', '#415163', '#384756', '#2F3D49', '#26333C'],  # Gris Marianne
+    "Jaune": ['#FFC800', '#E6B400', '#CCA000', '#B38C00', '#997800', '#806400'],  # Jaune DSE
+    "Orange": ['#FF9940', '#E68A39', '#CC7B33', '#B36C2D', '#995D26', '#804E20'],  # Orange DSE
+    "Rose": ['#FF8D7E', '#E67F71', '#CC7164', '#B36357', '#99554A', '#80473D'],    # Rose DSE
+    "Violet": ['#7D4E9E', '#70468E', '#633E7E', '#56366E', '#492E5E', '#3C264E'],  # Violet DSE
+    "Cyan": ['#2AA3FF', '#2693E6', '#2283CC', '#1E73B3', '#196399', '#155380'],    # Cyan DSE
+    "Vert menthe": ['#00C98E', '#00B580', '#00A172', '#008D64', '#007956', '#006548']  # Vert menthe DSE
 }
 
 # Configuration Plotly pour l'export haute qualité
@@ -324,8 +328,8 @@ def export_visualization(fig, export_type, var_name, source="", note="", data_to
             export_width = 1200
             export_height = 800
 
-            # Si c'est un graphique style Datawrapper
-            if hasattr(fig.layout, '_is_datawrapper_style'):
+            # Si c'est un graphique hozirontal
+            if hasattr(fig.layout, '_is_horizontal_bar'):
                 if data_to_plot is not None:
                     nb_modalites = len(data_to_plot)
                     export_height = max(600, nb_modalites * 80 + 300)
@@ -340,12 +344,6 @@ def export_visualization(fig, export_type, var_name, source="", note="", data_to
                         r=150   # Marge droite pour les valeurs de pourcentage
                     )
                 )
-            
-            # Si c'est un graphique horizontal
-            elif hasattr(fig.layout, '_is_horizontal_bar'):
-                if data_to_plot is not None:
-                    nb_modalites = len(data_to_plot)
-                    export_height = max(800, nb_modalites * 50 + 300)
                 
                 # Configuration spécifique pour les graphiques horizontaux
                 fig.update_layout(
@@ -840,234 +838,7 @@ def plot_qualitative_treemap(data, title, color_palette, source="", note=""):
     
     return fig
 
-def plot_doughnut(data, title, color_palette, show_values=True, source="", note=""):
-    """
-    Crée un graphique en anneau (doughnut) avec Plotly
-    
-    Parameters:
-    -----------
-    data : pd.DataFrame
-        DataFrame avec deux colonnes : modalités et effectifs
-    title : str
-        Titre du graphique
-    color_palette : list
-        Liste de couleurs pour le graphique
-    show_values : bool
-        Afficher les valeurs sur le graphique
-    source : str
-        Source des données
-    note : str
-        Note de lecture
-    """
-    fig = go.Figure()
-
-    # Renommer la colonne temporairement pour le traitement
-    data = data.copy()
-    old_column = data.columns[0]
-    data = data.rename(columns={old_column: 'Modalités'})
-    
-    # Calculer les pourcentages
-    total = data['Effectif'].sum()
-    percentages = (data['Effectif'] / total * 100).round(1)
-    
-    # Préparer les labels pour l'affichage
-    if show_values:
-        labels = [f"{mod}<br>({eff:,.0f}, {pct}%)" 
-                 for mod, eff, pct in zip(data['Modalités'], 
-                                        data['Effectif'], 
-                                        percentages)]
-    else:
-        labels = data['Modalités']
-
-    # Créer le graphique en anneau
-    fig.add_trace(go.Pie(
-        labels=labels,
-        values=data['Effectif'],
-        hole=0.5,  # Taille du trou central (0.5 = 50%)
-        marker_colors=color_palette,
-        textinfo='none' if not show_values else 'label',
-        textposition='outside',
-        textfont=dict(size=12)
-    ))
-
-    # Configuration de la mise en page
-    annotations = []
-    
-    # Ajouter le total au centre
-    annotations.append(dict(
-        text=f'Total<br>{total:,.0f}',
-        x=0.5,
-        y=0.5,
-        font=dict(size=20),
-        showarrow=False
-    ))
-    
-    # Ajouter source et note si présentes
-    if source:
-        annotations.append(dict(
-            text=f"Source : {source}",
-            align='left',
-            showarrow=False,
-            xref='paper',
-            yref='paper',
-            x=0,
-            y=-0.20,
-            font=dict(size=11)
-        ))
-    if note:
-        annotations.append(dict(
-            text=f"Note : {note}",
-            align='left',
-            showarrow=False,
-            xref='paper',
-            yref='paper',
-            x=0,
-            y=-0.25,
-            font=dict(size=11)
-        ))
-
-    fig.update_layout(
-        title=dict(
-            text=title,
-            font=dict(size=20, weight='bold'),
-            x=0.5,
-            xanchor='center'
-        ),
-        showlegend=False,
-        height=700,
-        margin=dict(b=150, l=50, r=50, t=100),
-        annotations=annotations
-    )
-    
-    return fig
-
-def plot_horizontal_bar(data, title, subtitle=None, color="#8DBED8", source="", note=""):
-    """
-    Crée un graphique en barres horizontales style Datawrapper
-    
-    Parameters:
-    -----------
-    data : pd.DataFrame
-        DataFrame avec deux colonnes : modalités et effectifs
-    title : str
-        Titre du graphique
-    subtitle : str
-        Sous-titre du graphique (optionnel)
-    color : str
-        Couleur des barres (code hex)
-    source : str
-        Source des données
-    note : str
-        Note de lecture
-    """
-    fig = go.Figure()
-
-    # Renommer la colonne temporairement pour le traitement
-    data = data.copy()
-    old_column = data.columns[0]
-    data = data.rename(columns={old_column: 'Modalités'})
-    
-    # Créer les barres horizontales
-    fig.add_trace(go.Bar(
-        x=data['Effectif'],
-        y=data['Modalités'],
-        orientation='h',
-        text=[f"{x:.1f}%" for x in data['Effectif']],  # Ajouter le symbole %
-        textposition='outside',
-        textfont=dict(
-            size=14,
-            color='black'
-        ),
-        marker_color=color,
-        marker=dict(line=dict(width=0)),  # Pas de bordure
-        showlegend=False
-    ))
-    
-    # Configuration des annotations pour le titre et sous-titre
-    annotations = []
-    
-    # Titre en gras
-    annotations.append(dict(
-        text=title,
-        x=0,
-        y=i-0.1,
-        xref='paper',
-        yref='paper',
-        showarrow=False,
-        font=dict(size=20, color='black'),
-        xanchor='left',
-        yanchor='bottom'
-    ))
-    
-    # Sous-titre si présent
-    if subtitle:
-        annotations.append(dict(
-            text=subtitle,
-            x=0,
-            y=1.1,
-            xref='paper',
-            yref='paper',
-            showarrow=False,
-            font=dict(size=14, color='black'),
-            xanchor='left',
-            yanchor='bottom'
-        ))
-    
-    # Source et note
-    if source:
-        annotations.append(dict(
-            text=f"Source: {source}",
-            x=0,
-            y=-0.15,
-            xref='paper',
-            yref='paper',
-            showarrow=False,
-            font=dict(size=12, color='gray'),
-            xanchor='left'
-        ))
-    
-    if note:
-        annotations.append(dict(
-            text=note,
-            x=0,
-            y=-0.25,
-            xref='paper',
-            yref='paper',
-            showarrow=False,
-            font=dict(size=12, color='gray', style='italic'),
-            xanchor='left'
-        ))
-
-    # Mise en page
-    fig.update_layout(
-        plot_bgcolor='white',
-        paper_bgcolor='white',
-        margin=dict(l=0, r=100, t=120, b=100),  # Marges ajustées
-        height=400,  # Hauteur de base
-        showlegend=False,
-        annotations=annotations,
-        # Configuration des axes
-        xaxis=dict(
-            showgrid=False,
-            zeroline=False,
-            showline=False,
-            showticklabels=False,
-            range=[0, max(data['Effectif']) * 1.1]  # Espace pour les étiquettes
-        ),
-        yaxis=dict(
-            showgrid=False,
-            zeroline=False,
-            showline=False,
-            tickfont=dict(size=14, color='black')
-        )
-    )
-
-    # Ajuster la hauteur en fonction du nombre de modalités
-    fig.update_layout(height=max(400, len(data) * 60 + 200))
-    
-    return fig
-
-def plot_datawrapper_style(data, title, colored_parts=None, subtitle=None, color="#8DBED8", source="", note="", width=800):
+def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#8DBED8", source="", note="", width=800, x_start=0.2, value_type="Effectif"):
     fig = go.Figure()
 
     data = data.copy()
@@ -1076,19 +847,38 @@ def plot_datawrapper_style(data, title, colored_parts=None, subtitle=None, color
     
     data['Effectif'] = pd.to_numeric(data['Effectif'], errors='coerce')
     
-    # Trouver la longueur approximative pour le retour à la ligne
-    max_modalite_width = max([len(str(m)) for m in data['Modalités']])
-    title_words = title.split()
+    # Formatage du titre avec gestion des retours à la ligne
+    chars_per_line = int((width - 100) / 12)
+    title_lines = []
     
-    # Créer le titre avec retour à la ligne
-    formatted_title = title
-    if len(title) > max_modalite_width:
-        mid_point = len(title_words) // 2
-        first_half = ' '.join(title_words[:mid_point])
-        second_half = ' '.join(title_words[mid_point:])
-        formatted_title = f"{first_half}<br>{second_half}"
+    if len(title) > chars_per_line:
+        words = title.split()
+        current_line = []
+        current_length = 0
+        
+        for word in words:
+            word_length = len(word)
+            if current_length + word_length + 1 <= chars_per_line or not current_line:
+                current_line.append(word)
+                current_length += word_length + 1
+            else:
+                title_lines.append(' '.join(current_line))
+                current_line = [word]
+                current_length = word_length
+        
+        if current_line:
+            title_lines.append(' '.join(current_line))
+        
+        formatted_title = '<br>'.join(title_lines)
+    else:
+        formatted_title = title
+        title_lines = [title]
 
-    # Appliquer les couleurs si nécessaire
+    # Nombre de lignes dans le titre
+    num_title_lines = formatted_title.count('<br>') + 1
+    top_margin = 150 + ((num_title_lines - 1) * 30)
+
+    # Puis application des couleurs si nécessaire
     if colored_parts:
         sorted_parts = sorted(colored_parts, key=lambda x: len(x[0]), reverse=True)
         for text, text_color in sorted_parts:
@@ -1098,124 +888,126 @@ def plot_datawrapper_style(data, title, colored_parts=None, subtitle=None, color
                     f'<span style="color: {text_color}">{text}</span>'
                 )
     
-    x_align = 0
-    x_bar_start = x_align
+    # Positions des barres
     y_positions = list(range(len(data)))
-    y_positions = [y * 0.5 for y in y_positions]
+    y_positions = [y * 1.8 for y in y_positions]
 
-    # Créer les barres horizontales
+    text_format = ([f"{int(x)}%" if x.is_integer() else f"{x:.1f}%" for x in data['Effectif']] 
+                   if value_type == "Taux (%)" 
+                   else [f"{int(x)}" if x.is_integer() else f"{x:.1f}" for x in data['Effectif']])
+
+    # Les barres commencent à x_start
     fig.add_trace(go.Bar(
-        base=x_bar_start,
+        base=x_start,  # Ajouter cette ligne pour le début des barres
         x=data['Effectif'],
         y=y_positions,
         orientation='h',
-        text=[f"{x:.1f}%" for x in data['Effectif']],
+        text=text_format,
         textposition='inside',
         insidetextanchor='start',
-        textfont=dict(
-            size=14,
-            color='white'
-        ),
+        textangle=0,  # Texte horizontal
+        textfont=dict(size=16, color='white'),
         marker_color=color,
         marker=dict(line=dict(width=0)),
         showlegend=False,
-        width=0.25
+        width=1.00
     ))
-    
-    # Annotations
+
+    # Annotations pour les modalités et le titre
     annotations = []
     
-    # Ajouter les modalités
+    # Modalités (restent à gauche, x=0)
     for i, modalite in enumerate(data['Modalités']):
         annotations.append(dict(
             text=str(modalite),
-            x=x_align,
+            x=0,  # Position à gauche
             y=y_positions[i],
-            xref='x',
+            xref='paper',
             yref='y',
-            yshift=30,
+            yshift=34,
             showarrow=False,
-            font=dict(
-                size=14,
-                color='black'
-            ),
+            font=dict(size=15, color='black'),
             xanchor='left',
-            yanchor='top'
+            yanchor='top',
+            align='left'
         ))
-
-    # Ajouter le titre
+    
+    # Titre (reste à gauche)
     annotations.append(dict(
         text=f"<b>{formatted_title}</b>",
-        x=x_align,
-        y=1.15,
+        x=0,
+        y=1.45,
         xref='paper',
         yref='paper',
         showarrow=False,
-        font=dict(
-            size=24,
-            color='black'
-        ),
+        font=dict(size=24, color='black'),
         xanchor='left',
         yanchor='bottom',
         align='left'
     ))
 
-    # Sous-titre
+    # Gestion du sous-titre
     if subtitle:
+        # Compter le nombre de lignes dans le titre
+        num_title_lines = formatted_title.count('<br>') + 1
+        
+        # Calculer la position y du sous-titre
+        subtitle_y = 1.40 - (num_title_lines * 0.06)
+        
         annotations.append(dict(
             text=subtitle,
-            x=x_align,
-            y=1.05,
+            x=0,
+            y=subtitle_y,
             xref='paper',
             yref='paper',
             showarrow=False,
-            font=dict(
-                size=18,
-                color='black'
-            ),
+            font=dict(size=18, color='black'),
             xanchor='left',
-            yanchor='bottom'
+            yanchor='bottom',
+            align='left'
         ))
     
-    # Source et Note de lecture
-    y_position = -0.1
+    # Source et Note de lecture (restent à gauche avec même alignement)
+    y_position = -0.2
     if source:
         annotations.append(dict(
             text=f"Source : {source}",
-            x=x_align,
+            x=0,
             y=y_position,
             xref='paper',
             yref='paper',
             showarrow=False,
             font=dict(size=12, color='gray'),
-            xanchor='left'
+            xanchor='left',
+            align='left'
         ))
         y_position -= 0.08
 
     if note:
         annotations.append(dict(
             text=f"Lecture : {note}",
-            x=x_align,
+            x=0,
             y=y_position,
             xref='paper',
             yref='paper',
             showarrow=False,
-            font=dict(size=12, color='gray', style='italic'),
-            xanchor='left'
+            font=dict(size=12, color='gray'),
+            xanchor='left',
+            align='left'  # Ajout de l'alignement explicite
         ))
 
-    # Mise en page
+    # Configuration de la mise en page
     fig.update_layout(
         plot_bgcolor='white',
         paper_bgcolor='white',
+        width=width,
+        height=max(350, len(data) * 70 + 150),
         margin=dict(
             l=40,
             r=120,
-            t=150,  # Augmenté pour accommoder le titre sur deux lignes
+            t=top_margin,  # Utilisation de la marge dynamique
             b=100
         ),
-        width=width,
-        height=max(350, len(data) * 70 + 150),
         showlegend=False,
         annotations=annotations,
         xaxis=dict(
@@ -1223,7 +1015,7 @@ def plot_datawrapper_style(data, title, colored_parts=None, subtitle=None, color
             zeroline=False,
             showline=False,
             showticklabels=False,
-            range=[x_align, max(data['Effectif']) * 1.1],
+            range=[-0.1, max(data['Effectif'] + x_start) * 1.1],  # Ajuster la plage pour tenir compte du décalage des barres
             constrain='domain'
         ),
         yaxis=dict(
@@ -1237,7 +1029,6 @@ def plot_datawrapper_style(data, title, colored_parts=None, subtitle=None, color
         bargroupgap=0
     )
     
-    fig.layout._is_datawrapper_style = True
     return fig
 
 def plot_density(plot_data, var, title, x_axis, y_axis):
@@ -2178,7 +1969,7 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
         with viz_col1:
             graph_type = st.selectbox(
                 "Type de graphique",
-                ["Bar plot", "Horizontal bar plot", "Datawrapper style", "Doughnut", "Lollipop plot", "Treemap"],
+                ["Bar plot", "Horizontal Bar", "Doughnut", "Lollipop plot", "Treemap"],
                 key="graph_type_qual_viz"
             )
 
@@ -2206,20 +1997,34 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
 
                 # Interface pour ajouter des mots colorés
                 with st.container():
-                    st.write("Ajouter des mots colorés")
-                    col1, col2, col3 = st.columns([3, 1, 1])
+                    st.write("Ajouter des mots colorés avec les couleurs gouvernementales")
+                    col1, col2, col3, col4 = st.columns([3, 1.5, 1.5, 1])  # Ajout d'une colonne
                     
                     with col1:
                         new_word = st.text_input("Mot à colorer", key="new_word")
                     with col2:
-                        new_color = st.color_picker("Couleur", key="new_color")
+                        # Sélection de la famille de couleur
+                        selected_color_family = st.selectbox(
+                            "Couleur",
+                            options=COLOR_PALETTES.keys(),
+                            key="color_family"
+                        )
                     with col3:
+                        # Sélection de la variante
+                        selected_variant = st.selectbox(
+                            "Variante",
+                            options=["Principale", "Variante 1", "Variante 2", "Variante 3", "Variante 4", "Variante 5"],
+                            key="color_variant"
+                        )
+                        # Conversion de la sélection en index
+                        variant_index = ["Principale", "Variante 1", "Variante 2", "Variante 3", "Variante 4", "Variante 5"].index(selected_variant)
+                        new_color = COLOR_PALETTES[selected_color_family][variant_index]
+                    with col4:
                         if st.button("Ajouter"):
                             if new_word:  # Vérifier que le mot n'est pas vide
                                 if 'colored_parts' not in st.session_state:
                                     st.session_state.colored_parts = []
                                 st.session_state.colored_parts.append((new_word, new_color))
-                                # Au lieu de modifier directement le widget, forcer un rerun
                                 st.rerun()
 
                 # Afficher et gérer les mots colorés actuels
@@ -2228,7 +2033,16 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                     for i, (word, color) in enumerate(st.session_state.colored_parts):
                         col1, col2 = st.columns([4, 1])
                         with col1:
-                            st.write(f"'{word}' en {color}")
+                            # Trouver la famille de couleur et la variante
+                            color_family = "Inconnue"
+                            variant = "Principale"
+                            for family, variants in COLOR_PALETTES.items():
+                                if color in variants:
+                                    color_family = family
+                                    variant_index = variants.index(color)
+                                    variant = ["Principale", "Variante 1", "Variante 2", "Variante 3", "Variante 4", "Variante 5"][variant_index]
+                                    break
+                            st.write(f"'{word}' en {color_family} ({variant})")
                         with col2:
                             if st.button("Supprimer", key=f"del_{i}"):
                                 st.session_state.colored_parts.pop(i)
@@ -2237,12 +2051,12 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                 # Afficher les axes seulement pour les graphiques pertinents
                 if graph_type not in ["Doughnut", "Treemap"]:
                     x_axis = st.text_input(
-                        "Titre de l'axe X" if graph_type != "Horizontal bar plot" else "Titre de l'axe Y", 
+                        "Titre de l'axe Y", 
                         value=st.session_state.var_name_display if st.session_state.var_name_display else var_name, 
                         key="x_axis_qual"
                     )
                     y_axis = st.text_input(
-                        "Titre de l'axe Y" if graph_type != "Horizontal bar plot" else "Titre de l'axe X", 
+                        "Titre de l'axe X", 
                         "Valeur", 
                         key="y_axis_qual"
                     )
@@ -2262,12 +2076,8 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                     key="viz_note"
                 )
                 value_type = st.radio("Type de valeur à afficher", ["Effectif", "Taux (%)"], key="value_type_qual")
-                graph_width = st.number_input("Largeur du graphique", 
-                                            min_value=400, 
-                                            max_value=1200, 
-                                            value=800, 
-                                            step=50)
-                                            
+                width = st.slider("Largeur du graphique", min_value=600, max_value=1200, value=800, step=50, key="graph_width")
+
         # Génération du graphique
         if st.button("Générer la visualisation", key="generate_qual_viz"):
             try:
@@ -2286,8 +2096,8 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                         COLOR_PALETTES[color_scheme], show_values,
                         source=viz_source, note=viz_note
                     )
-                elif graph_type == "Datawrapper style":
-                    fig = plot_datawrapper_style(
+                elif graph_type == "Horizontal Bar":
+                    fig = plot_horizontal_bar(
                         data=data_to_plot,
                         title=viz_title,
                         colored_parts=st.session_state.colored_parts if hasattr(st.session_state, 'colored_parts') and st.session_state.colored_parts else None,
@@ -2295,13 +2105,8 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                         color=COLOR_PALETTES[color_scheme][0],  # On prend la première couleur de la palette
                         source=viz_source,
                         note=viz_note,
-                        width=graph_width 
-                    )
-                elif graph_type == "Horizontal bar plot":
-                    fig = plot_horizontal_bar(
-                        data_to_plot, viz_title, y_axis, x_axis,  # Inversion des axes x et y
-                        COLOR_PALETTES[color_scheme], show_values,
-                        source=viz_source, note=viz_note
+                        width=width,
+                        value_type=value_type 
                     )
                 elif graph_type == "Doughnut":
                     fig = plot_doughnut(
@@ -2323,7 +2128,7 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                     )
 
                 # Affichage du graphique
-                st.plotly_chart(fig, use_container_width=True, config=config)
+                st.plotly_chart(fig, use_container_width=False, config=config)
 
             except Exception as e:
                 st.error(f"Erreur lors de la génération du graphique : {str(e)}")
