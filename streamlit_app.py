@@ -928,16 +928,16 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
     for i, modalite in enumerate(data['Modalités']):
         annotations.append(dict(
             text=str(modalite),
-            x=0,
+            x=x_start,  # Aligné avec le début des barres
             y=y_positions[i],
-            xref='paper',
+            xref='x',   # Utilise l'échelle x au lieu de paper
             yref='y',
-            yshift=0,  # Pas de décalage vertical
+            yshift=15,  # Décalage au-dessus de la barre
             showarrow=False,
             font=dict(size=15, color='black'),
-            xanchor='right',
-            yanchor='middle',
-            align='right'
+            xanchor='left',
+            yanchor='bottom',
+            align='left'
         ))
     
     # Titre
