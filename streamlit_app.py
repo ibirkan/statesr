@@ -936,7 +936,7 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
             y=y_positions[i],
             xref='x',
             yref='y',
-            yshift=5,  # augmenté pour plus d'espace entre le texte et la barre
+            yshift=8,  # augmenté pour plus d'espace entre le texte et la barre
             showarrow=False,
             font=dict(size=15, color='black'),
             xanchor='left',
