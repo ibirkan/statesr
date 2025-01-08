@@ -890,10 +890,10 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
 
     # Calcul dynamique de la hauteur et des positions
     n_modalites = len(data)
-    bar_height = 40  # hauteur fixe pour chaque barre
-    spacing = 80    # espace fixe entre les barres
-    title_space = top_margin + 100  # espace pour le titre
-    bottom_space = 100  # espace pour la source/note
+    bar_height = 30  # hauteur de chaque barre
+    spacing = 60    # espacement entre les barres
+    title_space = top_margin + 100
+    bottom_space = 100
     total_height = max(500, n_modalites * spacing + title_space + bottom_space)
 
     # Positions des barres
