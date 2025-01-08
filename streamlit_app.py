@@ -888,9 +888,8 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
                     f'<span style="color: {text_color}">{text}</span>'
                 )
 
-# En haut du code, définir les ratios d'espacement
-    TEXT_TO_BAR_RATIO = 1/4    # Espace entre une modalité et sa barre
-    BAR_TO_TEXT_RATIO = 1/24    # Espace entre une barre et la modalité suivante
+    # En haut du code
+    TEXT_TO_BAR_RATIO = 1/4    # Garde uniquement ce ratio
 
     # Calcul dynamique de la hauteur et des positions
     n_modalites = len(data)
@@ -903,8 +902,8 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
     spacing = min(min_spacing, max(80, (available_height - title_space - bottom_space) / (n_modalites + 1)))
     total_height = max(500, n_modalites * spacing + title_space + bottom_space)
 
-    # Positions des barres en tenant compte de l'espace avec la modalité du dessus
-    y_positions = [(i * spacing) + (spacing * BAR_TO_TEXT_RATIO) for i in range(n_modalites)]
+    # Positions des barres avec espacement réduit
+    y_positions = [i * spacing * 0.6 for i in range(n_modalites)]  # 0.6 à ajuster selon vos besoins
 
     # Format du texte des valeurs
     text_format = ([f"{int(x)}%" if x.is_integer() else f"{x:.1f}%" for x in data['Effectif']] 
