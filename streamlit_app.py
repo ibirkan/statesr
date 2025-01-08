@@ -840,9 +840,9 @@ def plot_qualitative_treemap(data, title, color_palette, source="", note=""):
 
 def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#8DBED8", source="", note="", width=800, x_start=0.2, value_type="Effectif"):
     # Constantes de mise en page
-    TITLE_TOP_MARGIN = 150      # Espace au-dessus du titre
-    TITLE_SUBTITLE_SPACE = 40   # Espace entre titre et sous-titre
-    SUBTITLE_CONTENT_SPACE = 60 # Espace entre sous-titre et contenu
+    TITLE_TOP_MARGIN = 200      # Espace au-dessus du titre
+    TITLE_SUBTITLE_SPACE = 30   # Espace entre titre et sous-titre
+    SUBTITLE_CONTENT_SPACE = 40 # Espace entre sous-titre et contenu
     TEXT_BAR_SPACE = 20        # Distance entre le texte et sa barre
     BAR_HEIGHT = 30          # Hauteur des barres
     SPACE_BETWEEN = 80         # Espacement entre les groupes
