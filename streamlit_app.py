@@ -903,7 +903,7 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
     total_height = max(500, n_modalites * spacing + title_space + bottom_space)
 
     # Positions des barres avec espacement réduit
-    y_positions = [i * spacing * 0.6 for i in range(n_modalites)]  # 0.6 à ajuster selon vos besoins
+    y_positions = [i * spacing * 0.4 for i in range(n_modalites)]  # 0.6 à ajuster selon vos besoins
 
     # Format du texte des valeurs
     text_format = ([f"{int(x)}%" if x.is_integer() else f"{x:.1f}%" for x in data['Effectif']] 
