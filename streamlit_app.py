@@ -906,10 +906,13 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
     n_modalites = len(data)
     y_positions = [i * SPACE_BETWEEN for i in range(n_modalites)]
     
-    # Calcul positions verticales titre/sous-titre
+    # Calcul de la hauteur totale
+    total_height = max(500, n_modalites * SPACE_BETWEEN + TITLE_TOP_MARGIN + BOTTOM_MARGIN)
+    
+    # Calcul positions titre/sous-titre en proportions
     num_title_lines = formatted_title.count('<br>') + 1
-    title_bottom = TITLE_TOP_MARGIN + (num_title_lines * TITLE_LINE_HEIGHT)
-    subtitle_y = title_bottom + TITLE_LAST_TO_SUBTITLE
+    title_y = 1 - (TITLE_TOP_MARGIN / total_height)
+    subtitle_y = title_y - ((num_title_lines * TITLE_LINE_HEIGHT + TITLE_LAST_TO_SUBTITLE) / total_height)
     
     text_format = ([f"{int(x)}%" if x.is_integer() else f"{x:.1f}%" for x in data['Effectif']] 
                    if value_type == "Taux (%)" 
@@ -955,9 +958,9 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
     annotations.append(dict(
         text=f"<b>{formatted_title}</b>",
         x=0,
-        y=TITLE_TOP_MARGIN,
+        y=title_y,
         xref='paper',
-        yref='pixel',
+        yref='paper',
         showarrow=False,
         font=dict(size=24, color='black'),
         xanchor='left',
@@ -972,7 +975,7 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
             x=0,
             y=subtitle_y,
             xref='paper',
-            yref='pixel',
+            yref='paper',
             showarrow=False,
             font=dict(size=18, color='black'),
             xanchor='left',
@@ -981,14 +984,14 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
         ))
     
     # Source et Note
-    bottom_y = BOTTOM_MARGIN + SOURCE_FROM_BOTTOM
+    source_y = BOTTOM_MARGIN / total_height
     if source:
         annotations.append(dict(
             text=f"Source : {source}",
             x=0,
-            y=bottom_y,
+            y=source_y,
             xref='paper',
-            yref='pixel',
+            yref='paper',
             showarrow=False,
             font=dict(size=12, color='gray'),
             xanchor='left',
@@ -996,12 +999,13 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
         ))
 
     if note:
+        note_y = (BOTTOM_MARGIN - NOTE_FROM_SOURCE) / total_height
         annotations.append(dict(
             text=f"Lecture : {note}",
             x=0,
-            y=bottom_y - NOTE_FROM_SOURCE,
+            y=note_y,
             xref='paper',
-            yref='pixel',
+            yref='paper',
             showarrow=False,
             font=dict(size=12, color='gray'),
             xanchor='left',
@@ -1009,8 +1013,6 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
         ))
 
     # Configuration de la mise en page
-    total_height = max(500, n_modalites * SPACE_BETWEEN + TITLE_TOP_MARGIN + BOTTOM_MARGIN)
-    
     fig.update_layout(
         plot_bgcolor='white',
         paper_bgcolor='white',
