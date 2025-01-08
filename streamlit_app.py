@@ -841,15 +841,21 @@ def plot_qualitative_treemap(data, title, color_palette, source="", note=""):
 def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#8DBED8", source="", note="", width=800, x_start=0.2, value_type="Effectif"):
     # Constantes de mise en page
     TITLE_TOP_MARGIN = 200      # Espace au-dessus du titre
-    TITLE_SUBTITLE_SPACE = 30   # Espace entre titre et sous-titre
+    TITLE_LINE_HEIGHT = 35      # Hauteur d'une ligne de titre
+    TITLE_LAST_TO_SUBTITLE = 40 # Distance entre dernière ligne du titre et sous-titre
     SUBTITLE_CONTENT_SPACE = 40 # Espace entre sous-titre et contenu
     TEXT_BAR_SPACE = 20        # Distance entre le texte et sa barre
-    BAR_HEIGHT = 30          # Hauteur des barres
+    BAR_HEIGHT = 30            # Hauteur des barres
     SPACE_BETWEEN = 80         # Espacement entre les groupes
-    SOURCE_NOTE_SPACE = 20     # Espace entre source et note
+    SOURCE_NOTE_SPACE = 30     # Espace entre source et note
     BOTTOM_MARGIN = 100        # Marge du bas
     LEFT_MARGIN = 150          # Marge gauche
     RIGHT_MARGIN = 100         # Marge droite
+    CHAR_WIDTH = 10            # Largeur approximative d'un caractère en pixels
+    X_PADDING = 50             # Marge supplémentaire pour l'axe x
+    Y_PADDING = 40             # Marge supplémentaire pour l'axe y
+    SOURCE_FROM_BOTTOM = 50    # Distance de la source du bas
+    NOTE_FROM_SOURCE = 30      # Distance entre source et note
 
     fig = go.Figure()
 
@@ -860,17 +866,17 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
     data['Effectif'] = pd.to_numeric(data['Effectif'], errors='coerce')
     
     # Formatage du titre
-    chars_per_line = int((width - 100) / 12)
+    max_chars = (width - 200) // CHAR_WIDTH
     title_lines = []
     
-    if len(title) > chars_per_line:
+    if len(title) > max_chars:
         words = title.split()
         current_line = []
         current_length = 0
         
         for word in words:
             word_length = len(word)
-            if current_length + word_length + 1 <= chars_per_line or not current_line:
+            if current_length + word_length + 1 <= max_chars or not current_line:
                 current_line.append(word)
                 current_length += word_length + 1
             else:
@@ -899,6 +905,11 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
     # Calcul des positions
     n_modalites = len(data)
     y_positions = [i * SPACE_BETWEEN for i in range(n_modalites)]
+    
+    # Calcul positions verticales titre/sous-titre
+    num_title_lines = formatted_title.count('<br>') + 1
+    title_bottom = TITLE_TOP_MARGIN + (num_title_lines * TITLE_LINE_HEIGHT)
+    subtitle_y = title_bottom + TITLE_LAST_TO_SUBTITLE
     
     text_format = ([f"{int(x)}%" if x.is_integer() else f"{x:.1f}%" for x in data['Effectif']] 
                    if value_type == "Taux (%)" 
@@ -941,17 +952,16 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
         ))
     
     # Titre
-    title_y = 1.2
     annotations.append(dict(
         text=f"<b>{formatted_title}</b>",
         x=0,
-        y=title_y,
+        y=TITLE_TOP_MARGIN,
         xref='paper',
-        yref='paper',
+        yref='pixel',
         showarrow=False,
         font=dict(size=24, color='black'),
         xanchor='left',
-        yanchor='bottom',
+        yanchor='top',
         align='left'
     ))
 
@@ -960,25 +970,25 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
         annotations.append(dict(
             text=subtitle,
             x=0,
-            y=title_y - 0.1,  # Position fixe sous le titre
+            y=subtitle_y,
             xref='paper',
-            yref='paper',
+            yref='pixel',
             showarrow=False,
             font=dict(size=18, color='black'),
             xanchor='left',
-            yanchor='bottom',
+            yanchor='top',
             align='left'
         ))
     
     # Source et Note
-    source_y = -0.15  # Position fixe pour la source
+    bottom_y = BOTTOM_MARGIN + SOURCE_FROM_BOTTOM
     if source:
         annotations.append(dict(
             text=f"Source : {source}",
             x=0,
-            y=source_y,
+            y=bottom_y,
             xref='paper',
-            yref='paper',
+            yref='pixel',
             showarrow=False,
             font=dict(size=12, color='gray'),
             xanchor='left',
@@ -989,9 +999,9 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
         annotations.append(dict(
             text=f"Lecture : {note}",
             x=0,
-            y=source_y - 0.08,  # Position fixe sous la source
+            y=bottom_y - NOTE_FROM_SOURCE,
             xref='paper',
-            yref='paper',
+            yref='pixel',
             showarrow=False,
             font=dict(size=12, color='gray'),
             xanchor='left',
@@ -1019,7 +1029,7 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
             zeroline=False,
             showline=False,
             showticklabels=False,
-            range=[-0.1, max(data['Effectif'] + x_start) * 1.1],
+            range=[0 - X_PADDING, max(data['Effectif'] + x_start) + X_PADDING],
             constrain=None
         ),
         yaxis=dict(
@@ -1027,14 +1037,14 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
             zeroline=False,
             showline=False,
             showticklabels=False,
-            range=[-SPACE_BETWEEN/2, max(y_positions) + SPACE_BETWEEN]
+            range=[0 - Y_PADDING, max(y_positions) + Y_PADDING]
         ),
         bargap=0,
         bargroupgap=0
     )
     
     return fig
-
+    
 def plot_quantile_distribution(data, title, y_label, color_palette, plot_type, is_integer_variable):
     """
     Crée une visualisation améliorée de distribution pour les données quantitatives groupées par quantiles.
