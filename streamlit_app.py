@@ -878,7 +878,7 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
     num_title_lines = formatted_title.count('<br>') + 1
     top_margin = 150 + ((num_title_lines - 1) * 30)
 
-    # Puis application des couleurs si nécessaire
+    # Application des couleurs au titre
     if colored_parts:
         sorted_parts = sorted(colored_parts, key=lambda x: len(x[0]), reverse=True)
         for text, text_color in sorted_parts:
@@ -887,56 +887,64 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
                     text,
                     f'<span style="color: {text_color}">{text}</span>'
                 )
-    
-    # Positions des barres
-    y_positions = list(range(len(data)))
-    y_positions = [y * 1.8 for y in y_positions]
 
+    # Calcul dynamique de la hauteur et des positions
+    n_modalites = len(data)
+    bar_height = 40  # hauteur fixe pour chaque barre
+    spacing = 80    # espace fixe entre les barres
+    title_space = top_margin + 100  # espace pour le titre
+    bottom_space = 100  # espace pour la source/note
+    total_height = max(500, n_modalites * spacing + title_space + bottom_space)
+
+    # Positions des barres
+    y_positions = [i * spacing for i in range(n_modalites)]
+
+    # Format du texte des valeurs
     text_format = ([f"{int(x)}%" if x.is_integer() else f"{x:.1f}%" for x in data['Effectif']] 
                    if value_type == "Taux (%)" 
                    else [f"{int(x)}" if x.is_integer() else f"{x:.1f}" for x in data['Effectif']])
 
-    # Les barres commencent à x_start
+    # Création des barres
     fig.add_trace(go.Bar(
-        base=x_start,  # Ajouter cette ligne pour le début des barres
+        base=x_start,
         x=data['Effectif'],
         y=y_positions,
         orientation='h',
         text=text_format,
         textposition='inside',
         insidetextanchor='start',
-        textangle=0,  # Texte horizontal
+        textangle=0,
         textfont=dict(size=16, color='white'),
         marker_color=color,
         marker=dict(line=dict(width=0)),
         showlegend=False,
-        width=1.00
+        width=bar_height
     ))
 
     # Annotations pour les modalités et le titre
     annotations = []
     
-    # Modalités (restent à gauche, x=0)
+    # Modalités
     for i, modalite in enumerate(data['Modalités']):
         annotations.append(dict(
             text=str(modalite),
-            x=0,  # Position à gauche
+            x=0,
             y=y_positions[i],
             xref='paper',
             yref='y',
-            yshift=34,
+            yshift=0,  # Pas de décalage vertical
             showarrow=False,
             font=dict(size=15, color='black'),
-            xanchor='left',
-            yanchor='top',
-            align='left'
+            xanchor='right',
+            yanchor='middle',
+            align='right'
         ))
     
-    # Titre (reste à gauche)
+    # Titre
     annotations.append(dict(
         text=f"<b>{formatted_title}</b>",
         x=0,
-        y=1.45,
+        y=1.15,
         xref='paper',
         yref='paper',
         showarrow=False,
@@ -948,11 +956,7 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
 
     # Gestion du sous-titre
     if subtitle:
-        # Compter le nombre de lignes dans le titre
-        num_title_lines = formatted_title.count('<br>') + 1
-        
-        # Calculer la position y du sous-titre
-        subtitle_y = 1.40 - (num_title_lines * 0.06)
+        subtitle_y = 1.10 - (num_title_lines * 0.06)
         
         annotations.append(dict(
             text=subtitle,
@@ -967,8 +971,8 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
             align='left'
         ))
     
-    # Source et Note de lecture (restent à gauche avec même alignement)
-    y_position = -0.2
+    # Source et Note de lecture
+    y_position = -0.15
     if source:
         annotations.append(dict(
             text=f"Source : {source}",
@@ -993,7 +997,7 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
             showarrow=False,
             font=dict(size=12, color='gray'),
             xanchor='left',
-            align='left'  # Ajout de l'alignement explicite
+            align='left'
         ))
 
     # Configuration de la mise en page
@@ -1001,12 +1005,12 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
         plot_bgcolor='white',
         paper_bgcolor='white',
         width=width,
-        height=max(350, len(data) * 70 + 150),
+        height=total_height,
         margin=dict(
-            l=40,
-            r=120,
-            t=top_margin,  # Utilisation de la marge dynamique
-            b=100
+            l=150,  # marge gauche fixe
+            r=100,  # marge droite fixe
+            t=top_margin,
+            b=bottom_space
         ),
         showlegend=False,
         annotations=annotations,
@@ -1015,41 +1019,18 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
             zeroline=False,
             showline=False,
             showticklabels=False,
-            range=[-0.1, max(data['Effectif'] + x_start) * 1.1],  # Ajuster la plage pour tenir compte du décalage des barres
-            constrain='domain'
+            range=[-0.1, max(data['Effectif'] + x_start) * 1.1],
+            constrain=None
         ),
         yaxis=dict(
             showgrid=False,
             zeroline=False,
             showline=False,
             showticklabels=False,
-            range=[-0.5, max(y_positions) + 0.5]
+            range=[-spacing/2, max(y_positions) + spacing/2]
         ),
         bargap=0,
         bargroupgap=0
-    )
-    
-    return fig
-
-def plot_density(plot_data, var, title, x_axis, y_axis):
-    """Crée un graphique de densité."""
-    fig = ff.create_distplot(
-        [plot_data],
-        [var],
-        show_hist=False,
-        show_rug=False,
-        colors=[COLOR_PALETTES['Bleu'][0]]
-    )
-    
-    fig.update_layout(
-        title=title,
-        xaxis_title=x_axis,
-        yaxis_title=y_axis,
-        plot_bgcolor='white',
-        paper_bgcolor='white',
-        hovermode='closest',
-        height=600,
-        margin=dict(t=100, b=100),
     )
     
     return fig
