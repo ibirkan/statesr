@@ -890,7 +890,7 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
 
 # En haut du code, définir les ratios d'espacement
     TEXT_TO_BAR_RATIO = 1/4    # Espace entre une modalité et sa barre
-    BAR_TO_TEXT_RATIO = 1/4    # Espace entre une barre et la modalité suivante
+    BAR_TO_TEXT_RATIO = 1/8    # Espace entre une barre et la modalité suivante
 
     # Calcul dynamique de la hauteur et des positions
     n_modalites = len(data)
