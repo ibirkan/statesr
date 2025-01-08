@@ -890,12 +890,15 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
 
     # Calcul dynamique de la hauteur et des positions
     n_modalites = len(data)
-    bar_height = 30  # hauteur de chaque barre
-    spacing = 60    # espacement entre les barres
-    title_space = top_margin + 100
-    bottom_space = 100
+    bar_height = 30  # hauteur fixe de chaque barre
+    min_spacing = 120  # espacement minimum entre les barres
+    available_height = 800  # hauteur de base disponible
+    
+    # Ajuster le spacing si besoin pour les cas avec beaucoup de modalités
+    spacing = min(min_spacing, max(80, (available_height - title_space - bottom_space) / (n_modalites + 1)))
+    
     total_height = max(500, n_modalites * spacing + title_space + bottom_space)
-
+    
     # Positions des barres
     y_positions = [i * spacing for i in range(n_modalites)]
 
@@ -924,15 +927,15 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
     # Annotations pour les modalités et le titre
     annotations = []
     
-    # Modalités
+    # Modalités placées au-dessus des barres
     for i, modalite in enumerate(data['Modalités']):
         annotations.append(dict(
             text=str(modalite),
-            x=x_start,  # Aligné avec le début des barres
+            x=x_start,
             y=y_positions[i],
-            xref='x',   # Utilise l'échelle x au lieu de paper
+            xref='x',
             yref='y',
-            yshift=15,  # Décalage au-dessus de la barre
+            yshift=35,  # augmenté pour plus d'espace entre le texte et la barre
             showarrow=False,
             font=dict(size=15, color='black'),
             xanchor='left',
