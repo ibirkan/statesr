@@ -924,7 +924,7 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
         marker_color=color,
         marker=dict(line=dict(width=0)),
         showlegend=False,
-        width=bar_height
+        width=1.00
     ))
 
     # Annotations pour les modalités et le titre
