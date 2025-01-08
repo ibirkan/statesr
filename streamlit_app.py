@@ -887,12 +887,13 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
                     text,
                     f'<span style="color: {text_color}">{text}</span>'
                 )
-
     # Calcul dynamique de la hauteur et des positions
     n_modalites = len(data)
     bar_height = 30  # hauteur fixe de chaque barre
     min_spacing = 120  # espacement minimum entre les barres
     available_height = 800  # hauteur de base disponible
+    title_space = top_margin + 100  # espace pour le titre
+    bottom_space = 100  # espace pour le bas du graphique
     
     # Ajuster le spacing si besoin pour les cas avec beaucoup de modalités
     spacing = min(min_spacing, max(80, (available_height - title_space - bottom_space) / (n_modalites + 1)))
