@@ -902,7 +902,12 @@ def plot_horizontal_bar(data, title, colored_parts=None, subtitle=None, color="#
     
     # Calcul des positions
     n_modalites = len(data)
-    y_positions = [i * SPACE_BETWEEN for i in range(n_modalites)]
+    if subtitle:
+        # Si on a un sous-titre, on ajoute l'espace supplémentaire pour la première modalité
+        y_positions = [(i * SPACE_BETWEEN) + SUBTITLE_TO_CONTENT for i in range(n_modalites)]
+    else:
+        # Sans sous-titre, on garde le calcul original
+        y_positions = [i * SPACE_BETWEEN for i in range(n_modalites)]
     
     text_format = ([f"{int(x)}%" if x.is_integer() else f"{x:.1f}%" for x in data['Effectif']] 
                    if value_type == "Taux (%)" 
