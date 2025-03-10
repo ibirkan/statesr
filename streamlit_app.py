@@ -278,6 +278,69 @@ def sanitize_column(df, col):
 
     return col_data  
 
+def plot_qualitative_bar(data, title, x_axis, y_axis, color_palette, show_values, source=None, note=None):
+    """
+    Génère un Bar Plot pour les variables qualitatives.
+    
+    Args:
+        data (DataFrame): DataFrame contenant les modalités et leurs fréquences.
+        title (str): Titre du graphique.
+        x_axis (str): Nom de l'axe X.
+        y_axis (str): Nom de l'axe Y.
+        color_palette (list): Liste de couleurs pour le graphique.
+        show_values (bool): Afficher les valeurs sur les barres.
+        source (str, optional): Source des données.
+        note (str, optional): Note de lecture.
+
+    Returns:
+        plotly Figure: Graphique Plotly prêt à être affiché dans Streamlit.
+    """
+    fig = px.bar(
+        data, 
+        x="Modalités", 
+        y="Effectif", 
+        text="Effectif" if show_values else None, 
+        title=title,
+        color_discrete_sequence=color_palette
+    )
+
+    # ✅ Mise en forme du texte des valeurs sur les barres
+    fig.update_traces(
+        texttemplate='%{text:,}', 
+        textposition="outside",
+        marker_line_width=1.2
+    )
+
+    # ✅ Ajustements de mise en page
+    fig.update_layout(
+        xaxis_title=x_axis,
+        yaxis_title=y_axis,
+        title_font=dict(size=16, family="Arial", color="black"),
+        xaxis_tickangle=-45,  # ✅ Incliner les modalités si elles sont longues
+        margin=dict(l=50, r=50, t=60, b=100)
+    )
+
+    # ✅ Ajout de la source et de la note
+    annotations = []
+    if source:
+        annotations.append(dict(
+            xref="paper", yref="paper", 
+            x=0, y=-0.3, 
+            text=f"📌 Source : {source}", 
+            showarrow=False, font=dict(size=12, color="gray")
+        ))
+    if note:
+        annotations.append(dict(
+            xref="paper", yref="paper", 
+            x=0, y=-0.4, 
+            text=f"📝 Note : {note}", 
+            showarrow=False, font=dict(size=12, color="gray")
+        ))
+
+    fig.update_layout(annotations=annotations)
+
+    return fig
+
 def plot_dotplot(data, title, x_label, y_label, color_palette, show_values=True, source="", note="", width=850):
     """
     Crée un graphique dot plot avec une échelle de valeurs pour l'analyse univariée qualitative.
@@ -3353,6 +3416,7 @@ def main():
                                     COLOR_PALETTES[color_scheme], show_values,
                                     source=viz_source, note=viz_note
                                 )
+
                             elif graph_type == "Horizontal Bar":
                                 fig = plot_modern_horizontal_bars(
                                     data=data_to_plot,
