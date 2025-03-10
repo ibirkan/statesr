@@ -2620,53 +2620,60 @@ def analyze_time_series(df, time_col, value_col, group_col=None, freq='MS'):
 def create_dashboard_summary(df, title="Résumé des données"):
     """
     Crée un tableau de bord résumant les principales caractéristiques du DataFrame.
-    
+
     Args:
         df (DataFrame): DataFrame à analyser
         title (str): Titre du tableau de bord
     """
     st.header(title)
-    
+
     # ✅ **1️⃣ Informations générales**
     col1, col2, col3 = st.columns(3)
-    
+
     with col1:
         st.metric("Nombre de lignes", f"{len(df):,}")
         st.metric("Nombre de colonnes", f"{len(df.columns):,}")
-    
+
     with col2:
-        numeric_cols = sum(is_numeric_column(df, col) for col in df.columns)
-        non_numeric_cols = len(df.columns) - numeric_cols
-        st.metric("Colonnes numériques", numeric_cols)
+        numeric_cols = [col for col in df.columns if is_numeric_column(df, col)]
+        non_numeric_cols = len(df.columns) - len(numeric_cols)
+        st.metric("Colonnes numériques", len(numeric_cols))
         st.metric("Colonnes non numériques", non_numeric_cols)
-    
+
     with col3:
         missing_cells = df.isna().sum().sum()
         total_cells = df.size
-        missing_percentage = (missing_cells / total_cells) * 100
+        missing_percentage = (missing_cells / total_cells) * 100 if total_cells > 0 else 0
         st.metric("Valeurs manquantes", f"{missing_cells:,} ({missing_percentage:.1f}%)")
-        
+
         # ✅ Détection de doublons
         duplicates = df.duplicated().sum()
-        duplicate_percentage = (duplicates / len(df)) * 100
+        duplicate_percentage = (duplicates / len(df)) * 100 if len(df) > 0 else 0
         st.metric("Lignes dupliquées", f"{duplicates:,} ({duplicate_percentage:.1f}%)")
-    
+
     # ✅ **2️⃣ Résumé des variables numériques**
     st.subheader("Résumé des variables numériques")
-    numeric_cols = [col for col in df.columns if is_numeric_column(df, col)]
-    
+
     if numeric_cols:
         numeric_df = df[numeric_cols].describe().T.reset_index().rename(columns={'index': 'Variable'})
-        
-        # ✅ Correction du calcul de complétude
-        numeric_df['Complétude (%)'] = [(df[col].count() / len(df)) * 100 for col in numeric_cols]
-        
-        # ✅ Arrondi et formatage
+
+        # ✅ Calcul sécurisé de la complétude
+        completeness_values = [(df[col].count() / len(df)) * 100 for col in numeric_cols]
+
+        # ✅ Vérification de la correspondance des dimensions
+        if len(completeness_values) == len(numeric_df):
+            numeric_df['Complétude (%)'] = completeness_values
+        else:
+            st.error("🚨 Erreur : Mismatch entre la taille de 'Complétude (%)' et 'numeric_df' ! Vérifiez les données.")
+            numeric_df['Complétude (%)'] = None  # Colonne vide pour éviter l'erreur
+
+        # ✅ Arrondi et formatage final
         for col in numeric_df.columns:
             if col != 'Variable':
                 numeric_df[col] = numeric_df[col].round(2)
-        numeric_df['Complétude (%)'] = numeric_df['Complétude (%)'].map('{:.1f}%'.format)
-        
+
+        numeric_df['Complétude (%)'] = numeric_df['Complétude (%)'].map(lambda x: f"{x:.1f}%" if x is not None else "N/A")
+
         st.dataframe(numeric_df)
     else:
         st.info("Aucune variable numérique détectée.")
@@ -2674,10 +2681,10 @@ def create_dashboard_summary(df, title="Résumé des données"):
     # ✅ **3️⃣ Résumé des variables catégoriques**
     st.subheader("Résumé des variables catégoriques")
     categorical_cols = [col for col in df.columns if not is_numeric_column(df, col)]
-    
+
     if categorical_cols:
         categorical_data = []
-        
+
         for col in categorical_cols:
             cleaned_col = sanitize_column(df, col)  # ✅ Nettoyage dynamique
             if cleaned_col is not None:
@@ -2686,8 +2693,8 @@ def create_dashboard_summary(df, title="Résumé des données"):
                 top_value = value_counts.index[0] if not value_counts.empty else "Aucune valeur"
                 top_count = value_counts.iloc[0] if not value_counts.empty else 0
                 top_percentage = (top_count / df[col].count()) * 100 if df[col].count() > 0 else 0
-                completeness = (df[col].count() / len(df)) * 100
-                
+                completeness = (df[col].count() / len(df)) * 100 if len(df) > 0 else 0
+
                 categorical_data.append({
                     'Variable': col,
                     'Type': df[col].dtype,
@@ -2696,7 +2703,7 @@ def create_dashboard_summary(df, title="Résumé des données"):
                     'Fréquence': f"{top_count:,} ({top_percentage:.1f}%)",
                     'Complétude': f"{completeness:.1f}%"
                 })
-        
+
         categorical_df = pd.DataFrame(categorical_data)
         st.dataframe(categorical_df)
     else:
@@ -2708,7 +2715,7 @@ def create_dashboard_summary(df, title="Résumé des données"):
         try:
             numeric_data = df[numeric_cols].apply(pd.to_numeric, errors='coerce')
             corr_df = numeric_data.corr().round(2)
-            
+
             # ✅ Vérification avant affichage
             if corr_df.isna().sum().sum() == 0:
                 fig = px.imshow(
@@ -2718,13 +2725,13 @@ def create_dashboard_summary(df, title="Résumé des données"):
                     color_continuous_scale="RdBu_r",
                     title="Matrice de corrélation des variables numériques"
                 )
-                
+
                 fig.update_layout(
                     height=600,
                     width=800,
                     title_font=dict(size=18, family="Marianne, sans-serif")
                 )
-                
+
                 st.plotly_chart(fig, use_container_width=True)
             else:
                 st.warning("Certaines valeurs sont NaN, la matrice de corrélation ne peut pas être affichée.")
