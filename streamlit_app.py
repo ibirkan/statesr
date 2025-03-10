@@ -280,7 +280,7 @@ def sanitize_column(df, col):
 
 def plot_qualitative_bar(data, title, x_axis, y_axis, color_palette, show_values, source=None, note=None):
     """
-    Génère un Bar Plot pour les variables qualitatives.
+    Génère un Bar Plot vertical avec les modalités affichées horizontalement sous les barres.
     
     Args:
         data (DataFrame): DataFrame contenant les modalités et leurs fréquences.
@@ -297,30 +297,35 @@ def plot_qualitative_bar(data, title, x_axis, y_axis, color_palette, show_values
     """
     fig = px.bar(
         data, 
-        x="Modalités", 
-        y="Effectif", 
+        x="Modalités",  # ✅ Garde les modalités sur l'axe X (barres verticales)
+        y="Effectif",  # ✅ Garde les effectifs sur l'axe Y
         text="Effectif" if show_values else None, 
         title=title,
         color_discrete_sequence=color_palette
     )
 
-    # ✅ Mise en forme du texte des valeurs sur les barres
+    # ✅ Mise en forme des valeurs affichées sur les barres
     fig.update_traces(
         texttemplate='%{text:,}', 
         textposition="outside",
         marker_line_width=1.2
     )
 
-    # ✅ Ajustements de mise en page
+    # ✅ Forcer l'affichage horizontal des modalités sous les barres
     fig.update_layout(
         xaxis_title=x_axis,
         yaxis_title=y_axis,
         title_font=dict(size=16, family="Arial", color="black"),
-        xaxis_tickangle=-45,  # ✅ Incliner les modalités si elles sont longues
-        margin=dict(l=50, r=50, t=60, b=100)
+        xaxis=dict(
+            tickangle=0,  # ✅ Texte horizontal
+            tickmode="array", 
+            tickvals=list(range(len(data["Modalités"]))),
+            ticktext=data["Modalités"]
+        ),
+        margin=dict(l=50, r=50, t=60, b=120)  # ✅ Ajout de marge en bas pour les textes longs
     )
 
-    # ✅ Ajout de la source et de la note
+    # ✅ Ajout de la source et de la note sous le graphique
     annotations = []
     if source:
         annotations.append(dict(
@@ -332,7 +337,7 @@ def plot_qualitative_bar(data, title, x_axis, y_axis, color_palette, show_values
     if note:
         annotations.append(dict(
             xref="paper", yref="paper", 
-            x=0, y=-0.4, 
+            x=0, y=-0.35, 
             text=f"📝 Note : {note}", 
             showarrow=False, font=dict(size=12, color="gray")
         ))
