@@ -2181,52 +2181,28 @@ def create_enhanced_variable_selector(df, title="Sélectionnez une variable"):
 
 def create_tabbed_interface():
     """
-    Crée une interface à onglets pour améliorer la navigation.
+    Crée une interface de type radio pour la navigation.
     
     Returns:
-        int: Index de l'onglet sélectionné
+        str: Nom de l'onglet sélectionné
     """
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "📊 Analyse univariée",
-        "🔄 Analyse bivariée", 
-        "📈 Séries temporelles",
-        "🔍 Filtrage & exploration",
-        "💾 Export des résultats"
-    ])
+    selected_tab = st.radio(
+        "Sélectionner une analyse",
+        ["📊 Analyse univariée", "🔄 Analyse bivariée", 
+         "📈 Séries temporelles", "🔍 Filtrage & exploration", 
+         "💾 Export des résultats"],
+        horizontal=True
+    )
     
-    with tab1:
-        st.header("Analyse univariée")
-        analysis_type = "univariate"
+    tab_map = {
+        "📊 Analyse univariée": "univariate",
+        "🔄 Analyse bivariée": "bivariate", 
+        "📈 Séries temporelles": "time_series",
+        "🔍 Filtrage & exploration": "exploration",
+        "💾 Export des résultats": "export"
+    }
     
-    with tab2:
-        st.header("Analyse bivariée")
-        analysis_type = "bivariate"
-    
-    with tab3:
-        st.header("Analyse de séries temporelles")
-        analysis_type = "time_series"
-    
-    with tab4:
-        st.header("Filtrage et exploration des données")
-        analysis_type = "exploration"
-    
-    with tab5:
-        st.header("Export des résultats")
-        analysis_type = "export"
-    
-    # Déterminer quel onglet est actif
-    if tab1._is_active():
-        return "univariate"
-    elif tab2._is_active():
-        return "bivariate"
-    elif tab3._is_active():
-        return "time_series"
-    elif tab4._is_active():
-        return "exploration"
-    elif tab5._is_active():
-        return "export"
-    
-    return "univariate"  # Par défaut
+    return tab_map[selected_tab]
 
 def setup_sidebar_filters(df):
     """
