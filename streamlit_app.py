@@ -251,28 +251,32 @@ def sanitize_column(df, col):
     """
     if col not in df.columns:
         st.warning(f"⚠️ La colonne '{col}' est absente de la table sélectionnée.")
-        return None  # Évite l'erreur si la colonne n'existe pas
-    
-    # Convertir en série unidimensionnelle
-    col_data = df[col]
-    if isinstance(col_data, pd.DataFrame):  
-        col_data = col_data.squeeze()  # Convertit en Series
+        return None  
 
-    # Gestion des valeurs nulles
+    col_data = df[col]
+
+    # ✅ Vérification que col_data est bien une série Pandas
+    if not isinstance(col_data, pd.Series):
+        st.error(f"🚨 Erreur : La colonne '{col}' n'est pas une série Pandas. Valeur retournée : {type(col_data)}")
+        return None
+
     col_data = col_data.fillna("Valeur manquante")
 
-    # Vérifier et convertir si nécessaire
     if col_data.apply(lambda x: isinstance(x, list)).any():
-        col_data = col_data.explode()  # Sépare les listes en plusieurs lignes
+        col_data = col_data.explode()  
 
     if col_data.apply(lambda x: isinstance(x, dict)).any():
-        col_data = col_data.apply(json.dumps)  # Convertit les dictionnaires en texte JSON
+        col_data = col_data.apply(json.dumps)  
     
-    if col_data.dtype == 'O':  # Si c'est un objet (texte/mélangé), convertir en string
-        col_data = col_data.astype(str)
+    # ✅ Vérification que la colonne a bien un type avant d'accéder à `.dtype`
+    if hasattr(col_data, "dtype"):
+        if col_data.dtype == 'O':  
+            col_data = col_data.astype(str)
+    else:
+        st.error(f"🚨 Erreur : Impossible de détecter le type de la colonne '{col}'.")
+        return None
 
-    return col_data  # Retourne la colonne nettoyée
-
+    return col_data  
 
 def plot_dotplot(data, title, x_label, y_label, color_palette, show_values=True, source="", note="", width=850):
     """
