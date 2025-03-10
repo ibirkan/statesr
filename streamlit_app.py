@@ -1928,11 +1928,30 @@ def create_interactive_qualitative_table(df, var, exclude_missing=True, missing_
     Returns:
         tuple: (DataFrame des effectifs, Nom formaté de la variable)
     """
+    # ✅ Vérifier que df est bien un DataFrame
+    if df is None:
+        st.error("🚨 Erreur : Le DataFrame est `None`. Vérifiez le chargement des données.")
+        return None, None
+
+    if not isinstance(df, pd.DataFrame):
+        st.error(f"🚨 Erreur : Le type de `df` n'est pas un DataFrame. Type actuel : {type(df)}")
+        return None, None
+
+    # ✅ Vérifier que df contient bien des colonnes
+    if df.empty or df.columns.empty:
+        st.warning("⚠️ Le DataFrame est vide ou ne contient aucune colonne.")
+        return None, None
+
+    # ✅ Vérifier que la variable sélectionnée est valide
+    if var is None:
+        st.error("⚠️ Aucune variable sélectionnée pour l'analyse qualitative.")
+        return None, None
+
     if var not in df.columns:
         st.error(f"⚠️ La variable '{var}' n'existe pas dans le DataFrame.")
         return None, None
 
-    # Remplacement des valeurs manquantes si demandé
+    # ✅ Nettoyage et comptage des valeurs
     data_series = df[var].astype(str)  # S'assurer que c'est une série de chaînes
     if not exclude_missing:
         data_series = data_series.fillna(missing_label)
