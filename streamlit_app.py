@@ -280,7 +280,7 @@ def sanitize_column(df, col):
 
 def plot_qualitative_bar(data, title, x_axis, y_axis, color_palette, show_values, source=None, note=None):
     """
-    Génère un Bar Plot vertical avec les modalités affichées horizontalement sous les barres.
+    Génère un Bar Plot vertical avec les modalités affichées sur plusieurs lignes si elles sont trop longues.
     
     Args:
         data (DataFrame): DataFrame contenant les modalités et leurs fréquences.
@@ -295,10 +295,17 @@ def plot_qualitative_bar(data, title, x_axis, y_axis, color_palette, show_values
     Returns:
         plotly Figure: Graphique Plotly prêt à être affiché dans Streamlit.
     """
+    # ✅ Appliquer un retour à la ligne automatique sur les modalités longues
+    wrapped_labels = [
+        "<br>".join(textwrap.wrap(label, width=23))  # ✅ Coupe les textes tous les 23 caractères
+        for label in data["Modalités"]
+    ]
+
+    # ✅ Création du graphique en barres verticales
     fig = px.bar(
         data, 
-        x="Modalités",  # ✅ Garde les modalités sur l'axe X (barres verticales)
-        y="Effectif",  # ✅ Garde les effectifs sur l'axe Y
+        x=wrapped_labels,  # ✅ Remplace les modalités longues par la version avec retours à la ligne
+        y="Effectif",  
         text="Effectif" if show_values else None, 
         title=title,
         color_discrete_sequence=color_palette
@@ -311,18 +318,12 @@ def plot_qualitative_bar(data, title, x_axis, y_axis, color_palette, show_values
         marker_line_width=1.2
     )
 
-    # ✅ Forcer l'affichage horizontal des modalités sous les barres
+    # ✅ Ajustement de l'affichage pour éviter les chevauchements
     fig.update_layout(
         xaxis_title=x_axis,
         yaxis_title=y_axis,
         title_font=dict(size=16, family="Arial", color="black"),
-        xaxis=dict(
-            tickangle=0,  # ✅ Texte horizontal
-            tickmode="array", 
-            tickvals=list(range(len(data["Modalités"]))),
-            ticktext=data["Modalités"]
-        ),
-        margin=dict(l=50, r=50, t=60, b=120)  # ✅ Ajout de marge en bas pour les textes longs
+        margin=dict(l=50, r=50, t=60, b=140),  # ✅ Augmente la marge en bas pour laisser de la place aux textes longs
     )
 
     # ✅ Ajout de la source et de la note sous le graphique
