@@ -513,10 +513,9 @@ def plot_dotplot(data, title, x_label, y_label, color_palette, show_values=True,
     
     return fig
 
-
 def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", color_palette=None, source="", note=""):
     """
-    Crée un graphique à barres horizontales moderne avec une meilleure présentation.
+    Crée un graphique à barres horizontales moderne avec une meilleure présentation et un export propre.
     
     Args:
         data (DataFrame): DataFrame avec les colonnes 'Modalités' et 'Effectif'
@@ -542,7 +541,7 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
     if value_type == "Taux (%)":
         total = data["Effectif"].sum()
         data["Taux (%)"] = (data["Effectif"] / total * 100).round(1)  # ✅ Conversion correcte en %
-    
+
     # ✅ Définition de la colonne à afficher
     y_column = "Taux (%)" if value_type == "Taux (%)" else "Effectif"
 
@@ -552,7 +551,10 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
         for label in data["Modalités"]
     ]
 
-    # ✅ Calcul dynamique de la marge basse en fonction de la longueur des modalités
+    # ✅ Calcul dynamique des marges pour éviter les coupures dans l’export
+    max_label_length = max(len(label) for label in data["Modalités"])
+    left_margin = max(200, min(50 + max_label_length * 6, 400))  # Ajustement dynamique
+
     max_label_lines = max([label.count("<br>") + 1 for label in wrapped_labels])
     bottom_margin = 100 + (max_label_lines * 12)
 
@@ -591,7 +593,7 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
         plot_bgcolor='white',
         paper_bgcolor='white',
         height=max(500, len(data) * 50 + 200),
-        margin=dict(l=200, r=80, t=100, b=bottom_margin),  # ✅ Ajustement dynamique de la marge
+        margin=dict(l=left_margin, r=80, t=100, b=bottom_margin),  # ✅ Ajustement dynamique de la marge gauche
         yaxis=dict(
             title=dict(
                 text=x_label,
