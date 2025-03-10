@@ -3195,15 +3195,21 @@ def main():
                             st.error(f"Erreur lors de la génération du graphique : {str(e)}")
                                 
                 else:  # Pour les variables qualitatives
-                    # Définir les variables de contrôle pour les non-réponses
+                    # ✅ Définir les variables de contrôle pour les non-réponses
                     exclude_missing = st.checkbox("Exclure les non-réponses", key="exclude_missing_checkbox")
                     missing_label = "Non réponse"
+                    
                     if not exclude_missing:
                         missing_label = st.text_input(
                             "Libellé pour les non-réponses",
                             value="Non réponse",
                             key="missing_label_input"
                         )
+                    
+                    # ✅ Appliquer le filtrage des non-réponses
+                    if exclude_missing:
+                        plot_data = plot_data.dropna()  # Supprime les NaN
+                        plot_data = plot_data[plot_data != missing_label]  # Supprime les "Non réponse"
                     
                     # Création du tableau interactif avec les données
                     value_counts, var_name_display = create_interactive_qualitative_table(
