@@ -1423,25 +1423,26 @@ def export_visualization(fig, export_type, var_name, source="", note="", data_to
         buf = BytesIO()
         
         if export_type == 'graph' and is_plotly:
-            # ✅ Configuration de base pour l'export
             export_width = 1200
             export_height = 800
 
             # ✅ Calcul dynamique de la marge gauche en fonction de la longueur des modalités
             if graph_type in ["horizontal", "bullet"] and data_to_plot is not None:
                 nb_modalites = len(data_to_plot)
+                
+                # Calculer la modalité la plus longue
                 longest_label = max(len(str(label)) for label in data_to_plot["Modalités"])
                 
-                export_height = max(600, nb_modalites * 80 + 300)  # ✅ Ajustement de la hauteur
-                dynamic_left_margin = max(300, min(50 + longest_label * 6, 500))  # ✅ Ajustement de la marge gauche
-                
+                export_height = max(600, nb_modalites * 80 + 300)  # ✅ Ajustement dynamique de la hauteur
+                dynamic_left_margin = max(250, min(50 + longest_label * 6, 500))  # ✅ Correction de la marge
+
                 fig.update_layout(
                     width=export_width,
                     height=export_height,
                     margin=dict(
                         t=120,  # Marge haute pour le titre et sous-titre
                         b=150,  # Marge basse pour source et note
-                        l=dynamic_left_margin,  # ✅ Marge gauche dynamique
+                        l=dynamic_left_margin,  # ✅ Correction de la marge gauche dynamique
                         r=100   # Marge droite pour les valeurs
                     ),
                     # ✅ Configuration des axes
@@ -1449,11 +1450,15 @@ def export_visualization(fig, export_type, var_name, source="", note="", data_to
                         autorange="reversed",
                         showgrid=False,
                         title=dict(
-                            standoff=100  # Espace supplémentaire pour le titre
+                            text="",
+                            font=dict(size=14)
                         )
                     ),
                     xaxis=dict(
-                        title_standoff=50,  # Espace pour le titre de l'axe X
+                        title=dict(
+                            text="Effectif" if graph_type == "horizontal" else "Valeurs",
+                            font=dict(size=14)
+                        ),
                         showgrid=True,
                         gridcolor='#e0e0e0'
                     )
@@ -1478,12 +1483,8 @@ def export_visualization(fig, export_type, var_name, source="", note="", data_to
                 )
             
             # ✅ Exporter en PNG
-            fig.write_image(
-                buf,
-                format="png",
-                scale=2.0
-            )
-            
+            fig.write_image(buf, format="png", scale=2.0)
+
         elif export_type == 'table':
             plt.savefig(
                 buf, 
