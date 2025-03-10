@@ -11,6 +11,7 @@ import json
 import matplotlib.pyplot as plt
 from io import BytesIO
 import squarify
+import textwrap
 import seaborn as sns
 from scipy import stats
 import math
