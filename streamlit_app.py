@@ -2182,9 +2182,9 @@ def export_beautiful_table(value_counts, title, source, note):
     # ✅ Positionner la source et la note juste en dessous du tableau
     text_y = -0.15 - (0.02 * len(value_counts))  # ✅ Ajustement automatique selon la taille du tableau
     if source:
-        plt.figtext(0.1, text_y, f"📌 Source : {source}", fontsize=10, ha="left", style="italic")
+        plt.figtext(0.1, text_y, f" Source : {source}", fontsize=10, ha="left", style="italic")
     if note:
-        plt.figtext(0.1, text_y - 0.04, f"📝 Note : {note}", fontsize=10, ha="left", style="italic")
+        plt.figtext(0.1, text_y - 0.04, f" Note : {note}", fontsize=10, ha="left", style="italic")
 
     # ✅ Sauvegarde de l’image en mémoire
     buffer = BytesIO()
