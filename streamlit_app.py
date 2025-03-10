@@ -1273,8 +1273,16 @@ def create_quantitative_dashboard(data_series, var_name):
     missing_obs = total_obs - valid_obs
     response_rate = (valid_obs / total_obs * 100) if total_obs > 0 else 0
     
+    # Vérifier si les données sont vides
+    if len(clean_data) == 0:
+        st.warning(f"Aucune donnée valide pour la variable {var_name}")
+        return
+    
     # Vérifier si c'est une variable entière ou décimale
-    is_integer = all(float(x).is_integer() for x in clean_data)
+    try:
+        is_integer = all(float(x).is_integer() for x in clean_data)
+    except (ValueError, TypeError):
+        is_integer = False
     
     # Création des colonnes
     col1, col2, col3 = st.columns(3)
@@ -1291,22 +1299,47 @@ def create_quantitative_dashboard(data_series, var_name):
     with col2:
         st.markdown(f"##### Statistiques descriptives")
         
-        mean_val = clean_data.mean()
-        median_val = clean_data.median()
-        std_val = clean_data.std()
-        min_val = clean_data.min()
-        max_val = clean_data.max()
-        
-        if is_integer:
-            st.metric("Moyenne", f"{int(mean_val)}")
-            st.metric("Médiane", f"{int(median_val)}")
-            st.metric("Écart-type", f"{int(std_val)}")
-            st.metric("Étendue", f"{int(min_val)} - {int(max_val)}")
-        else:
-            st.metric("Moyenne", f"{mean_val:.2f}")
-            st.metric("Médiane", f"{median_val:.2f}")
-            st.metric("Écart-type", f"{std_val:.2f}")
-            st.metric("Étendue", f"{min_val:.2f} - {max_val:.2f}")
+        try:
+            mean_val = clean_data.mean()
+            median_val = clean_data.median()
+            std_val = clean_data.std()
+            min_val = clean_data.min()
+            max_val = clean_data.max()
+            
+            # Utiliser une gestion plus robuste pour l'affichage
+            if pd.isna(mean_val):
+                st.metric("Moyenne", "N/A")
+            elif is_integer:
+                st.metric("Moyenne", f"{int(mean_val)}")
+            else:
+                st.metric("Moyenne", f"{mean_val:.2f}")
+                
+            if pd.isna(median_val):
+                st.metric("Médiane", "N/A")
+            elif is_integer:
+                st.metric("Médiane", f"{int(median_val)}")
+            else:
+                st.metric("Médiane", f"{median_val:.2f}")
+                
+            if pd.isna(std_val):
+                st.metric("Écart-type", "N/A")
+            elif is_integer:
+                st.metric("Écart-type", f"{int(std_val)}")
+            else:
+                st.metric("Écart-type", f"{std_val:.2f}")
+                
+            if pd.isna(min_val) or pd.isna(max_val):
+                st.metric("Étendue", "N/A")
+            elif is_integer:
+                st.metric("Étendue", f"{int(min_val)} - {int(max_val)}")
+            else:
+                st.metric("Étendue", f"{min_val:.2f} - {max_val:.2f}")
+        except Exception as e:
+            st.error(f"Erreur lors du calcul des statistiques: {str(e)}")
+            st.metric("Moyenne", "Erreur")
+            st.metric("Médiane", "Erreur")
+            st.metric("Écart-type", "Erreur")
+            st.metric("Étendue", "Erreur")
     
     # Colonne 3: Quartiles et distribution
     with col3:
