@@ -3417,10 +3417,11 @@ def main():
                             # Préparation des données pour le graphique
                             data_to_plot = value_counts.copy()
 
-                            # Ajustement des données selon le type de valeur choisi
+                            # ✅ Calcul des taux si l'utilisateur sélectionne "Taux (%)"
                             if value_type == "Taux (%)":
-                                data_to_plot['Effectif'] = data_to_plot['Taux (%)']
-                                y_axis = "Taux (%)" if y_axis == "Valeur" else y_axis
+                                total = data_to_plot["Effectif"].sum()  # ✅ Total des effectifs
+                                data_to_plot["Taux (%)"] = (data_to_plot["Effectif"] / total * 100).round(1)  # ✅ Conversion en pourcentage
+                                y_axis = "Taux (%)" if y_axis == "Valeur" else y_axis  # ✅ Met à jour l'axe Y pour refléter le choix
 
                             # Création du graphique selon le type choisi
                             if graph_type == "Bar plot":
