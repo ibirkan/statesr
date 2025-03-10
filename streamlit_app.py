@@ -14,6 +14,7 @@ import squarify
 import seaborn as sns
 from scipy import stats
 import math
+import xlsxwriter
 from kaleido.scopes.plotly import PlotlyScope
 
 # Configuration de la page Streamlit - DOIT ÊTRE LA PREMIÈRE COMMANDE STREAMLIT
