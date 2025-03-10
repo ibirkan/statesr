@@ -513,9 +513,10 @@ def plot_dotplot(data, title, x_label, y_label, color_palette, show_values=True,
     
     return fig
 
+
 def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", color_palette=None, source="", note=""):
     """
-    Crée un graphique à barres horizontales moderne avec des animations et une meilleure présentation.
+    Crée un graphique à barres horizontales moderne avec une meilleure présentation.
     
     Args:
         data (DataFrame): DataFrame avec les colonnes 'Modalités' et 'Effectif'
@@ -529,94 +530,53 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
     Returns:
         go.Figure: Figure Plotly
     """
-    # Renommer les colonnes si nécessaire
+    # ✅ Vérification des colonnes et renommage si nécessaire
     data = data.copy()
     if data.columns[0] != 'Modalités':
         data = data.rename(columns={data.columns[0]: 'Modalités'})
-    
-    # Trier les données par effectif décroissant
+
+    # ✅ Trier les données par ordre croissant pour un affichage clair
     data = data.sort_values('Effectif', ascending=True).reset_index(drop=True)
+
+    # ✅ Correction du calcul des pourcentages
+    if value_type == "Taux (%)":
+        total = data["Effectif"].sum()
+        data["Taux (%)"] = (data["Effectif"] / total * 100).round(1)  # ✅ Conversion correcte en %
     
-    # Définir des couleurs par défaut si non fournies
-    if color_palette is None:
-        base_color = '#000091'  # Bleu Marianne
-        color_palette = [base_color]
-    
-    # Créer un dégradé de couleurs si une seule couleur est fournie
-    if len(color_palette) == 1:
-        # Fonction pour éclaircir une couleur
-        def lighten(color, amount=0.5):
-            """
-            Éclaircit une couleur hexadécimale par un certain montant.
-            
-            Args:
-                color (str): Couleur hexadécimale au format '#RRGGBB'
-                amount (float): Montant d'éclaircissement (0-1)
-                
-            Returns:
-                str: Couleur éclaircie
-            """
-            import colorsys
-            # Convertir hex en RGB
-            c = color.lstrip('#')
-            r, g, b = tuple(int(c[i:i+2], 16) for i in (0, 2, 4))
-            
-            # Convertir RGB en HSV
-            h, s, v = colorsys.rgb_to_hsv(r/255, g/255, b/255)
-            
-            # Éclaircir
-            v = min(1, v + amount)
-            s = max(0, s - amount * 0.5)
-            
-            # Reconvertir en RGB puis en hex
-            r, g, b = colorsys.hsv_to_rgb(h, s, v)
-            return f'#{int(r*255):02x}{int(g*255):02x}{int(b*255):02x}'
-            
-        # Générer le dégradé
-        colors = []
-        for i in range(len(data)):
-            factor = i / (len(data) - 1) if len(data) > 1 else 0
-            amount = 0.5 - (factor * 0.4)  # Ajustez pour obtenir le dégradé souhaité
-            colors.append(lighten(color_palette[0], amount))
-        color_palette = colors
-    
-    # Créer la figure
-    fig = go.Figure()
-    
-    # Ajouter les barres
-    for i, (_, row) in enumerate(data.iterrows()):
-        value = row['Effectif']
-        label = row['Modalités']
-        
-        # Formatage des valeurs
-        if value_type == "Taux (%)":
-            display_value = f"{value:.1f}%" if not float(value).is_integer() else f"{int(value)}%"
-        else:
-            display_value = f"{value:.1f}" if not float(value).is_integer() else f"{int(value)}"
-        
-        # Couleur avec dégradé
-        color = color_palette[i % len(color_palette)]
-        
-        fig.add_trace(go.Bar(
-            y=[label],
-            x=[value],
-            orientation='h',
-            marker=dict(
-                color=color,
-                line=dict(width=0)
-            ),
-            text=display_value,
-            textposition='outside',
-            textfont=dict(
-                family="Marianne, sans-serif",
-                size=14
-            ),
-            hovertemplate=f"<b>{label}</b><br>{value_type}: {display_value}<extra></extra>",
-            width=0.7,  # Barres plus fines pour un look moderne
-            showlegend=False
-        ))
-    
-    # Configuration des axes
+    # ✅ Définition de la colonne à afficher
+    y_column = "Taux (%)" if value_type == "Taux (%)" else "Effectif"
+
+    # ✅ Appliquer un retour à la ligne automatique sur les modalités longues
+    wrapped_labels = [
+        "<br>".join(textwrap.wrap(label, width=23))  
+        for label in data["Modalités"]
+    ]
+
+    # ✅ Calcul dynamique de la marge basse en fonction de la longueur des modalités
+    max_label_lines = max([label.count("<br>") + 1 for label in wrapped_labels])
+    bottom_margin = 100 + (max_label_lines * 12)
+
+    # ✅ Création du graphique en barres horizontales
+    fig = go.Figure(go.Bar(
+        y=wrapped_labels,  # ✅ Affichage des modalités avec retour à la ligne
+        x=data[y_column],  # ✅ Affichage des effectifs ou taux
+        orientation='h',
+        marker=dict(
+            color=color_palette if color_palette else '#000091',  # ✅ Bleu Marianne par défaut
+            line=dict(width=0)
+        ),
+        text=data[y_column].apply(lambda v: f"{v:.1f}%" if value_type == "Taux (%)" else f"{int(v)}"),  # ✅ Formattage
+        textposition='outside',
+        textfont=dict(
+            family="Marianne, sans-serif",
+            size=14
+        ),
+        hovertemplate=f"<b>%{{y}}</b><br>{value_type}: %{{x}}<extra></extra>",
+        width=0.7,  # ✅ Barres plus fines pour un design moderne
+        showlegend=False
+    ))
+
+    # ✅ Configuration du layout
     fig.update_layout(
         title=dict(
             text=title,
@@ -631,9 +591,9 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
         plot_bgcolor='white',
         paper_bgcolor='white',
         height=max(500, len(data) * 50 + 200),
-        margin=dict(l=200, r=80, t=100, b=100),
+        margin=dict(l=200, r=80, t=100, b=bottom_margin),  # ✅ Ajustement dynamique de la marge
         yaxis=dict(
-            title=dict(  # ✅ Correction ici
+            title=dict(
                 text=x_label,
                 font=dict(
                     family="Marianne, sans-serif",
@@ -647,7 +607,7 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
             autorange="reversed"
         ),
         xaxis=dict(
-            title=dict(  # ✅ Correction ici
+            title=dict(
                 text=value_type,
                 font=dict(
                     family="Marianne, sans-serif",
@@ -667,15 +627,16 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
         bargap=0.15,
         bargroupgap=0.1
     )
-    
-    # Ajouter des annotations pour la source et la note
+
+    # ✅ Dynamisation de la position de la source et de la note
+    annotation_y = -0.4 - (0.02 * max_label_lines)
+
     annotations = []
-    
     if source:
         annotations.append(dict(
-            text=f"Source : {source}",
+            text=f"📌 Source : {source}",
             x=0,
-            y=-0.15,
+            y=annotation_y, 
             xref='paper',
             yref='paper',
             showarrow=False,
@@ -687,13 +648,11 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
             align='left',
             xanchor='left'
         ))
-    
     if note:
-        note_y_pos = -0.20 if source else -0.15
         annotations.append(dict(
-            text=f"Note : {note}",
+            text=f"📝 Note : {note}",
             x=0,
-            y=note_y_pos,
+            y=annotation_y - 0.05, 
             xref='paper',
             yref='paper',
             showarrow=False,
@@ -705,59 +664,9 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
             align='left',
             xanchor='left'
         ))
-    
+
     fig.update_layout(annotations=annotations)
-    
-    # Ajouter des animations
-    frames = []
-    for i in range(10):
-        frame_data = []
-        for j in range(len(data)):
-            factor = (i + 1) / 10
-            frame_data.append(go.Bar(
-                y=[data.iloc[j]['Modalités']],
-                x=[data.iloc[j]['Effectif'] * factor],
-                orientation='h',
-                marker=dict(
-                    color=color_palette[j % len(color_palette)],
-                    line=dict(width=0)
-                ),
-                text='' if i < 9 else (f"{data.iloc[j]['Effectif']:.1f}%" if value_type == "Taux (%)" 
-                                      else f"{data.iloc[j]['Effectif']:.1f}" if not float(data.iloc[j]['Effectif']).is_integer()
-                                      else f"{int(data.iloc[j]['Effectif'])}"),
-                textposition='outside',
-                showlegend=False,
-                hoverinfo='skip' if i < 9 else 'text',
-                width=0.7
-            ))
-        frames.append(go.Frame(data=frame_data, name=f"frame{i}"))
-    
-    fig.frames = frames
-    
-    # Configuration des animations
-    fig.update_layout(
-        updatemenus=[{
-            'type': 'buttons',
-            'showactive': False,
-            'buttons': [{
-                'label': 'Animer',
-                'method': 'animate',
-                'args': [
-                    None,
-                    {
-                        'frame': {'duration': 50, 'redraw': True},
-                        'fromcurrent': True,
-                        'transition': {'duration': 50}
-                    }
-                ]
-            }],
-            'x': 0.05,
-            'y': 0.05,
-            'xanchor': 'right',
-            'yanchor': 'top'
-        }]
-    )
-    
+
     return fig
 
 def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show_values=True, source="", note=""):
