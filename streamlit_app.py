@@ -1516,13 +1516,6 @@ def export_visualization(fig, export_type, var_name, source="", note="", data_to
         )
         return True
 
-    except Exception as export_error:
-        if "kaleido" in str(export_error):
-            st.warning("⚠️ L'export en haute résolution nécessite le package 'kaleido'. Veuillez l'installer avec : pip install kaleido")
-        else:
-            st.error(f"Erreur lors de l'export : {str(export_error)}")
-        return False
-
 # Fonctions de manipulation des données
 def merge_multiple_tables(dataframes, merge_configs):
     """
