@@ -2292,60 +2292,102 @@ def setup_sidebar_filters(df):
     filtered_df = df.copy()
     filters_applied = False
     
+    # Séparation des colonnes par type
+    numeric_cols = []
+    categorical_cols = []
+    
+    # Identification plus précise des types de colonnes
+    for col in df.columns:
+        try:
+            # Vérifier si la colonne est réellement numérique
+            if pd.api.types.is_numeric_dtype(df[col]) and df[col].notna().any():
+                # Vérification supplémentaire pour s'assurer que c'est vraiment numérique
+                test_val = df[col].dropna().iloc[0] if not df[col].dropna().empty else None
+                if test_val is not None and isinstance(test_val, (int, float)):
+                    numeric_cols.append(col)
+                else:
+                    categorical_cols.append(col)
+            else:
+                # Si la colonne a moins de 20 valeurs uniques, on la considère catégorielle
+                if df[col].nunique() <= 20:
+                    categorical_cols.append(col)
+        except:
+            # En cas d'erreur, on ne crée pas de filtre
+            st.sidebar.warning(f"Impossible de créer un filtre pour {col}")
+    
     # Filtres numériques
-    numeric_cols = [col for col in df.columns if is_numeric_column(df, col)]
     if numeric_cols:
         with st.sidebar.expander("Filtres numériques", expanded=False):
             for col in numeric_cols[:5]:  # Limiter à 5 colonnes pour éviter l'encombrement
                 try:
-                    min_val = float(df[col].min())
-                    max_val = float(df[col].max())
-                    
-                    # Vérifier si toutes les valeurs sont des entiers
-                    is_integer = all(float(x).is_integer() for x in df[col].dropna() if pd.notna(x))
-                    
-                    # Calculer le pas en fonction de la plage et du type
-                    value_range = max_val - min_val
-                    step = 1 if is_integer else value_range / 100
-                    
-                    # Créer le slider
-                    filter_vals = st.slider(
-                        f"Filtre sur {col}",
-                        min_value=min_val,
-                        max_value=max_val,
-                        value=(min_val, max_val),
-                        step=step
-                    )
-                    
-                    if filter_vals != (min_val, max_val):
-                        filtered_df = filtered_df[(filtered_df[col] >= filter_vals[0]) & 
-                                                (filtered_df[col] <= filter_vals[1])]
-                        filters_applied = True
-                except:
+                    # Extraction sécurisée des valeurs min/max
+                    valid_values = df[col].dropna()
+                    if len(valid_values) > 0:  # S'assurer qu'il y a des valeurs valides
+                        min_val = float(valid_values.min())
+                        max_val = float(valid_values.max())
+                        
+                        # Vérifier si les valeurs sont trop proches
+                        if abs(max_val - min_val) < 1e-10:
+                            st.sidebar.info(f"Toutes les valeurs de {col} sont identiques ({min_val})")
+                            continue
+                        
+                        # Calculer le pas en fonction de la plage et du type
+                        try:
+                            is_integer = all(float(x).is_integer() for x in valid_values if pd.notna(x))
+                        except:
+                            is_integer = False
+                            
+                        # Définir un pas approprié
+                        value_range = max_val - min_val
+                        step = 1 if is_integer else value_range / 100
+                        step = max(step, 1e-6)  # Éviter les pas trop petits
+                        
+                        # Créer le slider
+                        filter_vals = st.sidebar.slider(
+                            f"Filtre sur {col}",
+                            min_value=min_val,
+                            max_value=max_val,
+                            value=(min_val, max_val),
+                            step=step
+                        )
+                        
+                        if filter_vals != (min_val, max_val):
+                            filtered_df = filtered_df[(filtered_df[col] >= filter_vals[0]) & 
+                                                    (filtered_df[col] <= filter_vals[1])]
+                            filters_applied = True
+                except Exception as e:
                     st.sidebar.warning(f"Impossible de créer un filtre pour {col}")
     
     # Filtres catégoriels
-    categorical_cols = [col for col in df.columns if not is_numeric_column(df, col) and df[col].nunique() <= 20]
     if categorical_cols:
         with st.sidebar.expander("Filtres catégoriels", expanded=False):
             for col in categorical_cols[:5]:  # Limiter à 5 colonnes
                 try:
+                    # Limiter à 100 valeurs uniques max pour éviter les problèmes de performance
                     unique_vals = df[col].dropna().unique()
-                    selected_vals = st.multiselect(
+                    if len(unique_vals) > 100:
+                        st.sidebar.info(f"{col} a trop de valeurs uniques ({len(unique_vals)}) pour un filtre")
+                        continue
+                        
+                    # Convertir en string pour éviter les problèmes avec certains types
+                    unique_vals = [str(val) for val in unique_vals]
+                    
+                    selected_vals = st.sidebar.multiselect(
                         f"Filtre sur {col}",
                         options=unique_vals,
                         default=unique_vals
                     )
                     
                     if len(selected_vals) < len(unique_vals):
-                        filtered_df = filtered_df[filtered_df[col].isin(selected_vals)]
+                        # Convertir les valeurs de la colonne en string pour la comparaison
+                        filtered_df = filtered_df[filtered_df[col].astype(str).isin(selected_vals)]
                         filters_applied = True
-                except:
-                    st.sidebar.warning(f"Impossible de créer un filtre pour {col}")
+                except Exception as e:
+                    st.sidebar.warning(f"Impossible de créer un filtre pour {col}: {str(e)}")
     
     # Filtre sur les valeurs manquantes
     with st.sidebar.expander("Filtre de valeurs manquantes", expanded=False):
-        handle_missing = st.radio(
+        handle_missing = st.sidebar.radio(
             "Gestion des valeurs manquantes",
             ["Conserver toutes les lignes", "Exclure les lignes avec valeurs manquantes"]
         )
