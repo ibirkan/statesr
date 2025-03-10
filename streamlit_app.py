@@ -8,7 +8,6 @@ import plotly.figure_factory as ff
 import numpy as np
 from datetime import datetime
 import json
-import textwrap
 import matplotlib.pyplot as plt
 from io import BytesIO
 import squarify
@@ -281,7 +280,7 @@ def sanitize_column(df, col):
 
 def plot_qualitative_bar(data, title, x_axis, y_axis, color_palette, show_values, source=None, note=None):
     """
-    Génère un Bar Plot vertical avec les modalités affichées sur plusieurs lignes si elles sont trop longues.
+    Génère un Bar Plot vertical avec les modalités affichées sur plusieurs lignes et sans chevauchement.
     
     Args:
         data (DataFrame): DataFrame contenant les modalités et leurs fréquences.
@@ -296,16 +295,20 @@ def plot_qualitative_bar(data, title, x_axis, y_axis, color_palette, show_values
     Returns:
         plotly Figure: Graphique Plotly prêt à être affiché dans Streamlit.
     """
-    # ✅ Appliquer un retour à la ligne automatique sur les modalités longues
+    # ✅ Appliquer un retour à la ligne automatique sur les modalités longues (coupure tous les 23 caractères)
     wrapped_labels = [
-        "<br>".join(textwrap.wrap(label, width=23))  # ✅ Coupe les textes tous les 23 caractères
+        "<br>".join(textwrap.wrap(label, width=23))  
         for label in data["Modalités"]
     ]
+
+    # ✅ Calcul de la hauteur de la marge basse en fonction de la longueur des modalités
+    max_label_lines = max([label.count("<br>") + 1 for label in wrapped_labels])  # Nombre max de lignes de texte
+    bottom_margin = 100 + (max_label_lines * 12)  # Ajustement dynamique de la marge
 
     # ✅ Création du graphique en barres verticales
     fig = px.bar(
         data, 
-        x=wrapped_labels,  # ✅ Remplace les modalités longues par la version avec retours à la ligne
+        x=wrapped_labels,  # ✅ Modalités modifiées avec sauts de ligne
         y="Effectif",  
         text="Effectif" if show_values else None, 
         title=title,
@@ -324,22 +327,24 @@ def plot_qualitative_bar(data, title, x_axis, y_axis, color_palette, show_values
         xaxis_title=x_axis,
         yaxis_title=y_axis,
         title_font=dict(size=16, family="Arial", color="black"),
-        margin=dict(l=50, r=50, t=60, b=140),  # ✅ Augmente la marge en bas pour laisser de la place aux textes longs
+        margin=dict(l=50, r=50, t=60, b=bottom_margin),  # ✅ Ajustement dynamique de la marge basse
     )
 
-    # ✅ Ajout de la source et de la note sous le graphique
+    # ✅ Ajustement de la position de la source et de la note en fonction de la marge basse
+    annotation_y = -0.4 - (0.02 * max_label_lines)  # ✅ Remonter la source/notes en fonction du texte
+
     annotations = []
     if source:
         annotations.append(dict(
             xref="paper", yref="paper", 
-            x=0, y=-0.3, 
+            x=0, y=annotation_y, 
             text=f"📌 Source : {source}", 
             showarrow=False, font=dict(size=12, color="gray")
         ))
     if note:
         annotations.append(dict(
             xref="paper", yref="paper", 
-            x=0, y=-0.35, 
+            x=0, y=annotation_y - 0.05, 
             text=f"📝 Note : {note}", 
             showarrow=False, font=dict(size=12, color="gray")
         ))
