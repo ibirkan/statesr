@@ -1971,6 +1971,9 @@ def create_interactive_qualitative_table(df, var, exclude_missing=True, missing_
     total_valid = value_counts["Effectif"].sum()
     value_counts["Pourcentage"] = (value_counts["Effectif"] / total_valid * 100).round(1).astype(str) + "%"
 
+    # ✅ Modifier l'indexation pour commencer à 1 au lieu de 0
+    value_counts.index = value_counts.index + 1
+
     # Formatage du nom affiché
     var_name_display = f"{var} ({len(value_counts)} modalités)"
 
