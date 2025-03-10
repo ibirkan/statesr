@@ -339,14 +339,14 @@ def plot_qualitative_bar(data, title, x_axis, y_axis, color_palette, show_values
         annotations.append(dict(
             xref="paper", yref="paper", 
             x=0, y=annotation_y, 
-            text=f"📌 Source : {source}", 
+            text=f" Source : {source}", 
             showarrow=False, font=dict(size=12, color="gray")
         ))
     if note:
         annotations.append(dict(
             xref="paper", yref="paper", 
             x=0, y=annotation_y - 0.05, 
-            text=f"📝 Note : {note}", 
+            text=f" Note : {note}", 
             showarrow=False, font=dict(size=12, color="gray")
         ))
 
