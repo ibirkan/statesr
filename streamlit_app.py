@@ -3218,32 +3218,52 @@ def main():
                         # ✅ Export en Image (JPG/PNG)
                         def export_table_as_image(value_counts, title, source, note):
                             """ Génère une image du tableau avec titre, source et note. """
-                            from matplotlib import pyplot as plt
+                            import matplotlib.pyplot as plt
 
+                            # ✅ Taille du tableau ajustée pour éviter les débordements
                             fig, ax = plt.subplots(figsize=(12.8, 7.2))  # ✅ Format 16:9 pour PowerPoint (1280x720)
                             ax.axis("tight")
                             ax.axis("off")
 
-                            # ✅ Construire la table avec des colonnes ajustées
+                            # ✅ Préparer les données du tableau avec alignements
                             table_data = [value_counts.columns.tolist()] + value_counts.values.tolist()
-                            table = ax.table(cellText=table_data, colLabels=None, cellLoc='center', loc='center')
+                            
+                            # ✅ Création du tableau
+                            table = ax.table(cellText=table_data, colLoc="center", cellLoc="center", loc="center")
+                            
+                            # ✅ Ajustement des styles
                             table.auto_set_font_size(False)
-                            table.set_fontsize(12)  # ✅ Police plus grande pour les valeurs
-                            table.scale(1.5, 1.5)   # ✅ Échelle plus grande pour éviter le chevauchement
+                            table.set_fontsize(12)
+                            table.scale(1.4, 1.4)  # ✅ Augmente la taille du tableau
 
-                            # ✅ Titre du tableau
+                            # ✅ Ajuster l'alignement des colonnes :
+                            # - Modalités (première colonne) : Alignées à gauche
+                            # - Effectif et Pourcentage : Centrés
+                            for i in range(len(value_counts) + 1):  # +1 pour inclure l'en-tête
+                                table[i, 0].set_ha("left")  # ✅ Alignement à gauche pour les modalités
+                                table[i, 1].set_ha("center")  # ✅ Centrage Effectifs
+                                table[i, 2].set_ha("center")  # ✅ Centrage Pourcentages
+
+                            # ✅ Ajustement de la largeur des colonnes
+                            col_widths = [0.5, 0.2, 0.2]  # ✅ Modalités plus larges, colonnes chiffrées réduites
+                            for j, width in enumerate(col_widths):
+                                table.auto_set_column_width([j])
+                                for i in range(len(value_counts) + 1):
+                                    table[i, j].set_width(width)
+
+                            # ✅ Ajout du titre
                             plt.title(title, fontsize=16, fontweight="bold", pad=20)
 
-                            # ✅ Amélioration de la source et de la note
-                            text_y = -0.15 - (0.03 * len(value_counts))  # ✅ Ajuste selon la taille du tableau
+                            # ✅ Positionner la source et la note juste en dessous du tableau
+                            text_y = -0.12 - (0.02 * len(value_counts))  # ✅ Ajustement automatique selon la taille du tableau
                             if source:
                                 plt.figtext(0.1, text_y, f"Source : {source}", fontsize=12, ha="left")
                             if note:
-                                plt.figtext(0.1, text_y - 0.05, f"Note : {note}", fontsize=12, ha="left")
+                                plt.figtext(0.1, text_y - 0.04, f"Note : {note}", fontsize=12, ha="left")
 
-                            # ✅ Sauvegarde en mémoire
+                            # ✅ Sauvegarde en mémoire pour téléchargement
                             buffer = BytesIO()
-                            plt.savefig(buffer, format="png", bbox_inches="tight", dpi=300)  # ✅ Haute qualité pour PowerPoint
+                            plt.savefig(buffer, format="png", bbox_inches="tight", dpi=300)
                             buffer.seek(0)
                             return buffer
 
