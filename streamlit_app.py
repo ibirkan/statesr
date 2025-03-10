@@ -1516,6 +1516,10 @@ def export_visualization(fig, export_type, var_name, source="", note="", data_to
         )
         return True
 
+    except Exception as e:
+        st.error(f"❌ Erreur lors de l'export : {str(e)}")  
+        return False
+
 # Fonctions de manipulation des données
 def merge_multiple_tables(dataframes, merge_configs):
     """
