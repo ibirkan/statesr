@@ -2728,27 +2728,32 @@ def create_dashboard_summary(df, title="Résumé des données"):
     else:
         st.info("Aucune variable catégorielle détectée.")
     
-    # Matrice de corrélation pour les variables numériques - DÉPLACÉ HORS DES EXPANDERS
+    # Matrice de corrélation pour les variables numériques
     if len(numeric_cols) > 1:
         st.subheader("Matrice de corrélation")
-        corr_df = df[numeric_cols].corr().round(2)
-        
-        # Créer la heatmap
-        fig = px.imshow(
-            corr_df,
-            text_auto=True,
-            aspect="auto",
-            color_continuous_scale="RdBu_r",
-            title="Matrice de corrélation des variables numériques"
-        )
-        
-        fig.update_layout(
-            height=600,
-            width=800,
-            title_font=dict(size=18, family="Marianne, sans-serif")
-        )
-        
-        st.plotly_chart(fig, use_container_width=True)
+        try:
+            # Convertir explicitement en float pour éviter les erreurs
+            numeric_data = df[numeric_cols].apply(pd.to_numeric, errors='coerce')
+            corr_df = numeric_data.corr().round(2)
+            
+            # Créer la heatmap
+            fig = px.imshow(
+                corr_df,
+                text_auto=True,
+                aspect="auto",
+                color_continuous_scale="RdBu_r",
+                title="Matrice de corrélation des variables numériques"
+            )
+            
+            fig.update_layout(
+                height=600,
+                width=800,
+                title_font=dict(size=18, family="Marianne, sans-serif")
+            )
+            
+            st.plotly_chart(fig, use_container_width=True)
+        except Exception as e:
+            st.warning(f"Impossible de calculer la matrice de corrélation : certaines valeurs numériques ne peuvent pas être converties correctement.")
     elif len(numeric_cols) > 0:
         st.info("Au moins 2 variables numériques sont nécessaires pour créer une matrice de corrélation.")
 
