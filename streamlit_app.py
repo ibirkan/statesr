@@ -1915,6 +1915,41 @@ def analyze_qualitative_bivariate(df, var_x, var_y, exclude_missing=True):
     
     return (combined_table, response_stats) if exclude_missing else combined_table
 
+def create_interactive_qualitative_table(df, var, exclude_missing=True, missing_label="Non réponse"):
+    """
+    Génère un tableau interactif des valeurs d'une variable qualitative.
+    
+    Args:
+        df (DataFrame): DataFrame contenant les données.
+        var (str): Nom de la variable qualitative à analyser.
+        exclude_missing (bool): Exclure les valeurs manquantes ou non-réponses.
+        missing_label (str): Libellé à utiliser pour les valeurs manquantes.
+
+    Returns:
+        tuple: (DataFrame des effectifs, Nom formaté de la variable)
+    """
+    if var not in df.columns:
+        st.error(f"⚠️ La variable '{var}' n'existe pas dans le DataFrame.")
+        return None, None
+
+    # Remplacement des valeurs manquantes si demandé
+    data_series = df[var].astype(str)  # S'assurer que c'est une série de chaînes
+    if not exclude_missing:
+        data_series = data_series.fillna(missing_label)
+
+    # Comptage des valeurs uniques
+    value_counts = data_series.value_counts().reset_index()
+    value_counts.columns = ["Modalités", "Effectif"]
+
+    # Ajout d'une colonne pour les pourcentages
+    total_valid = value_counts["Effectif"].sum()
+    value_counts["Pourcentage"] = (value_counts["Effectif"] / total_valid * 100).round(1).astype(str) + "%"
+
+    # Formatage du nom affiché
+    var_name_display = f"{var} ({len(value_counts)} modalités)"
+
+    return value_counts, var_name_display
+
 def analyze_mixed_bivariate(df, qual_var, quant_var):
     """
     Analyse bivariée pour une variable qualitative et une quantitative avec des statistiques améliorées.
