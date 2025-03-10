@@ -1404,7 +1404,7 @@ def create_quantitative_dashboard(data_series, var_name):
 
 def export_visualization(fig, export_type, var_name, source="", note="", data_to_plot=None, is_plotly=True, graph_type="bar"):
     """
-    Fonction améliorée pour exporter les visualisations.
+    Fonction améliorée pour exporter les visualisations en haute qualité.
     
     Args:
         fig: Figure à exporter (Plotly ou Matplotlib)
@@ -1423,15 +1423,17 @@ def export_visualization(fig, export_type, var_name, source="", note="", data_to
         buf = BytesIO()
         
         if export_type == 'graph' and is_plotly:
-            # Configuration spécifique pour l'export
+            # ✅ Configuration de base pour l'export
             export_width = 1200
             export_height = 800
 
-            # Si c'est un graphique horizontal
-            if hasattr(fig.layout, '_is_horizontal_bar') or graph_type in ["horizontal", "bullet"]:
-                if data_to_plot is not None:
-                    nb_modalites = len(data_to_plot)
-                    export_height = max(600, nb_modalites * 80 + 300)
+            # ✅ Calcul dynamique de la marge gauche en fonction de la longueur des modalités
+            if graph_type in ["horizontal", "bullet"] and data_to_plot is not None:
+                nb_modalites = len(data_to_plot)
+                longest_label = max(len(str(label)) for label in data_to_plot["Modalités"])
+                
+                export_height = max(600, nb_modalites * 80 + 300)  # ✅ Ajustement de la hauteur
+                dynamic_left_margin = max(300, min(50 + longest_label * 6, 500))  # ✅ Ajustement de la marge gauche
                 
                 fig.update_layout(
                     width=export_width,
@@ -1439,10 +1441,10 @@ def export_visualization(fig, export_type, var_name, source="", note="", data_to
                     margin=dict(
                         t=120,  # Marge haute pour le titre et sous-titre
                         b=150,  # Marge basse pour source et note
-                        l=300,  # Marge gauche augmentée pour les étiquettes
+                        l=dynamic_left_margin,  # ✅ Marge gauche dynamique
                         r=100   # Marge droite pour les valeurs
                     ),
-                    # Configuration des axes
+                    # ✅ Configuration des axes
                     yaxis=dict(
                         autorange="reversed",
                         showgrid=False,
@@ -1457,7 +1459,7 @@ def export_visualization(fig, export_type, var_name, source="", note="", data_to
                     )
                 )
 
-            # Configuration standard pour les autres types
+            # ✅ Configuration standard pour les autres types de graphiques
             else:
                 if source and note:
                     export_height = 900
@@ -1475,7 +1477,7 @@ def export_visualization(fig, export_type, var_name, source="", note="", data_to
                     )
                 )
             
-            # Exporter en PNG
+            # ✅ Exporter en PNG
             fig.write_image(
                 buf,
                 format="png",
