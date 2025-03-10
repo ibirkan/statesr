@@ -10,3 +10,4 @@ kaleido
 squarify
 statsmodels
 openpyxl
+xlsxwriter
