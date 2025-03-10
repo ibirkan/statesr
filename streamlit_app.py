@@ -3220,36 +3220,30 @@ def main():
                             """ Génère une image du tableau avec titre, source et note. """
                             import matplotlib.pyplot as plt
 
-                            # ✅ Taille du tableau ajustée pour éviter les débordements
                             fig, ax = plt.subplots(figsize=(12.8, 7.2))  # ✅ Format 16:9 pour PowerPoint (1280x720)
                             ax.axis("tight")
                             ax.axis("off")
 
-                            # ✅ Préparer les données du tableau avec alignements
+                            # ✅ Préparer les données du tableau
                             table_data = [value_counts.columns.tolist()] + value_counts.values.tolist()
                             
                             # ✅ Création du tableau
                             table = ax.table(cellText=table_data, colLoc="center", cellLoc="center", loc="center")
-                            
-                            # ✅ Ajustement des styles
+
+                            # ✅ Ajustement des styles globaux
                             table.auto_set_font_size(False)
                             table.set_fontsize(12)
                             table.scale(1.4, 1.4)  # ✅ Augmente la taille du tableau
 
-                            # ✅ Ajuster l'alignement des colonnes :
-                            # - Modalités (première colonne) : Alignées à gauche
-                            # - Effectif et Pourcentage : Centrés
-                            for i in range(len(value_counts) + 1):  # +1 pour inclure l'en-tête
-                                table[i, 0].set_ha("left")  # ✅ Alignement à gauche pour les modalités
-                                table[i, 1].set_ha("center")  # ✅ Centrage Effectifs
-                                table[i, 2].set_ha("center")  # ✅ Centrage Pourcentages
+                            # ✅ Centrer l'en-tête
+                            for j in range(len(value_counts.columns)):
+                                table[0, j].set_text_props(weight="bold", ha="center")  # ✅ Centrage en-tête en gras
 
-                            # ✅ Ajustement de la largeur des colonnes
-                            col_widths = [0.5, 0.2, 0.2]  # ✅ Modalités plus larges, colonnes chiffrées réduites
-                            for j, width in enumerate(col_widths):
-                                table.auto_set_column_width([j])
-                                for i in range(len(value_counts) + 1):
-                                    table[i, j].set_width(width)
+                            # ✅ Ajustement de l'alignement des colonnes :
+                            for i in range(1, len(value_counts) + 1):  # ✅ +1 pour sauter l'en-tête
+                                table.get_celld()[(i, 0)].set_text_props(ha="left")  # ✅ Modalités alignées à gauche
+                                table.get_celld()[(i, 1)].set_text_props(ha="center")  # ✅ Effectif centré
+                                table.get_celld()[(i, 2)].set_text_props(ha="center")  # ✅ Pourcentage centré
 
                             # ✅ Ajout du titre
                             plt.title(title, fontsize=16, fontweight="bold", pad=20)
