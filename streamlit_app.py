@@ -2150,6 +2150,49 @@ def analyze_quantitative_bivariate(df, var_x, var_y, groupby_col=None, agg_metho
     
     return results_df, response_rate_x, response_rate_y, descriptive_stats, data
 
+def export_beautiful_table(value_counts, title, source, note):
+    """ Génère une image d'un tableau avec un style clair et esthétique. """
+    
+    fig, ax = plt.subplots(figsize=(10, 6))  # ✅ Taille optimisée pour la lisibilité
+    ax.axis("tight")
+    ax.axis("off")
+
+    # ✅ Création du tableau avec des colonnes bien ajustées
+    table_data = [value_counts.columns.tolist()] + value_counts.values.tolist()
+    table = ax.table(cellText=table_data, colLoc="center", cellLoc="center", loc="center", colLabels=None)
+
+    # ✅ Mise en forme
+    table.auto_set_font_size(False)
+    table.set_fontsize(12)
+    table.scale(1.2, 1.2)  # ✅ Ajustement de la taille
+
+    # ✅ Mise en valeur de l’en-tête (gras + centré)
+    for j in range(len(value_counts.columns)):
+        table[0, j].set_text_props(weight="bold", ha="center")
+
+    # ✅ Alignement des colonnes :
+    for i in range(1, len(value_counts) + 1):
+        table[i, 0].set_text_props(ha="left")  # ✅ Modalités à gauche
+        table[i, 1].set_text_props(ha="center")  # ✅ Effectifs centrés
+        table[i, 2].set_text_props(ha="center")  # ✅ Pourcentage centré
+
+    # ✅ Ajout du titre bien visible
+    plt.title(title, fontsize=16, fontweight="bold", pad=20)
+
+    # ✅ Positionner la source et la note juste en dessous du tableau
+    text_y = -0.15 - (0.02 * len(value_counts))  # ✅ Ajustement automatique selon la taille du tableau
+    if source:
+        plt.figtext(0.1, text_y, f"📌 Source : {source}", fontsize=10, ha="left", style="italic")
+    if note:
+        plt.figtext(0.1, text_y - 0.04, f"📝 Note : {note}", fontsize=10, ha="left", style="italic")
+
+    # ✅ Sauvegarde de l’image en mémoire
+    buffer = BytesIO()
+    plt.savefig(buffer, format="png", bbox_inches="tight", dpi=300)
+    buffer.seek(0)
+    
+    return buffer
+
 def create_enhanced_variable_selector(df, title="Sélectionnez une variable"):
     """
     Crée un sélecteur de variables amélioré avec filtrage et aperçu.
@@ -3215,53 +3258,8 @@ def main():
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                         )
 
-                        # ✅ Export en Image (JPG/PNG)
-                        def export_table_as_image(value_counts, title, source, note):
-                            """ Génère une image du tableau avec titre, source et note. """
-                            import matplotlib.pyplot as plt
-
-                            fig, ax = plt.subplots(figsize=(12.8, 7.2))  # ✅ Format 16:9 pour PowerPoint (1280x720)
-                            ax.axis("tight")
-                            ax.axis("off")
-
-                            # ✅ Préparer les données du tableau
-                            table_data = [value_counts.columns.tolist()] + value_counts.values.tolist()
-                            
-                            # ✅ Création du tableau
-                            table = ax.table(cellText=table_data, colLoc="center", cellLoc="center", loc="center")
-
-                            # ✅ Ajustement des styles globaux
-                            table.auto_set_font_size(False)
-                            table.set_fontsize(12)
-                            table.scale(1.4, 1.4)  # ✅ Augmente la taille du tableau
-
-                            # ✅ Centrer l'en-tête
-                            for j in range(len(value_counts.columns)):
-                                table[0, j].set_text_props(weight="bold", ha="center")  # ✅ Centrage en-tête en gras
-
-                            # ✅ Ajustement de l'alignement des colonnes :
-                            for i in range(1, len(value_counts) + 1):  # ✅ +1 pour sauter l'en-tête
-                                table.get_celld()[(i, 0)].set_text_props(ha="left")  # ✅ Modalités alignées à gauche
-                                table.get_celld()[(i, 1)].set_text_props(ha="center")  # ✅ Effectif centré
-                                table.get_celld()[(i, 2)].set_text_props(ha="center")  # ✅ Pourcentage centré
-
-                            # ✅ Ajout du titre
-                            plt.title(title, fontsize=16, fontweight="bold", pad=20)
-
-                            # ✅ Positionner la source et la note juste en dessous du tableau
-                            text_y = -0.12 - (0.02 * len(value_counts))  # ✅ Ajustement automatique selon la taille du tableau
-                            if source:
-                                plt.figtext(0.1, text_y, f"Source : {source}", fontsize=12, ha="left")
-                            if note:
-                                plt.figtext(0.1, text_y - 0.04, f"Note : {note}", fontsize=12, ha="left")
-
-                            # ✅ Sauvegarde en mémoire pour téléchargement
-                            buffer = BytesIO()
-                            plt.savefig(buffer, format="png", bbox_inches="tight", dpi=300)
-                            buffer.seek(0)
-                            return buffer
-
-                        img_buffer = export_table_as_image(value_counts, table_title, table_source, table_note)
+                        # ✅ Générer une belle image du tableau
+                        img_buffer = export_beautiful_table(value_counts, table_title, table_source, table_note)
 
                         st.download_button(
                             label="🖼️ Télécharger le tableau en image",
