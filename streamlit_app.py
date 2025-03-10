@@ -2098,7 +2098,7 @@ def create_enhanced_variable_selector(df, title="Sélectionnez une variable"):
         title (str): Titre du sélecteur
 
     Returns:
-        str: Nom de la variable sélectionnée
+        str | None: Nom de la variable sélectionnée ou None si erreur
     """
     st.markdown(f"### {title}")
 
@@ -2107,153 +2107,32 @@ def create_enhanced_variable_selector(df, title="Sélectionnez une variable"):
         st.error("🚨 Le DataFrame est vide. Vérifiez les données chargées !")
         return None
 
-    # Options de filtrage
-    col1, col2, col3 = st.columns([2, 2, 1])
-
-    with col1:
-        search_term = st.text_input("Rechercher une variable", "")
-
-    with col2:
-        data_type = st.selectbox(
-            "Type de données",
-            ["Tous", "Numériques", "Textuelles"]
-        )
-
-    with col3:
-        sort_by = st.selectbox(
-            "Trier par",
-            ["Nom (A-Z)", "Nom (Z-A)", "Type", "Complétude"]
-        )
-
-    # ✅ Vérification des colonnes disponibles
+    # ✅ Vérification si le DataFrame a des colonnes
     if df.columns.empty:
         st.error("⚠️ Le DataFrame ne contient aucune colonne.")
         return None
 
-    # Filtrage des variables disponibles
+    # Liste des colonnes disponibles
     variables = list(df.columns)
 
-    if search_term:
-        variables = [var for var in variables if search_term.lower() in var.lower()]
+    # Sélecteur de variable
+    selected_var = st.selectbox("Variable sélectionnée", variables)
 
-    if data_type == "Numériques":
-        variables = [var for var in variables if is_numeric_column(df, var)]
-    elif data_type == "Textuelles":
-        variables = [var for var in variables if not is_numeric_column(df, var)]
-
-    # ✅ Si aucune variable ne correspond aux critères
-    if not variables:
-        st.warning("Aucune variable ne correspond aux critères de recherche.")
+    # ✅ Vérification AVANT d'accéder à df[selected_var]
+    if selected_var is None:
+        st.error("❌ Aucune variable sélectionnée.")
         return None
-
-    # ✅ Création d'un DataFrame des métadonnées des variables
-    metadata = []
-    for var in variables:
-        if var not in df.columns:
-            continue  # Ignore si la colonne a disparu après un filtrage
-
-        dtype = df[var].dtype
-        non_null = df[var].count()
-        total = len(df)
-        completeness = (non_null / total) * 100
-        unique_values = df[var].nunique()
-
-        # ✅ Gestion des types avec vérification
-        try:
-            if is_numeric_column(df, var):
-                type_name = "Numérique (entier)" if pd.api.types.is_integer_dtype(df[var]) else "Numérique (décimal)"
-            elif pd.api.types.is_datetime64_dtype(df[var]):
-                type_name = "Date/Heure"
-            else:
-                unique_pct = (unique_values / non_null * 100) if non_null > 0 else 0
-                type_name = "Catégorielle" if unique_pct < 5 or unique_values < 10 else "Texte"
-        except Exception:
-            type_name = "Inconnu"
-
-        metadata.append({
-            "Variable": var,
-            "Type": type_name,
-            "Complétude": completeness,
-            "Valeurs uniques": unique_values
-        })
-
-    meta_df = pd.DataFrame(metadata)
-
-    # ✅ Gestion du tri
-    if sort_by == "Nom (A-Z)":
-        meta_df = meta_df.sort_values("Variable")
-    elif sort_by == "Nom (Z-A)":
-        meta_df = meta_df.sort_values("Variable", ascending=False)
-    elif sort_by == "Type":
-        meta_df = meta_df.sort_values("Type")
-    elif sort_by == "Complétude":
-        meta_df = meta_df.sort_values("Complétude", ascending=False)
-
-    meta_df["Complétude"] = meta_df["Complétude"].map(lambda x: f"{x:.1f}%")
-
-    st.dataframe(meta_df, use_container_width=True)
-
-    # ✅ Sélection finale de la variable
-    selected_var = st.selectbox(
-        "Variable sélectionnée",
-        variables,
-        format_func=lambda x: f"{x} ({meta_df.loc[meta_df['Variable'] == x, 'Type'].values[0]})"
-    )
-
-    # ✅ Vérification avant d'accéder aux valeurs
+    
     if selected_var not in df.columns:
-        st.error(f"❌ La variable '{selected_var}' n'existe plus dans le DataFrame. Vérifiez les filtres.")
+        st.error(f"❌ La variable '{selected_var}' n'existe pas dans le DataFrame.")
         return None
 
-    # ✅ Aperçu des valeurs de la variable sélectionnée
-    with st.expander(f"Aperçu de la variable {selected_var}"):
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.write("Premières valeurs:")
-            st.write(df[selected_var].head().to_frame())
-
-        with col2:
-            st.write("Statistiques rapides:")
-
-            if is_numeric_column(df, selected_var):
-                try:
-                    stats = df[selected_var].describe().to_frame().T
-                    st.write(stats)
-
-                    # ✅ Ajout d'un histogramme sécurisé
-                    try:
-                        fig = px.histogram(df, x=selected_var, nbins=20,
-                                          title=f"Distribution de {selected_var}",
-                                          height=200)
-                        fig.update_layout(margin=dict(l=10, r=10, t=30, b=10))
-                        st.plotly_chart(fig, use_container_width=True)
-                    except Exception:
-                        st.warning("Impossible de générer l'histogramme.")
-                except Exception:
-                    st.warning("Impossible de calculer les statistiques.")
-
-            else:
-                try:
-                    value_counts = df[selected_var].value_counts().head(5).to_frame()
-                    value_counts.columns = ["Fréquence"]
-                    value_counts["Pourcentage"] = (value_counts["Fréquence"] / df[selected_var].count() * 100).round(1).astype(str) + "%"
-                    st.write(value_counts)
-
-                    # ✅ Ajout d'un graphique en barres sécurisé
-                    if len(value_counts) > 0:
-                        try:
-                            fig = px.bar(value_counts.reset_index(), x="index", y="Fréquence",
-                                         title=f"Top 5 modalités de {selected_var}",
-                                         height=200)
-                            fig.update_layout(margin=dict(l=10, r=10, t=30, b=10))
-                            st.plotly_chart(fig, use_container_width=True)
-                        except Exception:
-                            st.warning("Impossible de générer le graphique.")
-                except Exception:
-                    st.warning("Impossible de calculer les fréquences.")
-
-    return selected_var
+    try:
+        dtype = df[selected_var].dtype  # ✅ Vérification d'accès
+        return selected_var
+    except Exception as e:
+        st.error(f"🚨 Erreur lors de la récupération du type de '{selected_var}': {e}")
+        return None
 
 def create_tabbed_interface():
     """
