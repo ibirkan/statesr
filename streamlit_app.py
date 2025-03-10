@@ -3175,6 +3175,83 @@ def main():
                         st.subheader(f"📊 Tableau statistique de '{var_name_display}'")
                         st.dataframe(value_counts, use_container_width=True)
 
+                        # ✅ Champs pour personnaliser le titre, la source et la note
+                        table_title = st.text_input("Titre du tableau", f"Distribution de {var_name_display}", key="table_title")
+                        table_source = st.text_input("Source", "", key="table_source")
+                        table_note = st.text_area("Note de lecture", "", key="table_note")
+
+                        # ✅ Affichage du tableau
+                        st.dataframe(value_counts, use_container_width=True)
+
+                        # ✅ Ajout d'une option pour exporter en Excel
+                        buffer = io.BytesIO()
+                        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+                            value_counts.to_excel(writer, sheet_name="Tableau", index=False)
+
+                            # ✅ Ajout de mise en forme Excel
+                            workbook = writer.book
+                            worksheet = writer.sheets["Tableau"]
+
+                            # Largeur automatique des colonnes
+                            for col_num, value in enumerate(value_counts.columns.values):
+                                worksheet.set_column(col_num, col_num, len(value) + 2)
+
+                            # ✅ Ajout de la source et de la note en bas du fichier Excel
+                            last_row = len(value_counts) + 2
+                            if table_source:
+                                worksheet.write(last_row, 0, f"Source : {table_source}")
+                            if table_note:
+                                worksheet.write(last_row + 1, 0, f"Note : {table_note}")
+
+                            writer.close()
+
+                        st.download_button(
+                            label="📥 Télécharger le tableau en Excel",
+                            data=buffer.getvalue(),
+                            file_name=f"tableau_{var_name_display}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
+
+                        # ✅ Option pour exporter en image (JPG/PNG)
+                        def export_table_as_image(value_counts, title, source, note):
+                            """ Génère une image du tableau avec titre, source et note. """
+                            from matplotlib import pyplot as plt
+
+                            fig, ax = plt.subplots(figsize=(8, 6))
+                            ax.axis("tight")
+                            ax.axis("off")
+                            table_data = [value_counts.columns.tolist()] + value_counts.values.tolist()
+
+                            table = ax.table(cellText=table_data, colLabels=None, cellLoc='center', loc='center')
+                            table.auto_set_font_size(False)
+                            table.set_fontsize(10)
+                            table.scale(1.2, 1.2)
+
+                            plt.title(title, fontsize=12, fontweight="bold")
+
+                            # ✅ Ajout de la source et de la note sous le tableau
+                            text_y = -0.1 - (0.05 * len(value_counts))  # Ajuste en fonction de la longueur du tableau
+                            if source:
+                                plt.figtext(0.1, text_y, f"Source : {source}", fontsize=10, ha="left")
+                            if note:
+                                plt.figtext(0.1, text_y - 0.05, f"Note : {note}", fontsize=10, ha="left")
+
+                            # ✅ Sauvegarde en mémoire
+                            buffer = io.BytesIO()
+                            plt.savefig(buffer, format="png", bbox_inches="tight")
+                            buffer.seek(0)
+                            return buffer
+
+                        # ✅ Générer l'image et proposer le téléchargement
+                        img_buffer = export_table_as_image(value_counts, table_title, table_source, table_note)
+
+                        st.download_button(
+                            label="🖼️ Télécharger le tableau en image",
+                            data=img_buffer,
+                            file_name=f"tableau_{var_name_display}.png",
+                            mime="image/png"
+                        )
+
                     # Configuration de la visualisation
                     st.write("### Configuration de la visualisation")
                     viz_col1, viz_col2 = st.columns([1, 2])
