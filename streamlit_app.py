@@ -244,6 +244,36 @@ def get_grist_data(table_id):
 
 # Fonctions améliorées de visualisation pour l'analyse univariée qualitative
 
+def sanitize_column(df, col):
+    """
+    Vérifie et corrige une colonne avant de l'utiliser.
+    Retourne une version nettoyée et utilisable de la colonne.
+    """
+    if col not in df.columns:
+        st.warning(f"⚠️ La colonne '{col}' est absente de la table sélectionnée.")
+        return None  # Évite l'erreur si la colonne n'existe pas
+    
+    # Convertir en série unidimensionnelle
+    col_data = df[col]
+    if isinstance(col_data, pd.DataFrame):  
+        col_data = col_data.squeeze()  # Convertit en Series
+
+    # Gestion des valeurs nulles
+    col_data = col_data.fillna("Valeur manquante")
+
+    # Vérifier et convertir si nécessaire
+    if col_data.apply(lambda x: isinstance(x, list)).any():
+        col_data = col_data.explode()  # Sépare les listes en plusieurs lignes
+
+    if col_data.apply(lambda x: isinstance(x, dict)).any():
+        col_data = col_data.apply(json.dumps)  # Convertit les dictionnaires en texte JSON
+    
+    if col_data.dtype == 'O':  # Si c'est un objet (texte/mélangé), convertir en string
+        col_data = col_data.astype(str)
+
+    return col_data  # Retourne la colonne nettoyée
+
+
 def plot_dotplot(data, title, x_label, y_label, color_palette, show_values=True, source="", note="", width=850):
     """
     Crée un graphique dot plot avec une échelle de valeurs pour l'analyse univariée qualitative.
@@ -2745,7 +2775,7 @@ def create_dashboard_summary(df, title="Résumé des données"):
     """
     st.header(title)
     
-    # Informations générales
+    # ✅ **1️⃣ Informations générales**
     col1, col2, col3 = st.columns(3)
     
     with col1:
@@ -2764,87 +2794,90 @@ def create_dashboard_summary(df, title="Résumé des données"):
         missing_percentage = (missing_cells / total_cells) * 100
         st.metric("Valeurs manquantes", f"{missing_cells:,} ({missing_percentage:.1f}%)")
         
-        # Détection de doublons
+        # ✅ Détection de doublons
         duplicates = df.duplicated().sum()
         duplicate_percentage = (duplicates / len(df)) * 100
         st.metric("Lignes dupliquées", f"{duplicates:,} ({duplicate_percentage:.1f}%)")
     
-    # Résumé des variables numériques - DÉPLACÉ EN DEHORS DES AUTRES CONTENEURS
+    # ✅ **2️⃣ Résumé des variables numériques**
     st.subheader("Résumé des variables numériques")
     numeric_cols = [col for col in df.columns if is_numeric_column(df, col)]
+    
     if numeric_cols:
-        numeric_df = df[numeric_cols].describe().T
-        numeric_df = numeric_df.reset_index().rename(columns={'index': 'Variable'})
+        numeric_df = df[numeric_cols].describe().T.reset_index().rename(columns={'index': 'Variable'})
         
-        # Calcul de la complétude
-        numeric_df['Complétude'] = [(df[col].count() / len(df)) * 100 for col in numeric_cols]
+        # ✅ Correction du calcul de complétude
+        numeric_df['Complétude (%)'] = [(df[col].count() / len(df)) * 100 for col in numeric_cols]
         
-        # Arrondir les valeurs pour une meilleure lisibilité
+        # ✅ Arrondi et formatage
         for col in numeric_df.columns:
             if col != 'Variable':
                 numeric_df[col] = numeric_df[col].round(2)
-        
-        # Formater les pourcentages
-        numeric_df['Complétude'] = numeric_df['Complétude'].map('{:.1f}%'.format)
+        numeric_df['Complétude (%)'] = numeric_df['Complétude (%)'].map('{:.1f}%'.format)
         
         st.dataframe(numeric_df)
     else:
         st.info("Aucune variable numérique détectée.")
-    
-    # Résumé des variables catégorielles - ÉGALEMENT DÉPLACÉ
-    st.subheader("Résumé des variables catégorielles")
+
+    # ✅ **3️⃣ Résumé des variables catégoriques**
+    st.subheader("Résumé des variables catégoriques")
     categorical_cols = [col for col in df.columns if not is_numeric_column(df, col)]
+    
     if categorical_cols:
         categorical_data = []
         
         for col in categorical_cols:
-            value_counts = df[col].value_counts()
-            unique_values = len(value_counts)
-            top_value = value_counts.index[0] if not value_counts.empty else ""
-            top_count = value_counts.iloc[0] if not value_counts.empty else 0
-            top_percentage = (top_count / df[col].count()) * 100 if df[col].count() > 0 else 0
-            completeness = (df[col].count() / len(df)) * 100
-            
-            categorical_data.append({
-                'Variable': col,
-                'Type': df[col].dtype,
-                'Modalités uniques': unique_values,
-                'Modalité principale': str(top_value),
-                'Fréquence': f"{top_count:,} ({top_percentage:.1f}%)",
-                'Complétude': f"{completeness:.1f}%"
-            })
+            cleaned_col = sanitize_column(df, col)  # ✅ Nettoyage dynamique
+            if cleaned_col is not None:
+                value_counts = cleaned_col.value_counts()
+                unique_values = len(value_counts)
+                top_value = value_counts.index[0] if not value_counts.empty else "Aucune valeur"
+                top_count = value_counts.iloc[0] if not value_counts.empty else 0
+                top_percentage = (top_count / df[col].count()) * 100 if df[col].count() > 0 else 0
+                completeness = (df[col].count() / len(df)) * 100
+                
+                categorical_data.append({
+                    'Variable': col,
+                    'Type': df[col].dtype,
+                    'Modalités uniques': unique_values,
+                    'Modalité principale': str(top_value),
+                    'Fréquence': f"{top_count:,} ({top_percentage:.1f}%)",
+                    'Complétude': f"{completeness:.1f}%"
+                })
         
         categorical_df = pd.DataFrame(categorical_data)
         st.dataframe(categorical_df)
     else:
         st.info("Aucune variable catégorielle détectée.")
-    
-    # Matrice de corrélation pour les variables numériques
+
+    # ✅ **4️⃣ Matrice de corrélation pour les variables numériques**
     if len(numeric_cols) > 1:
         st.subheader("Matrice de corrélation")
         try:
-            # Convertir explicitement en float pour éviter les erreurs
             numeric_data = df[numeric_cols].apply(pd.to_numeric, errors='coerce')
             corr_df = numeric_data.corr().round(2)
             
-            # Créer la heatmap
-            fig = px.imshow(
-                corr_df,
-                text_auto=True,
-                aspect="auto",
-                color_continuous_scale="RdBu_r",
-                title="Matrice de corrélation des variables numériques"
-            )
-            
-            fig.update_layout(
-                height=600,
-                width=800,
-                title_font=dict(size=18, family="Marianne, sans-serif")
-            )
-            
-            st.plotly_chart(fig, use_container_width=True)
+            # ✅ Vérification avant affichage
+            if corr_df.isna().sum().sum() == 0:
+                fig = px.imshow(
+                    corr_df,
+                    text_auto=True,
+                    aspect="auto",
+                    color_continuous_scale="RdBu_r",
+                    title="Matrice de corrélation des variables numériques"
+                )
+                
+                fig.update_layout(
+                    height=600,
+                    width=800,
+                    title_font=dict(size=18, family="Marianne, sans-serif")
+                )
+                
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.warning("Certaines valeurs sont NaN, la matrice de corrélation ne peut pas être affichée.")
         except Exception as e:
-            st.warning(f"Impossible de calculer la matrice de corrélation : certaines valeurs numériques ne peuvent pas être converties correctement.")
+            st.warning(f"Impossible de calculer la matrice de corrélation : {e}")
     elif len(numeric_cols) > 0:
         st.info("Au moins 2 variables numériques sont nécessaires pour créer une matrice de corrélation.")
 
