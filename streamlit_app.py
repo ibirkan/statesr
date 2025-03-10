@@ -1915,6 +1915,9 @@ def analyze_qualitative_bivariate(df, var_x, var_y, exclude_missing=True):
     
     return (combined_table, response_stats) if exclude_missing else combined_table
 
+import pandas as pd
+import streamlit as st
+
 def create_interactive_qualitative_table(df, var, exclude_missing=True, missing_label="Non réponse"):
     """
     Génère un tableau interactif des valeurs d'une variable qualitative.
@@ -1928,10 +1931,14 @@ def create_interactive_qualitative_table(df, var, exclude_missing=True, missing_
     Returns:
         tuple: (DataFrame des effectifs, Nom formaté de la variable)
     """
-    # ✅ Vérifier que df est bien un DataFrame
+    # ✅ Vérifier que df est valide et corriger s'il est une Series
     if df is None:
         st.error("🚨 Erreur : Le DataFrame est `None`. Vérifiez le chargement des données.")
         return None, None
+
+    if isinstance(df, pd.Series):
+        st.warning("⚠️ Le DataFrame a été converti depuis une `Series`.")
+        df = df.to_frame()  # ✅ Convertir en DataFrame
 
     if not isinstance(df, pd.DataFrame):
         st.error(f"🚨 Erreur : Le type de `df` n'est pas un DataFrame. Type actuel : {type(df)}")
