@@ -2080,19 +2080,47 @@ def create_enhanced_variable_selector(df, title="Sélectionnez une variable"):
         # Nombre de valeurs uniques
         unique_values = df[var].nunique()
         
-        # Détermination du type plus précis
-        if is_numeric_column(df, var):
-            if pd.api.types.is_integer_dtype(df[var]) or all(float(x).is_integer() for x in df[var].dropna() if pd.notna(x)):
-                type_name = "Numérique (entier)"
+        # Détermination du type plus précis avec gestion d'erreur
+        try:
+            if is_numeric_column(df, var):
+                # Vérifier si c'est un entier de façon sécurisée
+                try:
+                    # Tentative de détecter les entiers
+                    if pd.api.types.is_integer_dtype(df[var]):
+                        type_name = "Numérique (entier)"
+                    else:
+                        # Échantillonner quelques valeurs pour vérifier si ce sont des entiers
+                        sample = df[var].dropna().head(100)
+                        if len(sample) > 0:
+                            are_integers = True
+                            for val in sample:
+                                try:
+                                    if not float(val).is_integer():
+                                        are_integers = False
+                                        break
+                                except (ValueError, TypeError, AttributeError):
+                                    are_integers = False
+                                    break
+                            type_name = "Numérique (entier)" if are_integers else "Numérique (décimal)"
+                        else:
+                            type_name = "Numérique"
+                except Exception:
+                    type_name = "Numérique"
+            elif pd.api.types.is_datetime64_dtype(df[var]):
+                type_name = "Date/Heure"
             else:
-                type_name = "Numérique (décimal)"
-        elif pd.api.types.is_datetime64_dtype(df[var]):
-            type_name = "Date/Heure"
-        else:
-            # Vérifier si c'est une variable catégorielle
-            unique_pct = (unique_values / non_null * 100) if non_null > 0 else 0
-            if unique_pct < 5 or unique_values < 10:
-                type_name = "Catégorielle"
+                # Vérifier si c'est une variable catégorielle
+                unique_pct = (unique_values / non_null * 100) if non_null > 0 else 0
+                if unique_pct < 5 or unique_values < 10:
+                    type_name = "Catégorielle"
+                else:
+                    type_name = "Texte"
+        except Exception:
+            # En cas d'erreur, utiliser un type générique basé sur dtype
+            if pd.api.types.is_numeric_dtype(dtype):
+                type_name = "Numérique"
+            elif pd.api.types.is_datetime64_dtype(dtype):
+                type_name = "Date/Heure"
             else:
                 type_name = "Texte"
         
@@ -2153,29 +2181,41 @@ def create_enhanced_variable_selector(df, title="Sélectionnez une variable"):
                 
                 if is_numeric_column(df, selected_var):
                     # Pour les variables numériques
-                    stats = df[selected_var].describe().to_frame().T
-                    st.write(stats)
-                    
-                    # Afficher un petit histogramme
-                    fig = px.histogram(df, x=selected_var, nbins=20, 
-                                        title=f"Distribution de {selected_var}",
-                                        height=200)
-                    fig.update_layout(margin=dict(l=10, r=10, t=30, b=10))
-                    st.plotly_chart(fig, use_container_width=True)
+                    try:
+                        stats = df[selected_var].describe().to_frame().T
+                        st.write(stats)
+                        
+                        # Afficher un petit histogramme
+                        try:
+                            fig = px.histogram(df, x=selected_var, nbins=20, 
+                                              title=f"Distribution de {selected_var}",
+                                              height=200)
+                            fig.update_layout(margin=dict(l=10, r=10, t=30, b=10))
+                            st.plotly_chart(fig, use_container_width=True)
+                        except Exception:
+                            st.warning("Impossible de générer l'histogramme pour cette variable.")
+                    except Exception:
+                        st.warning("Impossible de calculer les statistiques pour cette variable.")
                 else:
                     # Pour les variables textuelles
-                    value_counts = df[selected_var].value_counts().head(5).to_frame()
-                    value_counts.columns = ["Fréquence"]
-                    value_counts["Pourcentage"] = (value_counts["Fréquence"] / df[selected_var].count() * 100).round(1).astype(str) + "%"
-                    st.write(value_counts)
-                    
-                    # Afficher un petit diagramme en barres
-                    if len(value_counts) > 0:
-                        fig = px.bar(value_counts.reset_index(), x="index", y="Fréquence", 
-                                    title=f"Top 5 modalités de {selected_var}",
-                                    height=200)
-                        fig.update_layout(margin=dict(l=10, r=10, t=30, b=10))
-                        st.plotly_chart(fig, use_container_width=True)
+                    try:
+                        value_counts = df[selected_var].value_counts().head(5).to_frame()
+                        value_counts.columns = ["Fréquence"]
+                        value_counts["Pourcentage"] = (value_counts["Fréquence"] / df[selected_var].count() * 100).round(1).astype(str) + "%"
+                        st.write(value_counts)
+                        
+                        # Afficher un petit diagramme en barres
+                        if len(value_counts) > 0:
+                            try:
+                                fig = px.bar(value_counts.reset_index(), x="index", y="Fréquence", 
+                                            title=f"Top 5 modalités de {selected_var}",
+                                            height=200)
+                                fig.update_layout(margin=dict(l=10, r=10, t=30, b=10))
+                                st.plotly_chart(fig, use_container_width=True)
+                            except Exception:
+                                st.warning("Impossible de générer le graphique pour cette variable.")
+                    except Exception:
+                        st.warning("Impossible de calculer les fréquences pour cette variable.")
     
     return selected_var
 
