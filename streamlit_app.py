@@ -8,6 +8,7 @@ import plotly.figure_factory as ff
 import numpy as np
 from datetime import datetime
 import json
+import textwrap
 import matplotlib.pyplot as plt
 from io import BytesIO
 import squarify
