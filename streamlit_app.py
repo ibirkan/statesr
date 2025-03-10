@@ -3208,8 +3208,10 @@ def main():
                     
                     # ✅ Appliquer le filtrage des non-réponses
                     if exclude_missing:
-                        plot_data = plot_data.dropna()  # Supprime les NaN
-                        plot_data = plot_data[plot_data != missing_label]  # Supprime les "Non réponse"
+                        plot_data = plot_data.dropna()  # ✅ Supprime les valeurs NaN
+                        plot_data = plot_data.astype(str).str.strip()  # ✅ Supprime les espaces autour des valeurs
+                        plot_data = plot_data[plot_data != ""]  # ✅ Supprime les cases vides
+                        plot_data = plot_data[plot_data != missing_label]  # ✅ Supprime "Non réponse"
                     
                     # Création du tableau interactif avec les données
                     value_counts, var_name_display = create_interactive_qualitative_table(
