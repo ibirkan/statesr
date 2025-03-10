@@ -634,7 +634,7 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
     annotations = []
     if source:
         annotations.append(dict(
-            text=f"📌 Source : {source}",
+            text=f" Source : {source}",
             x=0,
             y=annotation_y, 
             xref='paper',
@@ -650,7 +650,7 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
         ))
     if note:
         annotations.append(dict(
-            text=f"📝 Note : {note}",
+            text=f" Note : {note}",
             x=0,
             y=annotation_y - 0.05, 
             xref='paper',
