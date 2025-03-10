@@ -633,10 +633,12 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
         height=max(500, len(data) * 50 + 200),
         margin=dict(l=200, r=80, t=100, b=100),
         yaxis=dict(
-            title=x_label,
-            titlefont=dict(
-                family="Marianne, sans-serif",
-                size=14
+            title=dict(  # ✅ Correction ici
+                text=x_label,
+                font=dict(
+                    family="Marianne, sans-serif",
+                    size=14
+                )
             ),
             tickfont=dict(
                 family="Marianne, sans-serif",
@@ -645,10 +647,12 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
             autorange="reversed"
         ),
         xaxis=dict(
-            title=value_type,
-            titlefont=dict(
-                family="Marianne, sans-serif",
-                size=14
+            title=dict(  # ✅ Correction ici
+                text=value_type,
+                font=dict(
+                    family="Marianne, sans-serif",
+                    size=14
+                )
             ),
             tickfont=dict(
                 family="Marianne, sans-serif",
