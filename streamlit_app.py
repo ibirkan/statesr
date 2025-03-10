@@ -3169,7 +3169,12 @@ def main():
                         exclude_missing=exclude_missing,
                         missing_label=missing_label
                     )
-                    
+
+                    # ✅ Afficher le tableau des effectifs et pourcentages
+                    if value_counts is not None:
+                        st.subheader(f"📊 Tableau statistique de '{var_name_display}'")
+                        st.dataframe(value_counts, use_container_width=True)
+
                     # Configuration de la visualisation
                     st.write("### Configuration de la visualisation")
                     viz_col1, viz_col2 = st.columns([1, 2])
