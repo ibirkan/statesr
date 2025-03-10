@@ -14,7 +14,6 @@ import squarify
 import seaborn as sns
 from scipy import stats
 import math
-import xlsxwriter
 from kaleido.scopes.plotly import PlotlyScope
 
 # Configuration de la page Streamlit - DOIT ÊTRE LA PREMIÈRE COMMANDE STREAMLIT
@@ -3185,17 +3184,23 @@ def main():
                         # ✅ Ajout du téléchargement en Excel
                         buffer = BytesIO()
                         with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-                            value_counts.to_excel(writer, sheet_name="Tableau", index=False)
-                            
-                            # ✅ Mise en forme Excel
                             workbook = writer.book
-                            worksheet = writer.sheets["Tableau"]
+                            worksheet = workbook.add_worksheet("Tableau")
+                            writer.sheets["Tableau"] = worksheet
+                            
+                            # ✅ Style pour le titre
+                            title_format = workbook.add_format({"bold": True, "font_size": 14, "align": "center"})
+                            worksheet.merge_range("A1:C1", table_title, title_format)
 
+                            # ✅ Écrire le tableau sous le titre
+                            value_counts.to_excel(writer, sheet_name="Tableau", startrow=2, index=False)
+
+                            # ✅ Auto-ajustement des colonnes
                             for col_num, value in enumerate(value_counts.columns.values):
-                                worksheet.set_column(col_num, col_num, len(value) + 2)
+                                worksheet.set_column(col_num, col_num, len(value) + 5)
 
-                            # ✅ Ajout de la source et de la note en bas du fichier Excel
-                            last_row = len(value_counts) + 2
+                            # ✅ Ajout de la source et de la note en bas
+                            last_row = len(value_counts) + 4
                             if table_source:
                                 worksheet.write(last_row, 0, f"Source : {table_source}")
                             if table_note:
@@ -3215,27 +3220,30 @@ def main():
                             """ Génère une image du tableau avec titre, source et note. """
                             from matplotlib import pyplot as plt
 
-                            fig, ax = plt.subplots(figsize=(8, 6))
+                            fig, ax = plt.subplots(figsize=(12.8, 7.2))  # ✅ Format 16:9 pour PowerPoint (1280x720)
                             ax.axis("tight")
                             ax.axis("off")
-                            table_data = [value_counts.columns.tolist()] + value_counts.values.tolist()
 
+                            # ✅ Construire la table avec des colonnes ajustées
+                            table_data = [value_counts.columns.tolist()] + value_counts.values.tolist()
                             table = ax.table(cellText=table_data, colLabels=None, cellLoc='center', loc='center')
                             table.auto_set_font_size(False)
-                            table.set_fontsize(10)
-                            table.scale(1.2, 1.2)
+                            table.set_fontsize(12)  # ✅ Police plus grande pour les valeurs
+                            table.scale(1.5, 1.5)   # ✅ Échelle plus grande pour éviter le chevauchement
 
-                            plt.title(title, fontsize=12, fontweight="bold")
+                            # ✅ Titre du tableau
+                            plt.title(title, fontsize=16, fontweight="bold", pad=20)
 
-                            # ✅ Ajout de la source et de la note sous le tableau
-                            text_y = -0.1 - (0.05 * len(value_counts))  # Ajuste en fonction de la longueur du tableau
+                            # ✅ Amélioration de la source et de la note
+                            text_y = -0.15 - (0.03 * len(value_counts))  # ✅ Ajuste selon la taille du tableau
                             if source:
-                                plt.figtext(0.1, text_y, f"Source : {source}", fontsize=10, ha="left")
+                                plt.figtext(0.1, text_y, f"Source : {source}", fontsize=12, ha="left")
                             if note:
-                                plt.figtext(0.1, text_y - 0.05, f"Note : {note}", fontsize=10, ha="left")
+                                plt.figtext(0.1, text_y - 0.05, f"Note : {note}", fontsize=12, ha="left")
 
+                            # ✅ Sauvegarde en mémoire
                             buffer = BytesIO()
-                            plt.savefig(buffer, format="png", bbox_inches="tight")
+                            plt.savefig(buffer, format="png", bbox_inches="tight", dpi=300)  # ✅ Haute qualité pour PowerPoint
                             buffer.seek(0)
                             return buffer
 
