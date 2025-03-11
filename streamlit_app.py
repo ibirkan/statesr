@@ -3406,8 +3406,7 @@ def main():
                                     viz_title,
                                     COLOR_PALETTES[color_scheme],
                                     source=viz_source, 
-                                    note=viz_note,
-                                    value_type=value_type  # ✅ Correction ajoutée ici
+                                    note=viz_note
                                 )
 
                             elif graph_type == "Radar":
