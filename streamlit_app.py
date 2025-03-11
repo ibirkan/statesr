@@ -357,12 +357,9 @@ def plot_qualitative_bar(data, title, x_axis, y_axis, color_palette, show_values
     fig.update_layout(annotations=annotations)
 
     return fig
-def plot_dotplot(data, title, x_label, y_label, color_palette, show_values=True, source="", note="", width=850):
+def plot_dotplot(data, title, x_label, y_label, color_palette, show_values=True, source="", note="", width=850, value_type="Effectif"):
     """
     Crée un graphique dot plot avec une échelle de valeurs pour l'analyse univariée qualitative.
-    
-    Ce type de graphique est particulièrement efficace pour montrer la distribution
-    des modalités d'une variable qualitative.
     
     Args:
         data (DataFrame): DataFrame avec les colonnes 'Modalités' et 'Effectif'
@@ -374,34 +371,34 @@ def plot_dotplot(data, title, x_label, y_label, color_palette, show_values=True,
         source (str): Source des données
         note (str): Note explicative
         width (int): Largeur du graphique
+        value_type (str): "Effectif" ou "Taux (%)" pour adapter l'affichage
         
     Returns:
         go.Figure: Figure Plotly
     """
-    # Renommer les colonnes si nécessaire
-    data = data.copy()
-    if data.columns[0] != 'Modalités':
-        data = data.rename(columns={data.columns[0]: 'Modalités'})
+    # ✅ Sélection de la bonne colonne (Effectif ou Taux)
+    y_column = "Taux (%)" if value_type == "Taux (%)" else "Effectif"
     
-    # Trier les données par effectif décroissant
-    data = data.sort_values('Effectif', ascending=True).reset_index(drop=True)
+    # ✅ Vérifier que la colonne Taux (%) existe si nécessaire
+    if value_type == "Taux (%)" and "Taux (%)" not in data.columns:
+        total = data["Effectif"].sum()
+        data["Taux (%)"] = (data["Effectif"] / total * 100).round(1)
+
+    # ✅ Trier les données pour un affichage clair
+    data = data.sort_values(y_column, ascending=True).reset_index(drop=True)
     
-    # Déterminer le nombre de points à afficher sur l'échelle
-    max_val = data['Effectif'].max()
-    step_size = max(1, round(max_val / 5))  # 5 points de référence
-    
-    # Créer une échelle de valeurs
+    # ✅ Déterminer le maximum et créer une échelle
+    max_val = data[y_column].max()
+    step_size = max(1, round(max_val / 5))  
     scale_values = list(range(0, int(max_val) + step_size, step_size))
-    if max_val not in scale_values:
-        scale_values.append(int(max_val))
     
-    # Hauteur adaptative en fonction du nombre de modalités
+    # ✅ Hauteur adaptative pour éviter l'écrasement des modalités
     height = max(500, len(data) * 50 + 200)
-    
-    # Créer la figure
+
+    # ✅ Création du graphique
     fig = go.Figure()
-    
-    # Ajouter l'échelle de valeurs (lignes verticales)
+
+    # ✅ Ajouter l'échelle de valeurs
     for val in scale_values:
         fig.add_shape(
             type="line",
@@ -411,21 +408,21 @@ def plot_dotplot(data, title, x_label, y_label, color_palette, show_values=True,
             y1=len(data) - 0.5,
             line=dict(color="lightgray", width=1, dash="dot"),
         )
-    
-    # Ajouter les lignes horizontales pour chaque modalité
+
+    # ✅ Ajouter les lignes horizontales pour chaque modalité
     for i in range(len(data)):
         fig.add_shape(
             type="line",
             x0=0,
             y0=i,
-            x1=data.iloc[i]['Effectif'],
+            x1=data.iloc[i][y_column],
             y1=i,
             line=dict(color="lightgray", width=1),
         )
-    
-    # Ajouter les points
+
+    # ✅ Ajouter les points
     fig.add_trace(go.Scatter(
-        x=data['Effectif'],
+        x=data[y_column],
         y=list(range(len(data))),
         mode='markers',
         marker=dict(
@@ -437,26 +434,26 @@ def plot_dotplot(data, title, x_label, y_label, color_palette, show_values=True,
         hovertemplate='<b>%{text}</b><br>Valeur: %{x}<extra></extra>',
         text=data['Modalités']
     ))
-    
-    # Ajouter les valeurs
+
+    # ✅ Ajouter les valeurs avec un petit décalage
     if show_values:
         fig.add_trace(go.Scatter(
-            x=data['Effectif'],
+            x=data[y_column] * 1.05,  # ✅ Décalage à droite pour éviter le chevauchement
             y=list(range(len(data))),
             mode='text',
-            text=data['Effectif'].apply(lambda x: f"{x:.1f}" if not float(x).is_integer() else f"{int(x)}"),
+            text=data[y_column].apply(lambda x: f"{x:.1f}%" if value_type == "Taux (%)" else f"{int(x)}"),
             textposition='middle right',
             textfont=dict(size=12, color='black'),
             showlegend=False,
             hoverinfo='skip'
         ))
-    
-    # Annotations pour la source et la note
+
+    # ✅ Annotations pour la source et la note
     annotations = []
     
     if source:
         annotations.append(dict(
-            text=f"Source : {source}",
+            text=f"📌 Source : {source}",
             x=0,
             y=-0.15,
             xref='paper',
@@ -470,7 +467,7 @@ def plot_dotplot(data, title, x_label, y_label, color_palette, show_values=True,
     if note:
         note_y_pos = -0.20 if source else -0.15
         annotations.append(dict(
-            text=f"Note : {note}",
+            text=f"📝 Note : {note}",
             x=0,
             y=note_y_pos,
             xref='paper',
@@ -480,8 +477,8 @@ def plot_dotplot(data, title, x_label, y_label, color_palette, show_values=True,
             align='left',
             xanchor='left'
         ))
-    
-    # Configuration du layout
+
+    # ✅ Configuration du layout
     fig.update_layout(
         title=dict(
             text=title,
@@ -495,7 +492,7 @@ def plot_dotplot(data, title, x_label, y_label, color_palette, show_values=True,
             zeroline=True,
             zerolinewidth=1,
             zerolinecolor='gray',
-            range=[-max_val*0.05, max_val*1.2]  # Marge pour les labels
+            range=[-max_val*0.05, max_val*1.2]  # ✅ Ajustement pour le décalage
         ),
         yaxis=dict(
             title="",
@@ -504,11 +501,11 @@ def plot_dotplot(data, title, x_label, y_label, color_palette, show_values=True,
             ticktext=data['Modalités'],
             zeroline=False,
             showgrid=False,
-            autorange="reversed"  # Pour avoir la plus grande valeur en haut
+            autorange="reversed"  # ✅ La modalité la plus grande en haut
         ),
         showlegend=False,
         plot_bgcolor='white',
-        margin=dict(l=200, r=80, t=100, b=100),  # Marge gauche augmentée pour les labels
+        margin=dict(l=200, r=80, t=100, b=100),  
         width=width,
         height=height,
         annotations=annotations
