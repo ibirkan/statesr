@@ -357,6 +357,9 @@ def plot_qualitative_bar(data, title, x_axis, y_axis, color_palette, show_values
     fig.update_layout(annotations=annotations)
 
     return fig
+
+import plotly.graph_objects as go
+
 def plot_dotplot(data, title, x_label, y_label, color_palette, show_values=True, source="", note="", width=850, value_type="Effectif"):
     """
     Crée un graphique dot plot avec une échelle de valeurs pour l'analyse univariée qualitative.
@@ -435,10 +438,10 @@ def plot_dotplot(data, title, x_label, y_label, color_palette, show_values=True,
         text=data['Modalités']
     ))
 
-    # ✅ Ajouter les valeurs avec un petit décalage
+    # ✅ Ajouter les valeurs avec un décalage dynamique
     if show_values:
         fig.add_trace(go.Scatter(
-            x=data[y_column] * 1.05,  # ✅ Décalage à droite pour éviter le chevauchement
+            x=data[y_column] + max_val * 0.02 + data[y_column] * 0.03,  # ✅ Ajustement dynamique du décalage
             y=list(range(len(data))),
             mode='text',
             text=data[y_column].apply(lambda x: f"{x:.1f}%" if value_type == "Taux (%)" else f"{int(x)}"),
