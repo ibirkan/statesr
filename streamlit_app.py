@@ -618,7 +618,7 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
 
     # ✅ Annotations pour source et note
     annotations = []
-    annotation_y = -0.40 - (0.05 * num_bars)  # ✅ Dynamisation de la position
+    annotation_y = -0.45 - (0.10 * num_bars)  # ✅ Dynamisation de la position
 
     if source:
         annotations.append(dict(
