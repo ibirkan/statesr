@@ -343,14 +343,14 @@ def plot_qualitative_bar(data, title, x_axis, y_axis, color_palette, show_values
         annotations.append(dict(
             xref="paper", yref="paper", 
             x=0, y=annotation_y, 
-            text=f"📌 Source : {source}", 
+            text=f" Source : {source}", 
             showarrow=False, font=dict(size=12, color="gray")
         ))
     if note:
         annotations.append(dict(
             xref="paper", yref="paper", 
             x=0, y=annotation_y - 0.05, 
-            text=f"📝 Note : {note}", 
+            text=f" Note : {note}", 
             showarrow=False, font=dict(size=12, color="gray")
         ))
 
@@ -456,7 +456,7 @@ def plot_dotplot(data, title, x_label, y_label, color_palette, show_values=True,
     
     if source:
         annotations.append(dict(
-            text=f"📌 Source : {source}",
+            text=f" Source : {source}",
             x=0,
             y=-0.15,
             xref='paper',
@@ -470,7 +470,7 @@ def plot_dotplot(data, title, x_label, y_label, color_palette, show_values=True,
     if note:
         note_y_pos = -0.20 if source else -0.15
         annotations.append(dict(
-            text=f"📝 Note : {note}",
+            text=f" Note : {note}",
             x=0,
             y=note_y_pos,
             xref='paper',
@@ -787,7 +787,7 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
         if source:
             annotations.append(
                 dict(
-                    text=f"📌 Source : {source}",
+                    text=f" Source : {source}",
                     align='left',
                     showarrow=False,
                     xref='paper',
@@ -800,7 +800,7 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
         if note:
             annotations.append(
                 dict(
-                    text=f"📝 Note : {note}",
+                    text=f" Note : {note}",
                     align='left',
                     showarrow=False,
                     xref='paper',
@@ -998,7 +998,7 @@ def plot_radar(data, title, color_palette, source="", note="", value_type="Effec
     if source or note:
         if source:
             annotations.append(dict(
-                text=f"📌 Source : {source}",
+                text=f" Source : {source}",
                 x=0,
                 y=-0.15,
                 xref='paper',
@@ -1012,7 +1012,7 @@ def plot_radar(data, title, color_palette, source="", note="", value_type="Effec
         if note:
             note_y_pos = -0.15 - 0.05 if source else -0.15
             annotations.append(dict(
-                text=f"📝 Note : {note}",
+                text=f" Note : {note}",
                 x=0,
                 y=note_y_pos,
                 xref='paper',
