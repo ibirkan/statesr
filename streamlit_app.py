@@ -279,7 +279,7 @@ def sanitize_column(df, col):
 
     return col_data  
 
-def plot_qualitative_bar(data, title, x_axis, y_axis, color_palette, show_values, source=None, note=None):
+def plot_qualitative_bar(data, title, x_axis, y_axis, color_palette, show_values, source=None, note=None, value_type="Effectif"):
     """
     Génère un Bar Plot vertical avec les modalités affichées sur plusieurs lignes et sans chevauchement.
     
@@ -292,10 +292,14 @@ def plot_qualitative_bar(data, title, x_axis, y_axis, color_palette, show_values
         show_values (bool): Afficher les valeurs sur les barres.
         source (str, optional): Source des données.
         note (str, optional): Note de lecture.
+        value_type (str): "Effectif" ou "Taux (%)" pour adapter l'affichage.
 
     Returns:
         plotly Figure: Graphique Plotly prêt à être affiché dans Streamlit.
     """
+    # ✅ Vérifier si l'utilisateur veut afficher les effectifs ou les taux
+    y_column = "Taux (%)" if value_type == "Taux (%)" else "Effectif"
+
     # ✅ Appliquer un retour à la ligne automatique sur les modalités longues (coupure tous les 23 caractères)
     wrapped_labels = [
         "<br>".join(textwrap.wrap(label, width=23))  
@@ -306,19 +310,19 @@ def plot_qualitative_bar(data, title, x_axis, y_axis, color_palette, show_values
     max_label_lines = max([label.count("<br>") + 1 for label in wrapped_labels])  # Nombre max de lignes de texte
     bottom_margin = 100 + (max_label_lines * 12)  # Ajustement dynamique de la marge
 
-    # ✅ Création du graphique en barres verticales
+    # ✅ Création du graphique en barres verticales avec la bonne colonne
     fig = px.bar(
         data, 
         x=wrapped_labels,  # ✅ Modalités modifiées avec sauts de ligne
-        y="Effectif",  
-        text="Effectif" if show_values else None, 
+        y=y_column,  # ✅ Adaptation dynamique selon "Effectif" ou "Taux (%)"
+        text=y_column if show_values else None,  # ✅ Affichage des valeurs en fonction du type choisi
         title=title,
         color_discrete_sequence=color_palette
     )
 
     # ✅ Mise en forme des valeurs affichées sur les barres
     fig.update_traces(
-        texttemplate='%{text:,}', 
+        texttemplate='%{text:.1f}%' if value_type == "Taux (%)" else '%{text:,}',  # ✅ Format correct des pourcentages
         textposition="outside",
         marker_line_width=1.2
     )
@@ -339,14 +343,14 @@ def plot_qualitative_bar(data, title, x_axis, y_axis, color_palette, show_values
         annotations.append(dict(
             xref="paper", yref="paper", 
             x=0, y=annotation_y, 
-            text=f" Source : {source}", 
+            text=f"📌 Source : {source}", 
             showarrow=False, font=dict(size=12, color="gray")
         ))
     if note:
         annotations.append(dict(
             xref="paper", yref="paper", 
             x=0, y=annotation_y - 0.05, 
-            text=f" Note : {note}", 
+            text=f"📝 Note : {note}", 
             showarrow=False, font=dict(size=12, color="gray")
         ))
 
