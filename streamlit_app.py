@@ -1416,7 +1416,7 @@ def create_quantitative_dashboard(data_series, var_name):
 
 def export_visualization(fig, export_type, var_name, source="", note="", data_to_plot=None, is_plotly=True, graph_type="bar"):
     """
-    Fonction améliorée pour exporter les visualisations en haute qualité.
+    Fonction optimisée pour l'export de visualisations, spécialement adaptée pour PowerPoint.
     
     Args:
         fig: Figure à exporter (Plotly ou Matplotlib)
@@ -1435,72 +1435,124 @@ def export_visualization(fig, export_type, var_name, source="", note="", data_to
         buf = BytesIO()
         
         if export_type == 'graph' and is_plotly:
-            # Créer une copie de la figure pour ne pas modifier l'originale
+            # Créer une copie profonde de la figure pour éviter de modifier l'originale
             fig_export = go.Figure(fig)
             
-            # Paramètres d'export de base
-            export_width = 1200
-            export_height = 800
+            # Base dimensions for PowerPoint slides (16:9 aspect ratio)
+            ppt_width = 1920  # Standard PowerPoint slide width
+            ppt_height = 1080  # Standard PowerPoint slide height
             
-            # Ajustements spécifiques pour les graphiques horizontaux
+            # Horizontal bar specific adjustments
             if graph_type in ["horizontal", "bullet", "Horizontal Bar"] and data_to_plot is not None:
+                # Get the number of categories and maximum value
                 nb_modalites = len(data_to_plot)
+                max_value = data_to_plot["Effectif"].max() if "Effectif" in data_to_plot.columns else 0
+                if "Taux (%)" in data_to_plot.columns:
+                    max_value = max(max_value, data_to_plot["Taux (%)"].max())
                 
-                # Augmenter la hauteur selon le nombre de modalités
-                export_height = max(800, nb_modalites * 80 + 400)  # Plus de marge haut/bas
+                # Get longest label length
+                longest_label = max([len(str(label)) for label in data_to_plot["Modalités"]])
                 
-                # Augmenter significativement les marges verticales
+                # Calculate margins based on content
+                left_margin = max(300, min(50 + longest_label * 8, 450))
+                right_margin = max(200, 150)  # Fixed minimum right margin of 200px
+                top_margin = 150  # Fixed top margin for title
+                bottom_margin = max(200, 150 + (len(note) // 50) * 20)  # Dynamic bottom margin based on note length
+                
+                # Calculate necessary content area
+                content_width = max(600, max_value * 15)  # Estimate pixels needed for longest bar
+                
+                # Set dimensions to ensure all content is visible
+                export_width = left_margin + content_width + right_margin
+                export_height = max(ppt_height, top_margin + (nb_modalites * 100) + bottom_margin)
+                
+                # Ensure aspect ratio is not too extreme
+                if export_width / export_height > 2.5:
+                    export_height = int(export_width / 2.5)
+                
+                # Explicitly set the x-axis range with padding
+                padding = max_value * 0.15
+                
+                # Update layout for export
                 fig_export.update_layout(
                     width=export_width,
                     height=export_height,
                     margin=dict(
-                        t=180,  # Beaucoup plus d'espace pour le titre
-                        b=200,  # Beaucoup plus d'espace pour source/note
-                        l=fig.layout.margin.l,  # Conserver la marge gauche
-                        r=fig.layout.margin.r   # Conserver la marge droite
+                        l=left_margin,
+                        r=right_margin,
+                        t=top_margin,
+                        b=bottom_margin
+                    ),
+                    xaxis=dict(
+                        range=[0, max_value + padding],  # Ensure values are not cut off
+                        title=dict(
+                            text=fig.layout.xaxis.title.text,
+                            font=dict(size=18)
+                        ),
+                        tickfont=dict(size=14)
+                    ),
+                    yaxis=dict(
+                        autorange="reversed",
+                        title=dict(
+                            text=fig.layout.yaxis.title.text,
+                            font=dict(size=18)
+                        ),
+                        tickfont=dict(size=14)
                     )
                 )
                 
-                # Repositionner les annotations source/note plus haut
-                if fig_export.layout.annotations:
-                    new_annotations = []
-                    for ann in fig_export.layout.annotations:
-                        # Ne modifier que les annotations de source et note
-                        if any(keyword in str(ann.text) for keyword in ["Source", "Note"]):
-                            ann_copy = ann.copy()
-                            # Positions plus hautes (valeurs moins négatives)
-                            if "Source" in str(ann.text):
-                                ann_copy.y = -0.10
-                            elif "Note" in str(ann.text):
-                                ann_copy.y = -0.15
-                            # Augmenter la taille de police pour la lisibilité
-                            ann_copy.font.size = 14
-                            new_annotations.append(ann_copy)
-                        else:
-                            new_annotations.append(ann)
-                    
-                    fig_export.layout.annotations = new_annotations
-            
-            # Autres types de graphiques
-            else:
-                if source or note:
-                    # Augmenter la marge du bas si source ou note sont présentes
+                # Reposition source and note annotations
+                new_annotations = []
+                for ann in fig_export.layout.annotations:
+                    if "Source" in str(ann.text) or "Note" in str(ann.text):
+                        ann_copy = ann.copy()
+                        # Position source and note at the bottom, but still visible
+                        if "Source" in str(ann.text):
+                            ann_copy.y = -0.05
+                        elif "Note" in str(ann.text):
+                            ann_copy.y = -0.10
+                        ann_copy.font.size = 14
+                        new_annotations.append(ann_copy)
+                    else:
+                        # Keep other annotations (like title)
+                        new_annotations.append(ann)
+                
+                fig_export.layout.annotations = new_annotations
+                
+                # Make title more prominent
+                if fig_export.layout.title:
                     fig_export.update_layout(
-                        margin=dict(
-                            b=200,  # Plus d'espace pour source/note
-                            t=120   # Plus d'espace pour le titre
+                        title=dict(
+                            text=fig_export.layout.title.text,
+                            font=dict(size=24, family="Marianne, sans-serif"),
+                            x=0.5,
+                            y=0.98
                         )
                     )
+                
+            else:
+                # For other chart types
+                export_width = ppt_width
+                export_height = ppt_height
+                
+                # Ensure margins are adequate
+                fig_export.update_layout(
+                    width=export_width,
+                    height=export_height,
+                    margin=dict(l=80, r=80, t=100, b=150)
+                )
             
-            # Exporter en PNG
+            # Export as PNG with high resolution
             fig_export.write_image(
                 buf,
-                format="png",
-                scale=2.0,  # Haute résolution
-                validate=False  # Désactiver la validation pour éviter certaines erreurs
+                format="png", 
+                scale=2.0,      # High resolution 
+                validate=False  # Skip validation which can cause errors
             )
             
         elif export_type == 'table':
+            # Table export with generous margins
+            plt.figure(figsize=(16, 9))  # PowerPoint 16:9 aspect ratio
             plt.savefig(
                 buf, 
                 format='png',
@@ -1508,7 +1560,7 @@ def export_visualization(fig, export_type, var_name, source="", note="", data_to
                 dpi=300,
                 facecolor='white',
                 edgecolor='none',
-                pad_inches=0.3  # Plus de padding
+                pad_inches=0.5  # Extra padding
             )
             plt.close()
 
@@ -1533,7 +1585,7 @@ def export_visualization(fig, export_type, var_name, source="", note="", data_to
         return True
 
     except Exception as e:
-        st.error(f"Erreur lors de l'export : {str(e)}")
+        st.error(f"❌ Erreur lors de l'export : {str(e)}")
         import traceback
         st.error(traceback.format_exc())  # Afficher la trace pour le débogage
         return False
