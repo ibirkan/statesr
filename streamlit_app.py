@@ -628,7 +628,7 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
             xref='paper',
             yref='paper',
             showarrow=False,
-            font=dict(family="Marianne, sans-serif", size=12, color="gray"),
+            font=dict(family="Marianne, sans-serif", size=10, color="gray"),
             align='left',
             xanchor='left'
         ))
@@ -641,7 +641,7 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
             xref='paper',
             yref='paper',
             showarrow=False,
-            font=dict(family="Marianne, sans-serif", size=12, color="gray"),
+            font=dict(family="Marianne, sans-serif", size=10, color="gray"),
             align='left',
             xanchor='left'
         ))
