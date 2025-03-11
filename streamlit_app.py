@@ -518,151 +518,123 @@ def plot_dotplot(data, title, x_label, y_label, color_palette, show_values=True,
 
 def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", color_palette=None, source="", note=""):
     """
-    Crée un graphique à barres horizontales moderne avec une meilleure présentation et un export propre.
+    Crée un graphique à barres horizontales optimisé pour éviter les problèmes de troncature.
     """
-    # Renommer les colonnes si nécessaire
+    import textwrap
+    
+    # Copie et préparation des données
     data = data.copy()
     if data.columns[0] != 'Modalités':
         data = data.rename(columns={data.columns[0]: 'Modalités'})
     
-    # Trier les données par ordre croissant pour un affichage clair
+    # Tri des données
     data = data.sort_values('Effectif', ascending=True).reset_index(drop=True)
     
-    # S'assurer que les colonnes nécessaires sont présentes
+    # Calcul des taux si nécessaire
     if value_type == "Taux (%)" and "Taux (%)" not in data.columns:
-        # Calculer les taux seulement s'ils ne sont pas déjà présents
         total = data["Effectif"].sum()
         data["Taux (%)"] = (data["Effectif"] / total * 100).round(1)
     
-    # Définir la colonne à afficher
-    display_column = "Taux (%)" if value_type == "Taux (%)" else "Effectif"
+    # Colonne à afficher
+    y_column = "Taux (%)" if value_type == "Taux (%)" else "Effectif"
     
-    # Importer textwrap si ce n'est pas déjà fait
-    import textwrap
+    # Préparation des labels avec retour à la ligne
+    wrapped_labels = []
+    for label in data['Modalités']:
+        # Préserver les espaces et éviter les coupures de mots
+        if isinstance(label, str) and len(label) > 20:
+            wrapped = "<br>".join(textwrap.wrap(label, width=20))
+        else:
+            wrapped = str(label)
+        wrapped_labels.append(wrapped)
     
-    # Appliquer un retour à la ligne automatique sur les modalités longues
-    wrapped_labels = [
-        "<br>".join(textwrap.wrap(str(label), width=30))  # Utiliser une largeur plus grande
-        for label in data["Modalités"]
-    ]
+    # Création du graphique
+    fig = go.Figure()
     
-    # Calcul dynamique des marges pour éviter les coupures
-    max_label_length = max(len(str(label)) for label in data["Modalités"])
-    left_margin = max(250, min(50 + max_label_length * 7, 600))  # Augmentation significative
-    
-    max_label_lines = max([label.count("<br>") + 1 for label in wrapped_labels])
-    bottom_margin = 150 + (max_label_lines * 15)  # Augmentation significative
-    
-    # Création du graphique en barres horizontales
-    fig = go.Figure(go.Bar(
-        y=wrapped_labels,
-        x=data[display_column],
-        orientation='h',
-        marker=dict(
-            color=color_palette[0] if color_palette else '#000091',
-            line=dict(width=0)
-        ),
-        text=data[display_column].apply(lambda v: f"{v:.1f}%" if value_type == "Taux (%)" else f"{int(v) if v.is_integer() else v:.1f}"),
-        textposition='outside',
-        textfont=dict(
-            family="Marianne, sans-serif",
-            size=14
-        ),
-        hovertemplate=f"<b>%{{y}}</b><br>{value_type}: %{{x}}<extra></extra>",
-        width=0.7,
-        showlegend=False
-    ))
-    
-    # Configuration du layout avec plus d'espace
+    # Configuration pour les graphiques Plotly
     fig.update_layout(
+        autosize=False,
+        width=900,  # Largeur fixe initiale
+        height=100 + (len(data) * 60),  # Hauteur dynamique
+        margin=dict(
+            l=250,  # Marge gauche large pour les libellés
+            r=100,  # Marge droite pour les valeurs
+            t=100,  # Marge haute pour le titre
+            b=150   # Marge basse pour source/note
+        ),
         title=dict(
             text=title,
-            font=dict(
-                family="Marianne, sans-serif",
-                size=20,
-                color="#333333"
-            ),
+            font=dict(family="Marianne, sans-serif", size=18),
             x=0.5,
             xanchor='center'
         ),
         plot_bgcolor='white',
-        paper_bgcolor='white',
-        height=max(600, len(data) * 60 + 250),  # Augmentation significative
-        margin=dict(l=left_margin, r=120, t=120, b=bottom_margin),  # Augmentation de toutes les marges
-        yaxis=dict(
-            title=dict(
-                text=x_label,
-                font=dict(
-                    family="Marianne, sans-serif",
-                    size=14
-                )
-            ),
-            tickfont=dict(
-                family="Marianne, sans-serif",
-                size=13
-            ),
-            autorange="reversed"
-        ),
-        xaxis=dict(
-            title=dict(
-                text=value_type,
-                font=dict(
-                    family="Marianne, sans-serif",
-                    size=14
-                )
-            ),
-            tickfont=dict(
-                family="Marianne, sans-serif",
-                size=12
-            ),
-            showgrid=True,
-            gridcolor='#f0f0f0',
-            zeroline=True,
-            zerolinecolor='#e0e0e0',
-            zerolinewidth=1
-        ),
-        bargap=0.2,
-        bargroupgap=0.1
+        paper_bgcolor='white'
     )
     
-    # Position des annotations (source/note) améliorée
-    annotation_y = -0.15 - (0.02 * max_label_lines)  # Position moins basse
+    # Ajout des barres
+    fig.add_trace(go.Bar(
+        y=wrapped_labels,
+        x=data[y_column],
+        orientation='h',
+        text=data[y_column].apply(lambda v: f"{v:.1f}%" if value_type == "Taux (%)" else f"{int(v) if float(v).is_integer() else v:.1f}"),
+        textposition='outside',
+        textfont=dict(family="Marianne, sans-serif", size=14),
+        marker=dict(color=color_palette[0] if color_palette else '#000091'),
+        width=0.7,
+        hovertemplate="%{y}<br>%{x}<extra></extra>"
+    ))
     
+    # Configuration des axes
+    fig.update_yaxes(
+        title=x_label,
+        autorange="reversed",
+        tickfont=dict(family="Marianne, sans-serif", size=14)
+    )
+    
+    # Ajouter un peu d'espace à droite pour les valeurs
+    max_value = data[y_column].max()
+    padding = max_value * 0.15
+    
+    fig.update_xaxes(
+        title=value_type,
+        range=[0, max_value + padding],
+        tickfont=dict(family="Marianne, sans-serif", size=14),
+        gridcolor='lightgray'
+    )
+    
+    # Annotations pour source et note
     annotations = []
     if source:
         annotations.append(dict(
             text=f"Source : {source}",
             x=0,
-            y=annotation_y,
+            y=-0.20,  # Position basse
             xref='paper',
             yref='paper',
             showarrow=False,
-            font=dict(
-                family="Marianne, sans-serif",
-                size=12,
-                color="gray"
-            ),
+            font=dict(family="Marianne, sans-serif", size=12, color="gray"),
             align='left',
             xanchor='left'
         ))
+    
     if note:
         annotations.append(dict(
             text=f"Note : {note}",
             x=0,
-            y=annotation_y - 0.05,
+            y=-0.30,  # Position encore plus basse
             xref='paper',
             yref='paper',
             showarrow=False,
-            font=dict(
-                family="Marianne, sans-serif",
-                size=12,
-                color="gray"
-            ),
+            font=dict(family="Marianne, sans-serif", size=12, color="gray"),
             align='left',
             xanchor='left'
         ))
     
     fig.update_layout(annotations=annotations)
+    
+    # Ajuster certaines propriétés pour optimiser l'affichage
+    fig._is_horizontal_bar = True  # Marquer pour l'export
     
     return fig
 
@@ -1416,143 +1388,70 @@ def create_quantitative_dashboard(data_series, var_name):
 
 def export_visualization(fig, export_type, var_name, source="", note="", data_to_plot=None, is_plotly=True, graph_type="bar"):
     """
-    Fonction optimisée pour l'export de visualisations, spécialement adaptée pour PowerPoint.
-    
-    Args:
-        fig: Figure à exporter (Plotly ou Matplotlib)
-        export_type: Type d'export ('graph' ou 'table')
-        var_name: Nom de la variable
-        source: Source des données
-        note: Note explicative
-        data_to_plot: Données utilisées pour générer le graphique
-        is_plotly: Indique si la figure est une figure Plotly
-        graph_type: Type de graphique
-        
-    Returns:
-        bool: True si l'export a réussi, False sinon
+    Fonction d'export complètement revue pour résoudre les problèmes de troncature.
     """
     try:
         buf = BytesIO()
         
         if export_type == 'graph' and is_plotly:
-            # Créer une copie profonde de la figure pour éviter de modifier l'originale
-            fig_export = go.Figure(fig)
+            # Créer une version dédiée à l'export
+            export_fig = go.Figure(fig)
             
-            # Base dimensions for PowerPoint slides (16:9 aspect ratio)
-            ppt_width = 1920  # Standard PowerPoint slide width
-            ppt_height = 1080  # Standard PowerPoint slide height
-            
-            # Horizontal bar specific adjustments
-            if graph_type in ["horizontal", "bullet", "Horizontal Bar"] and data_to_plot is not None:
-                # Get the number of categories and maximum value
-                nb_modalites = len(data_to_plot)
-                max_value = data_to_plot["Effectif"].max() if "Effectif" in data_to_plot.columns else 0
-                if "Taux (%)" in data_to_plot.columns:
-                    max_value = max(max_value, data_to_plot["Taux (%)"].max())
-                
-                # Get longest label length
-                longest_label = max([len(str(label)) for label in data_to_plot["Modalités"]])
-                
-                # Calculate margins based on content
-                left_margin = max(300, min(50 + longest_label * 8, 450))
-                right_margin = max(200, 150)  # Fixed minimum right margin of 200px
-                top_margin = 150  # Fixed top margin for title
-                bottom_margin = max(200, 150 + (len(note) // 50) * 20)  # Dynamic bottom margin based on note length
-                
-                # Calculate necessary content area
-                content_width = max(600, max_value * 15)  # Estimate pixels needed for longest bar
-                
-                # Set dimensions to ensure all content is visible
-                export_width = left_margin + content_width + right_margin
-                export_height = max(ppt_height, top_margin + (nb_modalites * 100) + bottom_margin)
-                
-                # Ensure aspect ratio is not too extreme
-                if export_width / export_height > 2.5:
-                    export_height = int(export_width / 2.5)
-                
-                # Explicitly set the x-axis range with padding
-                padding = max_value * 0.15
-                
-                # Update layout for export
-                fig_export.update_layout(
-                    width=export_width,
-                    height=export_height,
-                    margin=dict(
-                        l=left_margin,
-                        r=right_margin,
-                        t=top_margin,
-                        b=bottom_margin
-                    ),
-                    xaxis=dict(
-                        range=[0, max_value + padding],  # Ensure values are not cut off
-                        title=dict(
-                            text=fig.layout.xaxis.title.text,
-                            font=dict(size=18)
-                        ),
-                        tickfont=dict(size=14)
-                    ),
-                    yaxis=dict(
-                        autorange="reversed",
-                        title=dict(
-                            text=fig.layout.yaxis.title.text,
-                            font=dict(size=18)
-                        ),
-                        tickfont=dict(size=14)
-                    )
-                )
-                
-                # Reposition source and note annotations
-                new_annotations = []
-                for ann in fig_export.layout.annotations:
-                    if "Source" in str(ann.text) or "Note" in str(ann.text):
-                        ann_copy = ann.copy()
-                        # Position source and note at the bottom, but still visible
-                        if "Source" in str(ann.text):
-                            ann_copy.y = -0.05
-                        elif "Note" in str(ann.text):
-                            ann_copy.y = -0.10
-                        ann_copy.font.size = 14
-                        new_annotations.append(ann_copy)
-                    else:
-                        # Keep other annotations (like title)
-                        new_annotations.append(ann)
-                
-                fig_export.layout.annotations = new_annotations
-                
-                # Make title more prominent
-                if fig_export.layout.title:
-                    fig_export.update_layout(
-                        title=dict(
-                            text=fig_export.layout.title.text,
-                            font=dict(size=24, family="Marianne, sans-serif"),
-                            x=0.5,
-                            y=0.98
+            # Paramètres spécifiques pour les barres horizontales
+            if hasattr(fig, '_is_horizontal_bar') or graph_type in ["horizontal", "Horizontal Bar"]:
+                if data_to_plot is not None:
+                    # Mesurer la longueur maximale des libellés
+                    max_label_len = max([len(str(m)) for m in data_to_plot['Modalités']])
+                    
+                    # Dimensionnement spécifique
+                    export_width = 1600  # Largeur fixe, généreuse
+                    export_height = 200 + (len(data_to_plot) * 80)  # Hauteur dynamique
+                    
+                    # Calcul des marges adaptées
+                    left_margin = 300 + (max_label_len * 6)  # Marge gauche généreuse
+                    right_margin = 200  # Marge droite fixe
+                    
+                    # Ajuster la mise en page pour l'export
+                    export_fig.update_layout(
+                        width=export_width,
+                        height=export_height,
+                        margin=dict(
+                            l=left_margin,
+                            r=right_margin,
+                            t=150,  # Marge haute pour le titre
+                            b=200   # Marge basse pour la source et note
                         )
                     )
-                
+                    
+                    # Repositionner explicitement les annotations source/note
+                    new_annotations = []
+                    for ann in export_fig.layout.annotations:
+                        new_ann = dict(ann)
+                        # Ajuster uniquement source/note
+                        if "Source" in str(ann.text):
+                            new_ann['y'] = -0.15
+                        elif "Note" in str(ann.text):
+                            new_ann['y'] = -0.22
+                        new_annotations.append(go.layout.Annotation(new_ann))
+                    
+                    export_fig.layout.annotations = new_annotations
             else:
-                # For other chart types
-                export_width = ppt_width
-                export_height = ppt_height
-                
-                # Ensure margins are adequate
-                fig_export.update_layout(
-                    width=export_width,
-                    height=export_height,
-                    margin=dict(l=80, r=80, t=100, b=150)
+                # Paramètres pour autres types de graphiques
+                export_fig.update_layout(
+                    width=1200,
+                    height=800,
+                    margin=dict(l=80, r=80, t=100, b=200)
                 )
             
-            # Export as PNG with high resolution
-            fig_export.write_image(
+            # Exporter avec une haute résolution
+            export_fig.write_image(
                 buf,
-                format="png", 
-                scale=2.0,      # High resolution 
-                validate=False  # Skip validation which can cause errors
+                format="png",
+                scale=2.0,
+                validate=False
             )
             
         elif export_type == 'table':
-            # Table export with generous margins
-            plt.figure(figsize=(16, 9))  # PowerPoint 16:9 aspect ratio
             plt.savefig(
                 buf, 
                 format='png',
@@ -1560,18 +1459,13 @@ def export_visualization(fig, export_type, var_name, source="", note="", data_to
                 dpi=300,
                 facecolor='white',
                 edgecolor='none',
-                pad_inches=0.5  # Extra padding
+                pad_inches=0.5
             )
             plt.close()
 
         buf.seek(0)
         image_data = buf.getvalue()
-        image_size_mb = len(image_data) / (1024 * 1024)
-
-        if image_size_mb > 50:
-            st.warning("⚠️ L'image générée est trop volumineuse. Essayez de réduire le nombre de données ou la complexité du graphique.")
-            return False
-            
+        
         file_suffix = "tableau" if export_type == 'table' else "graphique"
         file_name = f"{file_suffix}_{var_name.lower().replace(' ', '_')}.png"
 
@@ -1585,9 +1479,9 @@ def export_visualization(fig, export_type, var_name, source="", note="", data_to
         return True
 
     except Exception as e:
-        st.error(f"❌ Erreur lors de l'export : {str(e)}")
+        st.error(f"Erreur lors de l'export : {str(e)}")
         import traceback
-        st.error(traceback.format_exc())  # Afficher la trace pour le débogage
+        st.error(traceback.format_exc())
         return False
 
 # Fonctions de manipulation des données
