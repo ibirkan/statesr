@@ -1423,19 +1423,42 @@ def export_visualization(fig, export_type, var_name, source="", note="", data_to
                         )
                     )
                     
-                    # Repositionner explicitement les annotations source/note
+                    # Créer de nouvelles annotations pour source et note
                     new_annotations = []
-                    for ann in export_fig.layout.annotations:
-                        # Créer une nouvelle annotation avec les mêmes propriétés
-                        # Mais modifier la position y pour source/note
-                        new_ann = ann.copy()
-                        if "Source" in str(ann.text):
-                            new_ann.y = -0.15
-                        elif "Note" in str(ann.text):
-                            new_ann.y = -0.22
-                        new_annotations.append(new_ann)
                     
-                    export_fig.layout.annotations = new_annotations
+                    # Garder les annotations qui ne sont pas source/note
+                    for ann in export_fig.layout.annotations:
+                        if "Source" not in str(ann.text) and "Note" not in str(ann.text):
+                            new_annotations.append(ann)
+                    
+                    # Recréer explicitement les annotations source/note
+                    if source:
+                        new_annotations.append(dict(
+                            text=f"Source : {source}",
+                            x=0,
+                            y=-0.15,
+                            xref='paper',
+                            yref='paper',
+                            showarrow=False,
+                            font=dict(family="Marianne, sans-serif", size=12, color="gray"),
+                            align='left',
+                            xanchor='left'
+                        ))
+                    
+                    if note:
+                        new_annotations.append(dict(
+                            text=f"Note : {note}",
+                            x=0,
+                            y=-0.22,
+                            xref='paper',
+                            yref='paper',
+                            showarrow=False,
+                            font=dict(family="Marianne, sans-serif", size=12, color="gray"),
+                            align='left',
+                            xanchor='left'
+                        ))
+                    
+                    export_fig.update_layout(annotations=new_annotations)
             else:
                 # Paramètres pour autres types de graphiques
                 export_fig.update_layout(
