@@ -519,69 +519,61 @@ def plot_dotplot(data, title, x_label, y_label, color_palette, show_values=True,
 def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", color_palette=None, source="", note=""):
     """
     Crée un graphique à barres horizontales moderne avec une meilleure présentation et un export propre.
-    
-    Args:
-        data (DataFrame): DataFrame avec les colonnes 'Modalités' et 'Effectif'
-        title (str): Titre du graphique
-        x_label (str): Étiquette de l'axe X
-        value_type (str): Type de valeur ("Effectif" ou "Taux (%)")
-        color_palette (list): Liste de couleurs pour le dégradé
-        source (str): Source des données
-        note (str): Note explicative
-        
-    Returns:
-        go.Figure: Figure Plotly
     """
-    # ✅ Vérification des colonnes et renommage si nécessaire
+    # Renommer les colonnes si nécessaire
     data = data.copy()
     if data.columns[0] != 'Modalités':
         data = data.rename(columns={data.columns[0]: 'Modalités'})
-
-    # ✅ Trier les données par ordre croissant pour un affichage clair
+    
+    # Trier les données par ordre croissant pour un affichage clair
     data = data.sort_values('Effectif', ascending=True).reset_index(drop=True)
-
-    # ✅ Correction du calcul des pourcentages
-    if value_type == "Taux (%)":
+    
+    # S'assurer que les colonnes nécessaires sont présentes
+    if value_type == "Taux (%)" and "Taux (%)" not in data.columns:
+        # Calculer les taux seulement s'ils ne sont pas déjà présents
         total = data["Effectif"].sum()
-        data["Taux (%)"] = (data["Effectif"] / total * 100).round(1)  # ✅ Conversion correcte en %
-
-    # ✅ Définition de la colonne à afficher
-    y_column = "Taux (%)" if value_type == "Taux (%)" else "Effectif"
-
-    # ✅ Appliquer un retour à la ligne automatique sur les modalités longues
+        data["Taux (%)"] = (data["Effectif"] / total * 100).round(1)
+    
+    # Définir la colonne à afficher
+    display_column = "Taux (%)" if value_type == "Taux (%)" else "Effectif"
+    
+    # Importer textwrap si ce n'est pas déjà fait
+    import textwrap
+    
+    # Appliquer un retour à la ligne automatique sur les modalités longues
     wrapped_labels = [
-        "<br>".join(textwrap.wrap(label, width=23))  
+        "<br>".join(textwrap.wrap(str(label), width=30))  # Utiliser une largeur plus grande
         for label in data["Modalités"]
     ]
-
-    # ✅ Calcul dynamique des marges pour éviter les coupures dans l’export
-    max_label_length = max(len(label) for label in data["Modalités"])
-    left_margin = max(200, min(50 + max_label_length * 6, 400))  # Ajustement dynamique
-
+    
+    # Calcul dynamique des marges pour éviter les coupures
+    max_label_length = max(len(str(label)) for label in data["Modalités"])
+    left_margin = max(250, min(50 + max_label_length * 7, 600))  # Augmentation significative
+    
     max_label_lines = max([label.count("<br>") + 1 for label in wrapped_labels])
-    bottom_margin = 100 + (max_label_lines * 12)
-
-    # ✅ Création du graphique en barres horizontales
+    bottom_margin = 150 + (max_label_lines * 15)  # Augmentation significative
+    
+    # Création du graphique en barres horizontales
     fig = go.Figure(go.Bar(
-        y=wrapped_labels,  # ✅ Affichage des modalités avec retour à la ligne
-        x=data[y_column],  # ✅ Affichage des effectifs ou taux
+        y=wrapped_labels,
+        x=data[display_column],
         orientation='h',
         marker=dict(
-            color=color_palette if color_palette else '#000091',  # ✅ Bleu Marianne par défaut
+            color=color_palette[0] if color_palette else '#000091',
             line=dict(width=0)
         ),
-        text=data[y_column].apply(lambda v: f"{v:.1f}%" if value_type == "Taux (%)" else f"{int(v)}"),  # ✅ Formattage
+        text=data[display_column].apply(lambda v: f"{v:.1f}%" if value_type == "Taux (%)" else f"{int(v) if v.is_integer() else v:.1f}"),
         textposition='outside',
         textfont=dict(
             family="Marianne, sans-serif",
             size=14
         ),
         hovertemplate=f"<b>%{{y}}</b><br>{value_type}: %{{x}}<extra></extra>",
-        width=0.7,  # ✅ Barres plus fines pour un design moderne
+        width=0.7,
         showlegend=False
     ))
-
-    # ✅ Configuration du layout
+    
+    # Configuration du layout avec plus d'espace
     fig.update_layout(
         title=dict(
             text=title,
@@ -595,8 +587,8 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
         ),
         plot_bgcolor='white',
         paper_bgcolor='white',
-        height=max(500, len(data) * 50 + 200),
-        margin=dict(l=left_margin, r=80, t=100, b=bottom_margin),  # ✅ Ajustement dynamique de la marge gauche
+        height=max(600, len(data) * 60 + 250),  # Augmentation significative
+        margin=dict(l=left_margin, r=120, t=120, b=bottom_margin),  # Augmentation de toutes les marges
         yaxis=dict(
             title=dict(
                 text=x_label,
@@ -607,7 +599,7 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
             ),
             tickfont=dict(
                 family="Marianne, sans-serif",
-                size=12
+                size=13
             ),
             autorange="reversed"
         ),
@@ -629,25 +621,25 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
             zerolinecolor='#e0e0e0',
             zerolinewidth=1
         ),
-        bargap=0.15,
+        bargap=0.2,
         bargroupgap=0.1
     )
-
-    # ✅ Dynamisation de la position de la source et de la note
-    annotation_y = -0.4 - (0.02 * max_label_lines)
-
+    
+    # Position des annotations (source/note) améliorée
+    annotation_y = -0.15 - (0.02 * max_label_lines)  # Position moins basse
+    
     annotations = []
     if source:
         annotations.append(dict(
-            text=f" Source : {source}",
+            text=f"Source : {source}",
             x=0,
-            y=annotation_y, 
+            y=annotation_y,
             xref='paper',
             yref='paper',
             showarrow=False,
             font=dict(
                 family="Marianne, sans-serif",
-                size=11,
+                size=12,
                 color="gray"
             ),
             align='left',
@@ -655,23 +647,23 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
         ))
     if note:
         annotations.append(dict(
-            text=f" Note : {note}",
+            text=f"Note : {note}",
             x=0,
-            y=annotation_y - 0.05, 
+            y=annotation_y - 0.05,
             xref='paper',
             yref='paper',
             showarrow=False,
             font=dict(
                 family="Marianne, sans-serif",
-                size=11,
+                size=12,
                 color="gray"
             ),
             align='left',
             xanchor='left'
         ))
-
+    
     fig.update_layout(annotations=annotations)
-
+    
     return fig
 
 def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show_values=True, source="", note="", value_type="Effectif"):
@@ -1439,71 +1431,77 @@ def export_visualization(fig, export_type, var_name, source="", note="", data_to
     Returns:
         bool: True si l'export a réussi, False sinon
     """
+        
     try:
         buf = BytesIO()
         
         if export_type == 'graph' and is_plotly:
-            export_width = 1200
-            export_height = 800
-
-            # ✅ Calcul dynamique de la marge gauche en fonction de la longueur des modalités
-            if graph_type in ["horizontal", "bullet"] and data_to_plot is not None:
+            # Augmenter les dimensions pour l'export
+            export_width = 1500  # Augmenté
+            export_height = 1000  # Augmenté
+            
+            if graph_type in ["horizontal", "bullet", "Horizontal Bar"] and data_to_plot is not None:
                 nb_modalites = len(data_to_plot)
                 
-                # Calculer la modalité la plus longue
+                # Calculer la modalité la plus longue pour une meilleure marge
                 longest_label = max(len(str(label)) for label in data_to_plot["Modalités"])
                 
-                export_height = max(600, nb_modalites * 80 + 300)  # ✅ Ajustement dynamique de la hauteur
-                dynamic_left_margin = max(250, min(50 + longest_label * 6, 500))  # ✅ Correction de la marge
-
+                # Hauteur dynamique basée sur le nombre de modalités
+                export_height = max(800, nb_modalites * 100 + 400)  # Significativement augmenté
+                
+                # Marge gauche généreuse pour les longues modalités
+                dynamic_left_margin = max(300, min(100 + longest_label * 8, 800))  # Significativement augmenté
+                
+                # Mise à jour des marges pour l'export
                 fig.update_layout(
                     width=export_width,
                     height=export_height,
                     margin=dict(
-                        t=120,  # Marge haute pour le titre et sous-titre
-                        b=150,  # Marge basse pour source et note
-                        l=dynamic_left_margin,  # ✅ Correction de la marge gauche dynamique
-                        r=100   # Marge droite pour les valeurs
+                        t=150,  # Augmenté pour le titre
+                        b=250,  # Significativement augmenté pour source/note
+                        l=dynamic_left_margin,  # Marge gauche dynamique
+                        r=150   # Augmenté pour les valeurs
                     ),
-                    # ✅ Configuration des axes
                     yaxis=dict(
                         autorange="reversed",
                         showgrid=False,
                         title=dict(
-                            text="",
-                            font=dict(size=14)
+                            text="",  # Retirer le titre pour gagner de l'espace
+                            font=dict(size=16)
+                        ),
+                        tickfont=dict(
+                            size=14  # Police plus grande pour l'export
                         )
                     ),
                     xaxis=dict(
                         title=dict(
-                            text="Effectif" if graph_type == "horizontal" else "Valeurs",
-                            font=dict(size=14)
+                            text="Effectif" if "Effectif" in value_type else "Valeur",
+                            font=dict(size=16)
                         ),
                         showgrid=True,
-                        gridcolor='#e0e0e0'
+                        gridcolor='#e0e0e0',
+                        tickfont=dict(
+                            size=14  # Police plus grande pour l'export
+                        )
                     )
                 )
-
-            # ✅ Configuration standard pour les autres types de graphiques
-            else:
-                if source and note:
-                    export_height = 900
-                elif source or note:
-                    export_height = 850
                 
-                fig.update_layout(
-                    width=export_width,
-                    height=export_height,
-                    margin=dict(
-                        t=100,
-                        b=200,
-                        l=80,
-                        r=80
-                    )
-                )
+                # Ajuster la position des annotations pour l'export
+                new_annotations = []
+                for ann in fig.layout.annotations:
+                    if "Source" in ann.text or "Note" in ann.text:
+                        # Repositionner les annotations source/note pour l'export
+                        ann_copy = ann.copy()
+                        ann_copy.y = -0.13 if "Source" in ann.text else -0.18  # Position fixe pour l'export
+                        ann_copy.font.size = 14  # Police plus grande
+                        new_annotations.append(ann_copy)
+                    else:
+                        new_annotations.append(ann)
+                
+                fig.layout.annotations = new_annotations
             
-            # ✅ Exporter en PNG
-            fig.write_image(buf, format="png", scale=2.0)
+            # Exporter en PNG avec une résolution plus élevée
+            fig.write_image(buf, format="png", scale=3.0)  # Résolution augmentée
 
         elif export_type == 'table':
             plt.savefig(
@@ -1538,7 +1536,9 @@ def export_visualization(fig, export_type, var_name, source="", note="", data_to
         return True
 
     except Exception as e:
-        st.error(f"❌ Erreur lors de l'export : {str(e)}")  
+        st.error(f"❌ Erreur lors de l'export : {str(e)}")
+        import traceback
+        st.error(traceback.format_exc())  # Afficher la trace complète pour le débogage
         return False
 
 # Fonctions de manipulation des données
@@ -3357,9 +3357,9 @@ def main():
 
                             # ✅ Calcul des taux si l'utilisateur sélectionne "Taux (%)"
                             if value_type == "Taux (%)":
-                                total = data_to_plot["Effectif"].sum()  # ✅ Total des effectifs
-                                data_to_plot["Taux (%)"] = (data_to_plot["Effectif"] / total * 100).round(1)  # ✅ Conversion en pourcentage
-                                y_axis = "Taux (%)" if y_axis == "Valeur" else y_axis  # ✅ Met à jour l'axe Y pour refléter le choix
+                                total = data_to_plot["Effectif"].sum()
+                                data_to_plot["Taux (%)"] = (data_to_plot["Effectif"] / total * 100).round(1)
+                                y_axis = "Taux (%)" if y_axis == "Valeur" or y_axis is None else y_axis
 
                             # Création du graphique selon le type choisi
                             if graph_type == "Bar plot":
@@ -3380,7 +3380,7 @@ def main():
                                     data=data_to_plot,
                                     title=viz_title,
                                     x_label=x_axis,
-                                    value_type=value_type,  # ✅ Déjà présent ici, pas besoin de modifier
+                                    value_type=value_type,  # Ceci est transmis correctement
                                     color_palette=COLOR_PALETTES[color_scheme],
                                     source=viz_source,
                                     note=viz_note
