@@ -357,7 +357,6 @@ def plot_qualitative_bar(data, title, x_axis, y_axis, color_palette, show_values
     fig.update_layout(annotations=annotations)
 
     return fig
-
 def plot_dotplot(data, title, x_label, y_label, color_palette, show_values=True, source="", note="", width=850):
     """
     Crée un graphique dot plot avec une échelle de valeurs pour l'analyse univariée qualitative.
@@ -3345,9 +3344,15 @@ def main():
                             # Création du graphique selon le type choisi
                             if graph_type == "Bar plot":
                                 fig = plot_qualitative_bar(
-                                    data_to_plot, viz_title, x_axis, y_axis,
-                                    COLOR_PALETTES[color_scheme], show_values,
-                                    source=viz_source, note=viz_note
+                                    data_to_plot, 
+                                    viz_title, 
+                                    x_axis, 
+                                    y_axis,
+                                    COLOR_PALETTES[color_scheme], 
+                                    show_values,
+                                    source=viz_source, 
+                                    note=viz_note,
+                                    value_type=value_type  # ✅ Correction ajoutée ici
                                 )
 
                             elif graph_type == "Horizontal Bar":
@@ -3355,34 +3360,57 @@ def main():
                                     data=data_to_plot,
                                     title=viz_title,
                                     x_label=x_axis,
-                                    value_type=value_type,
+                                    value_type=value_type,  # ✅ Déjà présent ici, pas besoin de modifier
                                     color_palette=COLOR_PALETTES[color_scheme],
                                     source=viz_source,
                                     note=viz_note
                                 )
+
                             elif graph_type == "Dot Plot":
                                 fig = plot_dotplot(
-                                    data_to_plot, viz_title, x_axis, y_axis,
-                                    COLOR_PALETTES[color_scheme], show_values,
-                                    source=viz_source, note=viz_note, width=width
+                                    data_to_plot, 
+                                    viz_title, 
+                                    x_axis, 
+                                    y_axis,
+                                    COLOR_PALETTES[color_scheme], 
+                                    show_values,
+                                    source=viz_source, 
+                                    note=viz_note, 
+                                    width=width,
+                                    value_type=value_type  # ✅ Correction ajoutée ici
                                 )
+
                             elif graph_type == "Lollipop plot":
                                 fig = plot_qualitative_lollipop(
-                                    data_to_plot, viz_title, x_axis, y_axis,
-                                    COLOR_PALETTES[color_scheme], show_values,
-                                    source=viz_source, note=viz_note
+                                    data_to_plot, 
+                                    viz_title, 
+                                    x_axis, 
+                                    y_axis,
+                                    COLOR_PALETTES[color_scheme], 
+                                    show_values,
+                                    source=viz_source, 
+                                    note=viz_note,
+                                    value_type=value_type  # ✅ Correction ajoutée ici
                                 )
+
                             elif graph_type == "Treemap":
                                 fig = plot_qualitative_treemap(
-                                    data_to_plot, viz_title,
+                                    data_to_plot, 
+                                    viz_title,
                                     COLOR_PALETTES[color_scheme],
-                                    source=viz_source, note=viz_note
+                                    source=viz_source, 
+                                    note=viz_note,
+                                    value_type=value_type  # ✅ Correction ajoutée ici
                                 )
+
                             elif graph_type == "Radar":
                                 fig = plot_radar(
-                                    data_to_plot, viz_title,
+                                    data_to_plot, 
+                                    viz_title,
                                     COLOR_PALETTES[color_scheme],
-                                    source=viz_source, note=viz_note
+                                    source=viz_source, 
+                                    note=viz_note,
+                                    value_type=value_type  # ✅ Correction ajoutée ici
                                 )
 
                             # Affichage du graphique
