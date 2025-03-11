@@ -847,7 +847,6 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
 
     return fig
 
-
 def plot_qualitative_treemap(data, title, color_palette, source="", note=""):
     """
     Crée un treemap amélioré pour l'analyse univariée qualitative.
@@ -867,16 +866,17 @@ def plot_qualitative_treemap(data, title, color_palette, source="", note=""):
     if data.columns[0] != 'Modalités':
         data = data.rename(columns={data.columns[0]: 'Modalités'})
     
-    # ✅ Calculer correctement les pourcentages
-    data['Pourcentage'] = (data['Effectif'] / data['Effectif'].sum() * 100).round(1)  # ✅ Multiplication par 100 ajoutée
+    # ✅ Calculer les pourcentages
+    data['Pourcentage'] = (data['Effectif'] / data['Effectif'].sum() * 100).round(1)  # ✅ Le calcul était bon
 
     # ✅ Créer le treemap
     fig = go.Figure(go.Treemap(
         labels=data['Modalités'],
         parents=[""] * len(data),
         values=data['Effectif'],
-        texttemplate="<b>%{label}</b><br>Effectif: %{value}<br>Pourcentage: %{percentRoot:.1f}%",  # ✅ Affichage correct
-        hovertemplate="<b>%{label}</b><br>Effectif: %{value}<br>Pourcentage: %{percentRoot:.1f}%<extra></extra>",
+        text=data['Pourcentage'].astype(str) + "%",  # ✅ Correction : Affichage correct des pourcentages
+        texttemplate="<b>%{label}</b><br>Effectif: %{value}<br>Pourcentage: %{text}",  # ✅ Utilisation correcte
+        hovertemplate="<b>%{label}</b><br>Effectif: %{value}<br>Pourcentage: %{text}<extra></extra>",
         marker=dict(
             colors=color_palette[:len(data)] if len(color_palette) >= len(data) else color_palette,
             line=dict(width=1, color='white')
