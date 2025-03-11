@@ -1,2 +1,2 @@
-Pour le graphique horizontal bar, les noms des modalités ne s'affichent pas entièrement avec un export image
+Pour le graphique horizontal bar & dot plot, les noms des modalités ne s'affichent pas entièrement avec un export image
   
