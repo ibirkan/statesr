@@ -1431,78 +1431,75 @@ def export_visualization(fig, export_type, var_name, source="", note="", data_to
     Returns:
         bool: True si l'export a réussi, False sinon
     """
-        
     try:
         buf = BytesIO()
         
         if export_type == 'graph' and is_plotly:
-            # Augmenter les dimensions pour l'export
-            export_width = 1500  # Augmenté
-            export_height = 1000  # Augmenté
+            # Créer une copie de la figure pour ne pas modifier l'originale
+            fig_export = go.Figure(fig)
             
+            # Paramètres d'export de base
+            export_width = 1200
+            export_height = 800
+            
+            # Ajustements spécifiques pour les graphiques horizontaux
             if graph_type in ["horizontal", "bullet", "Horizontal Bar"] and data_to_plot is not None:
                 nb_modalites = len(data_to_plot)
                 
-                # Calculer la modalité la plus longue pour une meilleure marge
-                longest_label = max(len(str(label)) for label in data_to_plot["Modalités"])
+                # Augmenter la hauteur selon le nombre de modalités
+                export_height = max(800, nb_modalites * 80 + 400)  # Plus de marge haut/bas
                 
-                # Hauteur dynamique basée sur le nombre de modalités
-                export_height = max(800, nb_modalites * 100 + 400)  # Significativement augmenté
-                
-                # Marge gauche généreuse pour les longues modalités
-                dynamic_left_margin = max(300, min(100 + longest_label * 8, 800))  # Significativement augmenté
-                
-                # Mise à jour des marges pour l'export
-                fig.update_layout(
+                # Augmenter significativement les marges verticales
+                fig_export.update_layout(
                     width=export_width,
                     height=export_height,
                     margin=dict(
-                        t=150,  # Augmenté pour le titre
-                        b=250,  # Significativement augmenté pour source/note
-                        l=dynamic_left_margin,  # Marge gauche dynamique
-                        r=150   # Augmenté pour les valeurs
-                    ),
-                    yaxis=dict(
-                        autorange="reversed",
-                        showgrid=False,
-                        title=dict(
-                            text="",  # Retirer le titre pour gagner de l'espace
-                            font=dict(size=16)
-                        ),
-                        tickfont=dict(
-                            size=14  # Police plus grande pour l'export
-                        )
-                    ),
-                    xaxis=dict(
-                        title=dict(
-                            text="Effectif" if "Effectif" in value_type else "Valeur",
-                            font=dict(size=16)
-                        ),
-                        showgrid=True,
-                        gridcolor='#e0e0e0',
-                        tickfont=dict(
-                            size=14  # Police plus grande pour l'export
-                        )
+                        t=180,  # Beaucoup plus d'espace pour le titre
+                        b=200,  # Beaucoup plus d'espace pour source/note
+                        l=fig.layout.margin.l,  # Conserver la marge gauche
+                        r=fig.layout.margin.r   # Conserver la marge droite
                     )
                 )
                 
-                # Ajuster la position des annotations pour l'export
-                new_annotations = []
-                for ann in fig.layout.annotations:
-                    if "Source" in ann.text or "Note" in ann.text:
-                        # Repositionner les annotations source/note pour l'export
-                        ann_copy = ann.copy()
-                        ann_copy.y = -0.13 if "Source" in ann.text else -0.18  # Position fixe pour l'export
-                        ann_copy.font.size = 14  # Police plus grande
-                        new_annotations.append(ann_copy)
-                    else:
-                        new_annotations.append(ann)
-                
-                fig.layout.annotations = new_annotations
+                # Repositionner les annotations source/note plus haut
+                if fig_export.layout.annotations:
+                    new_annotations = []
+                    for ann in fig_export.layout.annotations:
+                        # Ne modifier que les annotations de source et note
+                        if any(keyword in str(ann.text) for keyword in ["Source", "Note"]):
+                            ann_copy = ann.copy()
+                            # Positions plus hautes (valeurs moins négatives)
+                            if "Source" in str(ann.text):
+                                ann_copy.y = -0.10
+                            elif "Note" in str(ann.text):
+                                ann_copy.y = -0.15
+                            # Augmenter la taille de police pour la lisibilité
+                            ann_copy.font.size = 14
+                            new_annotations.append(ann_copy)
+                        else:
+                            new_annotations.append(ann)
+                    
+                    fig_export.layout.annotations = new_annotations
             
-            # Exporter en PNG avec une résolution plus élevée
-            fig.write_image(buf, format="png", scale=3.0)  # Résolution augmentée
-
+            # Autres types de graphiques
+            else:
+                if source or note:
+                    # Augmenter la marge du bas si source ou note sont présentes
+                    fig_export.update_layout(
+                        margin=dict(
+                            b=200,  # Plus d'espace pour source/note
+                            t=120   # Plus d'espace pour le titre
+                        )
+                    )
+            
+            # Exporter en PNG
+            fig_export.write_image(
+                buf,
+                format="png",
+                scale=2.0,  # Haute résolution
+                validate=False  # Désactiver la validation pour éviter certaines erreurs
+            )
+            
         elif export_type == 'table':
             plt.savefig(
                 buf, 
@@ -1511,7 +1508,7 @@ def export_visualization(fig, export_type, var_name, source="", note="", data_to
                 dpi=300,
                 facecolor='white',
                 edgecolor='none',
-                pad_inches=0.2
+                pad_inches=0.3  # Plus de padding
             )
             plt.close()
 
@@ -1536,9 +1533,9 @@ def export_visualization(fig, export_type, var_name, source="", note="", data_to
         return True
 
     except Exception as e:
-        st.error(f"❌ Erreur lors de l'export : {str(e)}")
+        st.error(f"Erreur lors de l'export : {str(e)}")
         import traceback
-        st.error(traceback.format_exc())  # Afficher la trace complète pour le débogage
+        st.error(traceback.format_exc())  # Afficher la trace pour le débogage
         return False
 
 # Fonctions de manipulation des données
