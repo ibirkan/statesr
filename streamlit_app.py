@@ -518,20 +518,20 @@ def plot_dotplot(data, title, x_label, y_label, color_palette, show_values=True,
 
 def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", color_palette=None, source="", note="", is_export=False):
     """
-    Crée un graphique à barres horizontales optimisé pour éviter les problèmes de troncature.
+    Crée un graphique à barres horizontales optimisé pour éviter les problèmes de troncature et améliorer l'affichage.
     
     Args:
-        data (DataFrame): DataFrame contenant les modalités et les effectifs/taux
-        title (str): Titre du graphique
-        x_label (str): Nom de l'axe X
-        value_type (str): "Effectif" ou "Taux (%)"
-        color_palette (list): Liste de couleurs
-        source (str): Source des données
-        note (str): Note explicative
-        is_export (bool): False pour Streamlit, True pour export HD
-        
+        data (DataFrame): Données avec les colonnes 'Modalités' et 'Effectif' ou 'Taux (%)'.
+        title (str): Titre du graphique.
+        x_label (str): Nom de l'axe X.
+        value_type (str): "Effectif" ou "Taux (%)".
+        color_palette (list): Liste de couleurs.
+        source (str): Source des données.
+        note (str): Note explicative.
+        is_export (bool): Mode export (True) ou affichage Streamlit (False).
+    
     Returns:
-        go.Figure: Graphique Plotly
+        go.Figure: Graphique Plotly.
     """
     import textwrap
 
@@ -566,10 +566,10 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
         width=900,
         height=100 + (len(data) * 60),  # Hauteur dynamique
         margin=dict(
-            l=250,
+            l=250,  # Large marge pour éviter la troncature des labels
             r=100,
             t=100,
-            b=180 if not is_export else 150  # ✅ Augmenter la marge basse uniquement pour Streamlit
+            b=220 if not is_export else 180  # ✅ Augmenter la marge basse uniquement pour Streamlit
         ),
         title=dict(
             text=title,
@@ -618,7 +618,7 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
         annotations.append(dict(
             text=f"📌 Source : {source}",
             x=0,
-            y=-0.25 if is_export else -0.35,  # ✅ Descendre la source dans l'affichage Streamlit
+            y=-0.40 if not is_export else -0.25,  # ✅ Descendre encore plus la source pour Streamlit
             xref='paper',
             yref='paper',
             showarrow=False,
@@ -631,7 +631,7 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
         annotations.append(dict(
             text=f"📝 Note : {note}",
             x=0,
-            y=-0.32 if is_export else -0.42,  # ✅ Descendre encore plus bas pour l'affichage Streamlit
+            y=-0.48 if not is_export else -0.32,  # ✅ Descendre encore plus la note pour Streamlit
             xref='paper',
             yref='paper',
             showarrow=False,
