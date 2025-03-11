@@ -935,9 +935,9 @@ def plot_qualitative_treemap(data, title, color_palette, source="", note=""):
 
     return fig
 
-def plot_radar(data, title, color_palette, source="", note=""):
+def plot_radar(data, title, color_palette, source="", note="", value_type="Effectif"):
     """
-    Crée un graphique radar pour comparer des modalités.
+    Crée un graphique radar pour comparer des modalités en Effectif ou Taux (%).
     
     Args:
         data (DataFrame): DataFrame avec les colonnes 'Modalités' et 'Effectif'
@@ -945,26 +945,35 @@ def plot_radar(data, title, color_palette, source="", note=""):
         color_palette (list): Liste de couleurs
         source (str): Source des données
         note (str): Note explicative
+        value_type (str): "Effectif" ou "Taux (%)" pour l'affichage
         
     Returns:
         go.Figure: Figure Plotly
     """
-    # Renommer les colonnes si nécessaire
+    # ✅ Renommer les colonnes si nécessaire
     data = data.copy()
     if data.columns[0] != 'Modalités':
         data = data.rename(columns={data.columns[0]: 'Modalités'})
     
-    # Préparation des données pour le radar
+    # ✅ Sélection de la colonne de valeurs (Effectif ou Taux)
+    if value_type == "Taux (%)":
+        if "Taux (%)" not in data.columns:
+            data["Taux (%)"] = (data["Effectif"] / data["Effectif"].sum() * 100).round(1)  # ✅ Calcul du taux
+        y_column = "Taux (%)"
+    else:
+        y_column = "Effectif"
+
+    # ✅ Préparation des données pour le radar
     categories = data['Modalités'].tolist()
-    values = data['Effectif'].tolist()
+    values = data[y_column].tolist()
     
-    # Fermer la boucle en répétant le premier point
+    # ✅ Fermer la boucle en répétant le premier point
     categories.append(categories[0])
     values.append(values[0])
     
     fig = go.Figure()
     
-    # Conversion de la couleur hex en rgba pour la transparence
+    # ✅ Conversion de la couleur hex en rgba pour la transparence
     def hex_to_rgba(hex_color, alpha=0.5):
         hex_color = hex_color.lstrip('#')
         r = int(hex_color[0:2], 16)
@@ -980,16 +989,16 @@ def plot_radar(data, title, color_palette, source="", note=""):
         fill='toself',
         fillcolor=fill_color,
         line=dict(color=color_palette[0], width=2),
-        name='Valeurs'
+        name=y_column  # ✅ Adaptation du nom selon Effectif ou Taux (%)
     ))
     
-    # Annotations pour la source et la note
+    # ✅ Annotations pour la source et la note
     annotations = []
     
     if source or note:
         if source:
             annotations.append(dict(
-                text=f"Source : {source}",
+                text=f"📌 Source : {source}",
                 x=0,
                 y=-0.15,
                 xref='paper',
@@ -1003,7 +1012,7 @@ def plot_radar(data, title, color_palette, source="", note=""):
         if note:
             note_y_pos = -0.15 - 0.05 if source else -0.15
             annotations.append(dict(
-                text=f"Note : {note}",
+                text=f"📝 Note : {note}",
                 x=0,
                 y=note_y_pos,
                 xref='paper',
@@ -1014,7 +1023,7 @@ def plot_radar(data, title, color_palette, source="", note=""):
                 xanchor='left'
             ))
     
-    # Configuration du layout
+    # ✅ Configuration du layout
     fig.update_layout(
         title=dict(
             text=title,
