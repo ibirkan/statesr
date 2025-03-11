@@ -3307,6 +3307,9 @@ def main():
                                 value=st.session_state.table_title if 'table_title' in st.session_state else f"Distribution de {var}", 
                                 key="viz_title"
                             )
+
+                            # ✅ Définition de y_axis par défaut pour éviter l'erreur
+                            y_axis = None 
                             
                             if graph_type not in ["Treemap", "Radar"]:
                                 x_axis = st.text_input(
