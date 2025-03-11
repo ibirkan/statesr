@@ -1426,13 +1426,14 @@ def export_visualization(fig, export_type, var_name, source="", note="", data_to
                     # Repositionner explicitement les annotations source/note
                     new_annotations = []
                     for ann in export_fig.layout.annotations:
-                        new_ann = dict(ann)
-                        # Ajuster uniquement source/note
+                        # Créer une nouvelle annotation avec les mêmes propriétés
+                        # Mais modifier la position y pour source/note
+                        new_ann = ann.copy()
                         if "Source" in str(ann.text):
-                            new_ann['y'] = -0.15
+                            new_ann.y = -0.15
                         elif "Note" in str(ann.text):
-                            new_ann['y'] = -0.22
-                        new_annotations.append(go.layout.Annotation(new_ann))
+                            new_ann.y = -0.22
+                        new_annotations.append(new_ann)
                     
                     export_fig.layout.annotations = new_annotations
             else:
