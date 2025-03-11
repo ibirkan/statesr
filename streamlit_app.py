@@ -516,51 +516,60 @@ def plot_dotplot(data, title, x_label, y_label, color_palette, show_values=True,
     
     return fig
 
-def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", color_palette=None, source="", note=""):
+def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", color_palette=None, source="", note="", is_export=False):
     """
     Crée un graphique à barres horizontales optimisé pour éviter les problèmes de troncature.
+    
+    Args:
+        data (DataFrame): DataFrame contenant les modalités et les effectifs/taux
+        title (str): Titre du graphique
+        x_label (str): Nom de l'axe X
+        value_type (str): "Effectif" ou "Taux (%)"
+        color_palette (list): Liste de couleurs
+        source (str): Source des données
+        note (str): Note explicative
+        is_export (bool): False pour Streamlit, True pour export HD
+        
+    Returns:
+        go.Figure: Graphique Plotly
     """
     import textwrap
-    
-    # Copie et préparation des données
+
+    # ✅ Copie et préparation des données
     data = data.copy()
     if data.columns[0] != 'Modalités':
         data = data.rename(columns={data.columns[0]: 'Modalités'})
-    
-    # Tri des données
+
+    # ✅ Tri des données
     data = data.sort_values('Effectif', ascending=True).reset_index(drop=True)
-    
-    # Calcul des taux si nécessaire
+
+    # ✅ Calcul des taux si nécessaire
     if value_type == "Taux (%)" and "Taux (%)" not in data.columns:
         total = data["Effectif"].sum()
         data["Taux (%)"] = (data["Effectif"] / total * 100).round(1)
-    
-    # Colonne à afficher
+
+    # ✅ Colonne à afficher
     y_column = "Taux (%)" if value_type == "Taux (%)" else "Effectif"
-    
-    # Préparation des labels avec retour à la ligne
-    wrapped_labels = []
-    for label in data['Modalités']:
-        # Préserver les espaces et éviter les coupures de mots
-        if isinstance(label, str) and len(label) > 20:
-            wrapped = "<br>".join(textwrap.wrap(label, width=20))
-        else:
-            wrapped = str(label)
-        wrapped_labels.append(wrapped)
-    
-    # Création du graphique
+
+    # ✅ Préparation des labels avec retour à la ligne
+    wrapped_labels = [
+        "<br>".join(textwrap.wrap(str(label), width=20)) if isinstance(label, str) and len(label) > 20 else str(label)
+        for label in data['Modalités']
+    ]
+
+    # ✅ Création du graphique
     fig = go.Figure()
-    
-    # Configuration pour les graphiques Plotly
+
+    # ✅ Configuration générale
     fig.update_layout(
         autosize=False,
-        width=900,  # Largeur fixe initiale
+        width=900,
         height=100 + (len(data) * 60),  # Hauteur dynamique
         margin=dict(
-            l=250,  # Marge gauche large pour les libellés
-            r=100,  # Marge droite pour les valeurs
-            t=100,  # Marge haute pour le titre
-            b=150   # Marge basse pour source/note
+            l=250,
+            r=100,
+            t=100,
+            b=180 if not is_export else 150  # ✅ Augmenter la marge basse uniquement pour Streamlit
         ),
         title=dict(
             text=title,
@@ -571,8 +580,8 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
         plot_bgcolor='white',
         paper_bgcolor='white'
     )
-    
-    # Ajout des barres
+
+    # ✅ Ajout des barres
     fig.add_trace(go.Bar(
         y=wrapped_labels,
         x=data[y_column],
@@ -584,32 +593,32 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
         width=0.7,
         hovertemplate="%{y}<br>%{x}<extra></extra>"
     ))
-    
-    # Configuration des axes
+
+    # ✅ Configuration des axes
     fig.update_yaxes(
         title=x_label,
         autorange="reversed",
         tickfont=dict(family="Marianne, sans-serif", size=14)
     )
-    
-    # Ajouter un peu d'espace à droite pour les valeurs
+
+    # ✅ Ajouter un peu d'espace à droite pour les valeurs
     max_value = data[y_column].max()
     padding = max_value * 0.15
-    
+
     fig.update_xaxes(
         title=value_type,
         range=[0, max_value + padding],
         tickfont=dict(family="Marianne, sans-serif", size=14),
         gridcolor='lightgray'
     )
-    
-    # Annotations pour source et note
+
+    # ✅ Annotations pour source et note
     annotations = []
     if source:
         annotations.append(dict(
-            text=f"Source : {source}",
+            text=f"📌 Source : {source}",
             x=0,
-            y=-0.20,  # Position basse
+            y=-0.25 if is_export else -0.35,  # ✅ Descendre la source dans l'affichage Streamlit
             xref='paper',
             yref='paper',
             showarrow=False,
@@ -617,12 +626,12 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
             align='left',
             xanchor='left'
         ))
-    
+
     if note:
         annotations.append(dict(
-            text=f"Note : {note}",
+            text=f"📝 Note : {note}",
             x=0,
-            y=-0.30,  # Position encore plus basse
+            y=-0.32 if is_export else -0.42,  # ✅ Descendre encore plus bas pour l'affichage Streamlit
             xref='paper',
             yref='paper',
             showarrow=False,
@@ -630,12 +639,12 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
             align='left',
             xanchor='left'
         ))
-    
+
     fig.update_layout(annotations=annotations)
-    
-    # Ajuster certaines propriétés pour optimiser l'affichage
-    fig._is_horizontal_bar = True  # Marquer pour l'export
-    
+
+    # ✅ Marquer pour l'export
+    fig._is_horizontal_bar = True
+
     return fig
 
 def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show_values=True, source="", note="", value_type="Effectif"):
