@@ -674,7 +674,7 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
 
     return fig
 
-def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show_values=True, source="", note=""):
+def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show_values=True, source="", note="", value_type="Effectif"):
     """
     Crée un graphique lollipop amélioré pour l'analyse univariée qualitative.
     
@@ -687,19 +687,26 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
         show_values (bool): Afficher les valeurs sur le graphique
         source (str): Source des données
         note (str): Note explicative
+        value_type (str): "Effectif" ou "Taux (%)" pour adapter l'affichage
         
     Returns:
         go.Figure: Figure Plotly
     """
     fig = go.Figure()
 
-    # Renommer la colonne temporairement pour le traitement
-    data = data.copy()
-    old_column = data.columns[0]  # première colonne qui contient les modalités
-    data = data.rename(columns={old_column: 'Modalités'})
+    # ✅ Sélection de la bonne colonne (Effectif ou Taux)
+    y_column = "Taux (%)" if value_type == "Taux (%)" else "Effectif"
     
-    # Calculer l'intervalle optimal pour l'axe y
-    y_max = data['Effectif'].max()
+    # ✅ Vérifier que la colonne "Taux (%)" existe si nécessaire
+    if value_type == "Taux (%)" and "Taux (%)" not in data.columns:
+        total = data["Effectif"].sum()
+        data["Taux (%)"] = (data["Effectif"] / total * 100).round(1)
+
+    # ✅ Trier les données pour un affichage clair
+    data = data.sort_values(y_column, ascending=True).reset_index(drop=True)
+    
+    # ✅ Calcul des intervalles pour l'axe Y
+    y_max = data[y_column].max()
     target_ticks = 8
     raw_interval = y_max / target_ticks
     magnitude = 10 ** math.floor(math.log10(raw_interval))
@@ -716,8 +723,8 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
         
     y_range_max = ((y_max + (y_max * 0.1)) // tick_interval + 1) * tick_interval
     
-    # Pour chaque point, créer une ligne verticale séparée
-    for idx, (x, y) in enumerate(zip(data['Modalités'], data['Effectif'])):
+    # ✅ Ajouter les lignes verticales (liaisons)
+    for idx, (x, y) in enumerate(zip(data['Modalités'], data[y_column])):
         fig.add_trace(go.Scatter(
             x=[x, x],
             y=[0, y],
@@ -727,22 +734,22 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
             hoverinfo='none'
         ))
     
-    # Ajouter les points
+    # ✅ Ajouter les points (lollipops)
     fig.add_trace(go.Scatter(
         x=data['Modalités'],
-        y=data['Effectif'],
+        y=data[y_column],
         mode='markers+text' if show_values else 'markers',
         marker=dict(size=14, color=color_palette[0], line=dict(width=1, color='white')),
-        text=data['Effectif'] if show_values else None,
+        text=data[y_column].apply(lambda x: f"{x:.1f}%" if value_type == "Taux (%)" else f"{int(x)}") if show_values else None,
         textposition='top center',
         showlegend=False,
         hovertemplate="%{x}<br>Valeur: %{y:.1f}<extra></extra>"
     ))
 
-    # Créer la liste des annotations
+    # ✅ Annotations pour la source et la note
     annotations = []
     
-    # Ajouter les modalités sur deux lignes si nécessaires
+    # ✅ Gestion des modalités longues (affichage sur deux lignes si nécessaire)
     for i, modalite in enumerate(data['Modalités']):
         words = str(modalite).split()
         if len(words) > 2:
@@ -774,13 +781,13 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
                     font=dict(size=15)
                 )
             )
-    
-    # Ajouter source et note si présentes
+
+    # ✅ Ajouter la source et la note sous le graphique
     if source or note:
         if source:
             annotations.append(
                 dict(
-                    text=f"Source : {source}",
+                    text=f"📌 Source : {source}",
                     align='left',
                     showarrow=False,
                     xref='paper',
@@ -793,7 +800,7 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
         if note:
             annotations.append(
                 dict(
-                    text=f"Note : {note}",
+                    text=f"📝 Note : {note}",
                     align='left',
                     showarrow=False,
                     xref='paper',
@@ -804,7 +811,7 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
                 )
             )
 
-    # Configuration de la mise en page
+    # ✅ Configuration de la mise en page
     fig.update_layout(
         title=dict(
             text=title,
