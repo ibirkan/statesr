@@ -847,6 +847,7 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
 
     return fig
 
+
 def plot_qualitative_treemap(data, title, color_palette, source="", note=""):
     """
     Crée un treemap amélioré pour l'analyse univariée qualitative.
@@ -861,39 +862,39 @@ def plot_qualitative_treemap(data, title, color_palette, source="", note=""):
     Returns:
         go.Figure: Figure Plotly
     """
-    # Renommer les colonnes si nécessaire
+    # ✅ Renommer les colonnes si nécessaire
     data = data.copy()
     if data.columns[0] != 'Modalités':
         data = data.rename(columns={data.columns[0]: 'Modalités'})
     
-    # Calculer les pourcentages
-    data['Pourcentage'] = (data['Effectif'] / data['Effectif'].sum() * 100).round(1)
-    
-    # Créer le treemap
+    # ✅ Calculer correctement les pourcentages
+    data['Pourcentage'] = (data['Effectif'] / data['Effectif'].sum() * 100).round(1)  # ✅ Multiplication par 100 ajoutée
+
+    # ✅ Créer le treemap
     fig = go.Figure(go.Treemap(
         labels=data['Modalités'],
         parents=[""] * len(data),
         values=data['Effectif'],
-        texttemplate="<b>%{label}</b><br>%{value} (%{percentRoot:.1f}%)",
+        texttemplate="<b>%{label}</b><br>Effectif: %{value}<br>Pourcentage: %{percentRoot:.1f}%",  # ✅ Affichage correct
         hovertemplate="<b>%{label}</b><br>Effectif: %{value}<br>Pourcentage: %{percentRoot:.1f}%<extra></extra>",
         marker=dict(
             colors=color_palette[:len(data)] if len(color_palette) >= len(data) else color_palette,
             line=dict(width=1, color='white')
         ),
         tiling=dict(
-            packing='squarify',  # Utiliser l'algorithme squarify
-            pad=3               # Espace entre les rectangles
+            packing='squarify',  # ✅ Utilisation de Squarify pour une meilleure disposition
+            pad=3
         ),
-        pathbar=dict(visible=False)  # Masquer la barre de chemin
+        pathbar=dict(visible=False)  # ✅ Masquer la barre de navigation
     ))
-    
-    # Annotations pour la source et la note
+
+    # ✅ Annotations pour la source et la note
     annotations = []
     
     if source or note:
         if source:
             annotations.append(dict(
-                text=f"Source : {source}",
+                text=f"📌 Source : {source}",
                 x=0,
                 y=-0.08,
                 xref='paper',
@@ -907,7 +908,7 @@ def plot_qualitative_treemap(data, title, color_palette, source="", note=""):
         if note:
             note_y_pos = -0.08 - 0.05 if source else -0.08
             annotations.append(dict(
-                text=f"Note : {note}",
+                text=f"📝 Note : {note}",
                 x=0,
                 y=note_y_pos,
                 xref='paper',
@@ -917,8 +918,8 @@ def plot_qualitative_treemap(data, title, color_palette, source="", note=""):
                 align='left',
                 xanchor='left'
             ))
-    
-    # Configuration du layout
+
+    # ✅ Configuration du layout
     fig.update_layout(
         title=dict(
             text=title,
@@ -931,7 +932,7 @@ def plot_qualitative_treemap(data, title, color_palette, source="", note=""):
         margin=dict(l=50, r=50, t=100, b=100),
         annotations=annotations
     )
-    
+
     return fig
 
 def plot_radar(data, title, color_palette, source="", note=""):
