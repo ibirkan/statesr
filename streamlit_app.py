@@ -1388,7 +1388,7 @@ def create_quantitative_dashboard(data_series, var_name):
 
 def export_visualization(fig, export_type, var_name, source="", note="", data_to_plot=None, is_plotly=True, graph_type="bar"):
     """
-    Fonction d'export complètement revue pour résoudre les problèmes de troncature.
+    Fonction d'export optimisée avec positionnement correct de la source et de la note.
     """
     try:
         buf = BytesIO()
@@ -1411,6 +1411,9 @@ def export_visualization(fig, export_type, var_name, source="", note="", data_to
                     left_margin = 300 + (max_label_len * 6)  # Marge gauche généreuse
                     right_margin = 200  # Marge droite fixe
                     
+                    # Marge inférieure généreuse pour la source et la note
+                    bottom_margin = 150  # Espace suffisant sous l'axe X
+                    
                     # Ajuster la mise en page pour l'export
                     export_fig.update_layout(
                         width=export_width,
@@ -1419,26 +1422,32 @@ def export_visualization(fig, export_type, var_name, source="", note="", data_to
                             l=left_margin,
                             r=right_margin,
                             t=150,  # Marge haute pour le titre
-                            b=200   # Marge basse pour la source et note
+                            b=bottom_margin  # Marge basse pour la source et note
                         )
                     )
                     
-                    # Créer de nouvelles annotations pour source et note
-                    new_annotations = []
-                    
-                    # Garder les annotations qui ne sont pas source/note
+                    # Conserver les annotations qui ne sont pas source/note (titre, etc.)
+                    non_source_note_annotations = []
                     for ann in export_fig.layout.annotations:
                         if "Source" not in str(ann.text) and "Note" not in str(ann.text):
-                            new_annotations.append(ann)
+                            non_source_note_annotations.append(ann)
                     
-                    # Recréer explicitement les annotations source/note
+                    # Calculer la position Y en fonction de la hauteur du graphique
+                    # pour placer les annotations sous l'axe X
+                    fig_height = export_height - bottom_margin  # Hauteur disponible pour le graphique
+                    
+                    # Positions absolues au lieu de relatives au papier
+                    source_y = -50  # Position en pixels sous l'axe X
+                    note_y = -80    # Position encore plus basse
+                    
+                    # Recréer les annotations source/note sous l'axe X
                     if source:
-                        new_annotations.append(dict(
-                            text=f"Source : {source}",
-                            x=0,
-                            y=-0.15,
-                            xref='paper',
-                            yref='paper',
+                        non_source_note_annotations.append(dict(
+                            text=f"<b>Source</b> : {source}",
+                            x=left_margin,  # Alignement à gauche avec la marge
+                            y=source_y,
+                            xref='x',
+                            yref='y domain',  # Relatif au domaine de l'axe y
                             showarrow=False,
                             font=dict(family="Marianne, sans-serif", size=12, color="gray"),
                             align='left',
@@ -1446,25 +1455,33 @@ def export_visualization(fig, export_type, var_name, source="", note="", data_to
                         ))
                     
                     if note:
-                        new_annotations.append(dict(
-                            text=f"Note : {note}",
-                            x=0,
-                            y=-0.22,
-                            xref='paper',
-                            yref='paper',
+                        non_source_note_annotations.append(dict(
+                            text=f"<b>Note</b> : {note}",
+                            x=left_margin,  # Alignement à gauche avec la marge
+                            y=note_y,
+                            xref='x',
+                            yref='y domain',  # Relatif au domaine de l'axe y
                             showarrow=False,
                             font=dict(family="Marianne, sans-serif", size=12, color="gray"),
                             align='left',
                             xanchor='left'
                         ))
                     
-                    export_fig.update_layout(annotations=new_annotations)
+                    # Appliquer les nouvelles annotations
+                    export_fig.update_layout(annotations=non_source_note_annotations)
+                    
+                    # Ajouter un espace supplémentaire au fond pour s'assurer que les annotations sont visibles
+                    export_fig.update_layout(
+                        yaxis=dict(
+                            domain=[0.1, 1]  # Décaler le domaine de l'axe y vers le haut
+                        )
+                    )
             else:
                 # Paramètres pour autres types de graphiques
                 export_fig.update_layout(
                     width=1200,
                     height=800,
-                    margin=dict(l=80, r=80, t=100, b=200)
+                    margin=dict(l=80, r=80, t=100, b=150)
                 )
             
             # Exporter avec une haute résolution
