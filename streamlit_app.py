@@ -1388,103 +1388,78 @@ def create_quantitative_dashboard(data_series, var_name):
 
 def export_visualization(fig, export_type, var_name, source="", note="", data_to_plot=None, is_plotly=True, graph_type="bar"):
     """
-    Fonction d'export optimisée avec positionnement correct de la source et de la note.
+    Fonction d'export simplifiée avec une approche robuste pour les annotations.
     """
     try:
         buf = BytesIO()
         
         if export_type == 'graph' and is_plotly:
-            # Créer une version dédiée à l'export
+            # Créer une copie de la figure pour l'export
             export_fig = go.Figure(fig)
             
-            # Paramètres spécifiques pour les barres horizontales
-            if hasattr(fig, '_is_horizontal_bar') or graph_type in ["horizontal", "Horizontal Bar"]:
-                if data_to_plot is not None:
-                    # Mesurer la longueur maximale des libellés
-                    max_label_len = max([len(str(m)) for m in data_to_plot['Modalités']])
-                    
-                    # Dimensionnement spécifique
-                    export_width = 1600  # Largeur fixe, généreuse
-                    export_height = 200 + (len(data_to_plot) * 80)  # Hauteur dynamique
-                    
-                    # Calcul des marges adaptées
-                    left_margin = 300 + (max_label_len * 6)  # Marge gauche généreuse
-                    right_margin = 200  # Marge droite fixe
-                    
-                    # Marge inférieure généreuse pour la source et la note
-                    bottom_margin = 150  # Espace suffisant sous l'axe X
-                    
-                    # Ajuster la mise en page pour l'export
-                    export_fig.update_layout(
-                        width=export_width,
-                        height=export_height,
-                        margin=dict(
-                            l=left_margin,
-                            r=right_margin,
-                            t=150,  # Marge haute pour le titre
-                            b=bottom_margin  # Marge basse pour la source et note
-                        )
-                    )
-                    
-                    # Conserver les annotations qui ne sont pas source/note (titre, etc.)
-                    non_source_note_annotations = []
-                    for ann in export_fig.layout.annotations:
-                        if "Source" not in str(ann.text) and "Note" not in str(ann.text):
-                            non_source_note_annotations.append(ann)
-                    
-                    # Calculer la position Y en fonction de la hauteur du graphique
-                    # pour placer les annotations sous l'axe X
-                    fig_height = export_height - bottom_margin  # Hauteur disponible pour le graphique
-                    
-                    # Positions absolues au lieu de relatives au papier
-                    source_y = -50  # Position en pixels sous l'axe X
-                    note_y = -80    # Position encore plus basse
-                    
-                    # Recréer les annotations source/note sous l'axe X
-                    if source:
-                        non_source_note_annotations.append(dict(
-                            text=f"<b>Source</b> : {source}",
-                            x=left_margin,  # Alignement à gauche avec la marge
-                            y=source_y,
-                            xref='x',
-                            yref='y domain',  # Relatif au domaine de l'axe y
-                            showarrow=False,
-                            font=dict(family="Marianne, sans-serif", size=12, color="gray"),
-                            align='left',
-                            xanchor='left'
-                        ))
-                    
-                    if note:
-                        non_source_note_annotations.append(dict(
-                            text=f"<b>Note</b> : {note}",
-                            x=left_margin,  # Alignement à gauche avec la marge
-                            y=note_y,
-                            xref='x',
-                            yref='y domain',  # Relatif au domaine de l'axe y
-                            showarrow=False,
-                            font=dict(family="Marianne, sans-serif", size=12, color="gray"),
-                            align='left',
-                            xanchor='left'
-                        ))
-                    
-                    # Appliquer les nouvelles annotations
-                    export_fig.update_layout(annotations=non_source_note_annotations)
-                    
-                    # Ajouter un espace supplémentaire au fond pour s'assurer que les annotations sont visibles
-                    export_fig.update_layout(
-                        yaxis=dict(
-                            domain=[0.1, 1]  # Décaler le domaine de l'axe y vers le haut
-                        )
-                    )
-            else:
-                # Paramètres pour autres types de graphiques
-                export_fig.update_layout(
-                    width=1200,
-                    height=800,
-                    margin=dict(l=80, r=80, t=100, b=150)
-                )
+            # Définir des dimensions fixes généreuses pour l'export
+            export_width = 1600
+            export_height = 900
             
-            # Exporter avec une haute résolution
+            # Marges très généreuses pour tous les types de graphiques
+            export_fig.update_layout(
+                width=export_width,
+                height=export_height,
+                margin=dict(
+                    l=400,  # Marge gauche très généreuse pour les libellés
+                    r=150,  # Marge droite
+                    t=150,  # Marge haute pour le titre
+                    b=250   # Marge basse très généreuse pour source/note
+                )
+            )
+            
+            # Supprimer toutes les annotations existantes de source et note
+            annotations = []
+            for ann in export_fig.layout.annotations:
+                if "Source" not in str(ann.text) and "Note" not in str(ann.text):
+                    annotations.append(ann)
+            
+            # Ajouter les annotations source et note de manière fixe et robuste
+            if source:
+                annotations.append(dict(
+                    text=f"<b>Source :</b> {source}",
+                    x=0,
+                    y=-0.25,  # Position basse fixe
+                    xref='paper',
+                    yref='paper',
+                    showarrow=False,
+                    font=dict(family="Marianne, sans-serif", size=14, color="black"),
+                    align='left',
+                    xanchor='left'
+                ))
+            
+            if note:
+                annotations.append(dict(
+                    text=f"<b>Note :</b> {note}",
+                    x=0,
+                    y=-0.32,  # Position encore plus basse
+                    xref='paper',
+                    yref='paper',
+                    showarrow=False,
+                    font=dict(family="Marianne, sans-serif", size=14, color="black"),
+                    align='left',
+                    xanchor='left'
+                ))
+            
+            # Mettre à jour les annotations
+            export_fig.update_layout(annotations=annotations)
+            
+            # Pour les graphiques horizontaux, étendre la plage x pour éviter la troncature
+            if hasattr(fig, '_is_horizontal_bar') or graph_type in ["horizontal", "Horizontal Bar"]:
+                # Calculer la valeur maximale et ajouter un padding
+                if data_to_plot is not None:
+                    col = "Taux (%)" if "Taux (%)" in data_to_plot.columns else "Effectif"
+                    max_val = data_to_plot[col].max()
+                    padding = max_val * 0.2  # 20% de padding
+                    
+                    export_fig.update_xaxes(range=[0, max_val + padding])
+            
+            # Exporter en haute résolution
             export_fig.write_image(
                 buf,
                 format="png",
@@ -1497,10 +1472,7 @@ def export_visualization(fig, export_type, var_name, source="", note="", data_to
                 buf, 
                 format='png',
                 bbox_inches='tight',
-                dpi=300,
-                facecolor='white',
-                edgecolor='none',
-                pad_inches=0.5
+                dpi=300
             )
             plt.close()
 
