@@ -655,49 +655,35 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
 
 def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show_values=True, source="", note="", value_type="Effectif"):
     """
-    Crée un graphique Lollipop optimisé pour une meilleure lisibilité.
-
-    Args:
-        data (DataFrame): DataFrame contenant les modalités et les valeurs.
-        title (str): Titre du graphique.
-        x_label (str): Étiquette de l'axe X.
-        y_label (str): Étiquette de l'axe Y.
-        color_palette (list): Liste de couleurs.
-        show_values (bool): Afficher les valeurs sur les points.
-        source (str): Source des données.
-        note (str): Note explicative.
-        value_type (str): "Effectif" ou "Taux (%)" pour adapter l'affichage.
-
-    Returns:
-        go.Figure: Figure Plotly
+    Crée un graphique Lollipop optimisé pour l'affichage des modalités et des valeurs.
     """
     import textwrap
     
-    # ✅ Vérifier si l'utilisateur veut afficher les effectifs ou les taux
+    # ✅ Vérifier si on affiche les effectifs ou les taux
     y_column = "Taux (%)" if value_type == "Taux (%)" else "Effectif"
 
-    # ✅ Calculer les taux si nécessaire
+    # ✅ Calcul des taux si nécessaire
     if value_type == "Taux (%)" and "Taux (%)" not in data.columns:
         total = data["Effectif"].sum()
         data["Taux (%)"] = (data["Effectif"] / total * 100).round(1)
 
-    # ✅ Trier les données pour un affichage clair
+    # ✅ Trier les données par ordre croissant
     data = data.sort_values(y_column, ascending=True).reset_index(drop=True)
 
-    # ✅ Appliquer un retour à la ligne automatique sur les modalités longues (23 caractères max)
+    # ✅ Appliquer un retour à la ligne automatique sur les modalités longues
     wrapped_labels = [
         "<br>".join(textwrap.wrap(label, width=23))  
         for label in data["Modalités"]
     ]
 
-    # ✅ Calcul de la hauteur de la marge basse en fonction de la longueur des modalités
+    # ✅ Calcul de la hauteur de la marge basse pour éviter le chevauchement
     max_label_lines = max([label.count("<br>") + 1 for label in wrapped_labels])  
-    bottom_margin = 100 + (max_label_lines * 12)  # Ajustement dynamique
+    bottom_margin = 100 + (max_label_lines * 12)  
 
     # ✅ Création du graphique Lollipop
     fig = go.Figure()
 
-    # ✅ Ajouter les lignes verticales (liaisons)
+    # ✅ Ajouter les lignes verticales reliant les points à l'axe X
     for x, y in zip(wrapped_labels, data[y_column]):
         fig.add_trace(go.Scatter(
             x=[x, x],
@@ -720,6 +706,10 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
         hovertemplate="%{x}<br>Valeur: %{y:.1f}<extra></extra>"
     ))
 
+    # ✅ Ajustement dynamique de l’axe Y pour éviter les chevauchements
+    max_value = data[y_column].max()
+    padding = max_value * 0.15  # Ajout d’un espace pour éviter les chevauchements
+    
     # ✅ Ajustement dynamique des annotations (Source et Note)
     annotation_y = -0.4 - (0.02 * max_label_lines)  
 
@@ -742,7 +732,7 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
     # ✅ Appliquer les annotations au graphique
     fig.update_layout(annotations=annotations)
 
-    # ✅ Configuration de la mise en page
+    # ✅ Configuration de l'affichage
     fig.update_layout(
         title=dict(
             text=title,
@@ -752,7 +742,6 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
         ),
         xaxis=dict(
             title=x_label,
-            title_standoff=50,  # ✅ Ajustement pour éviter le chevauchement
             tickvals=list(range(len(data))),
             ticktext=wrapped_labels,  # ✅ Affichage clair des modalités
             tickangle=0,  # ✅ Texte bien horizontal
@@ -760,6 +749,7 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
         ),
         yaxis=dict(
             title=y_label,
+            range=[0, max_value + padding],  # ✅ Ajout d’un espace pour éviter le chevauchement
             showgrid=True,
             gridcolor='#e0e0e0'
         ),
