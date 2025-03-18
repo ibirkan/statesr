@@ -1395,7 +1395,7 @@ def export_visualization(fig, export_type, var_name, source="", note="", data_to
                 annotations.append(dict(
                     text=f"<b>Note :</b> {note}",
                     x=0,
-                    y=-0.32,  # Position encore plus basse
+                    y=-0.30,  # Position encore plus basse
                     xref='paper',
                     yref='paper',
                     showarrow=False,
