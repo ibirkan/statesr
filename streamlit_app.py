@@ -1364,10 +1364,16 @@ def export_visualization(fig, export_type, var_name, source="", note="", data_to
                 width=export_width,
                 height=export_height,
                 margin=dict(
-                    l=400,  # Marge gauche très généreuse pour les libellés
+                    l=400,  # Marge gauche généreuse pour les labels
                     r=150,  # Marge droite
                     t=150,  # Marge haute pour le titre
-                    b=250   # Marge basse très généreuse pour source/note
+                    b=250   # Marge basse généreuse pour source/note
+                ),
+                title=dict(
+                    text=f"<b>{fig.layout.title.text}</b>",  # ✅ Ajout du gras dans le titre
+                    font=dict(size=22, family="Marianne, sans-serif", color="black"),  # ✅ Taille + Police
+                    x=0.5,
+                    xanchor='center'
                 )
             )
             
