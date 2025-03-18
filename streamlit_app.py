@@ -683,25 +683,17 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
 
     # ✅ Trier les données pour un affichage clair
     data = data.sort_values(y_column, ascending=True).reset_index(drop=True)
-    
+
     # ✅ Calcul des intervalles pour l'axe Y
     y_max = data[y_column].max()
-    target_ticks = 8
-    raw_interval = y_max / target_ticks
-    magnitude = 10 ** math.floor(math.log10(raw_interval))
-    normalized = raw_interval / magnitude
-    
-    if normalized < 1.5:
-        tick_interval = magnitude
-    elif normalized < 3:
-        tick_interval = 2 * magnitude
-    elif normalized < 7.5:
-        tick_interval = 5 * magnitude
-    else:
-        tick_interval = 10 * magnitude
-        
-    y_range_max = ((y_max + (y_max * 0.1)) // tick_interval + 1) * tick_interval
-    
+    tick_interval = max(1, round(y_max / 6))
+    y_range_max = y_max + tick_interval
+
+    # ✅ Ajustement dynamique de la hauteur en fonction du nombre de modalités
+    num_modalites = len(data)
+    base_height = 600 + (num_modalites * 5)
+    bottom_margin = 150 + (num_modalites * 5)  # ✅ Plus de place en bas pour éviter le chevauchement
+
     # ✅ Ajouter les lignes verticales (liaisons)
     for idx, (x, y) in enumerate(zip(data['Modalités'], data[y_column])):
         fig.add_trace(go.Scatter(
@@ -712,7 +704,7 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
             showlegend=False,
             hoverinfo='none'
         ))
-    
+
     # ✅ Ajouter les points (lollipops)
     fig.add_trace(go.Scatter(
         x=data['Modalités'],
@@ -727,8 +719,8 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
 
     # ✅ Annotations pour la source et la note
     annotations = []
-    
-    # ✅ Gestion des modalités longues (affichage sur deux lignes si nécessaire)
+
+    # ✅ Gestion des modalités longues (affichage sur plusieurs lignes si nécessaire)
     for i, modalite in enumerate(data['Modalités']):
         words = str(modalite).split()
         if len(words) > 2:
@@ -738,10 +730,9 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
             annotations.append(
                 dict(
                     x=i,
-                    y=0,
+                    y=-y_range_max * 0.05,  # ✅ Abaisser les modalités pour éviter les chevauchements
                     text=f"{line1}<br>{line2}",
                     showarrow=False,
-                    yshift=-30,
                     xanchor='center',
                     yanchor='top',
                     font=dict(size=13)
@@ -751,10 +742,9 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
             annotations.append(
                 dict(
                     x=i,
-                    y=0,
+                    y=-y_range_max * 0.05,
                     text=modalite,
                     showarrow=False,
-                    yshift=-15,
                     xanchor='center',
                     yanchor='top',
                     font=dict(size=15)
@@ -762,33 +752,34 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
             )
 
     # ✅ Ajouter la source et la note sous le graphique
-    if source or note:
-        if source:
-            annotations.append(
-                dict(
-                    text=f" Source : {source}",
-                    align='left',
-                    showarrow=False,
-                    xref='paper',
-                    yref='paper',
-                    x=0,
-                    y=-0.25,
-                    font=dict(size=11, color='gray')
-                )
+    annotation_y = -0.25 - (0.05 * num_modalites)  # ✅ Dynamisation de la position
+
+    if source:
+        annotations.append(
+            dict(
+                text=f" Source : {source}",
+                align='left',
+                showarrow=False,
+                xref='paper',
+                yref='paper',
+                x=0,
+                y=annotation_y,
+                font=dict(size=11, color='gray')
             )
-        if note:
-            annotations.append(
-                dict(
-                    text=f" Note : {note}",
-                    align='left',
-                    showarrow=False,
-                    xref='paper',
-                    yref='paper',
-                    x=0,
-                    y=-0.28,
-                    font=dict(size=11, color='gray')
-                )
+        )
+    if note:
+        annotations.append(
+            dict(
+                text=f" Note : {note}",
+                align='left',
+                showarrow=False,
+                xref='paper',
+                yref='paper',
+                x=0,
+                y=annotation_y - 0.05,
+                font=dict(size=11, color='gray')
             )
+        )
 
     # ✅ Configuration de la mise en page
     fig.update_layout(
@@ -801,30 +792,28 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
             x=0.5,
             xanchor='center'
         ),
-        xaxis_title=dict(
-            text=x_label,
-            standoff=50
-        ),
-        yaxis_title=y_label,
-        plot_bgcolor='white',
-        showlegend=False,
-        height=600,
-        margin=dict(b=180, l=50, r=50, t=100),
         xaxis=dict(
-            showticklabels=False,
-            showgrid=False,
-            title_standoff=50
+            title=x_label,
+            title_standoff=80,  # ✅ Augmenter l'espace entre l'axe X et les modalités
+            tickvals=[],  # ✅ Supprime les ticks pour éviter la confusion
+            showgrid=False
         ),
         yaxis=dict(
+            title=y_label,
             range=[0, y_range_max],
             showgrid=True,
             gridcolor='#e0e0e0',
             dtick=tick_interval
         ),
+        plot_bgcolor='white',
+        showlegend=False,
+        height=base_height,
+        margin=dict(b=bottom_margin, l=50, r=50, t=100),  # ✅ Ajustement de la marge basse
         annotations=annotations
     )
 
     return fig
+
 
 def plot_qualitative_treemap(data, title, color_palette, source="", note=""):
     """
