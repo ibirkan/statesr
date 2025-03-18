@@ -616,34 +616,23 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
         gridcolor='lightgray'
     )
 
-    # ✅ Annotations pour source et note
-    annotations = []
-    annotation_y = -0.45 - (0.10 * num_bars)  # ✅ Dynamisation de la position
+    # ✅ Ajustement dynamique des annotations (Source et Note)
+    annotation_y = -0.5 - (0.02 * max_label_lines)  
 
+    annotations = []
     if source:
         annotations.append(dict(
-            text=f" Source : {source}",
-            x=0,
-            y=annotation_y,
-            xref='paper',
-            yref='paper',
-            showarrow=False,
-            font=dict(family="Marianne, sans-serif", size=10, color="gray"),
-            align='left',
-            xanchor='left'
+            xref="paper", yref="paper", 
+            x=0, y=annotation_y, 
+            text=f" Source : {source}", 
+            showarrow=False, font=dict(size=12, color="gray")
         ))
-
     if note:
         annotations.append(dict(
-            text=f" Note : {note}",
-            x=0,
-            y=annotation_y - 0.20,  # ✅ Espacement entre source et note
-            xref='paper',
-            yref='paper',
-            showarrow=False,
-            font=dict(family="Marianne, sans-serif", size=10, color="gray"),
-            align='left',
-            xanchor='left'
+            xref="paper", yref="paper", 
+            x=0, y=annotation_y - 0.05, 
+            text=f" Note : {note}", 
+            showarrow=False, font=dict(size=12, color="gray")
         ))
 
     fig.update_layout(annotations=annotations)
