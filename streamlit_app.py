@@ -3603,8 +3603,8 @@ def main():
                         except Exception as e:
                             st.error(f"Erreur lors de la génération du graphique : {str(e)}")
                                 
-                else:  # Pour les variables qualitatives
-                    # ✅ Définir les variables de contrôle pour les non-réponses
+                if not is_numeric:
+                    # Définir les variables de contrôle pour les non-réponses
                     exclude_missing = st.checkbox("Exclure les non-réponses", key="exclude_missing_checkbox")
                     missing_label = "Non réponse"
                     
@@ -3614,89 +3614,30 @@ def main():
                             value="Non réponse",
                             key="missing_label_input"
                         )
-
-                    # Appel de la fonction avec les paramètres définis
-                    value_counts, var_name_display = create_interactive_qualitative_table(
-                        plot_data, 
-                        var, 
-                        exclude_missing=exclude_missing,
-                        missing_label=missing_label
-                    )
                     
-                    # ✅ Appliquer le filtrage des non-réponses
+                    # Nettoyer les données avec gestion des valeurs manquantes
+                    clean_data = plot_data.copy()
+                    missing_values = [None, np.nan, '', 'nan', 'NaN', 'NA', 'nr', 'NR', 'Non réponse', 'Non-réponse']
+                    clean_data = clean_data.replace(missing_values, missing_label)
+                    
                     if exclude_missing:
-                        plot_data = plot_data.dropna()  # ✅ Supprime les valeurs NaN
-                        plot_data = plot_data.astype(str).str.strip()  # ✅ Supprime les espaces autour des valeurs
-                        plot_data = plot_data[plot_data != ""]  # ✅ Supprime les cases vides
-                        plot_data = plot_data[plot_data != missing_label]  # ✅ Supprime "Non réponse"
+                        clean_data = clean_data[clean_data != missing_label]
                     
-                    # Création du tableau interactif avec les données
-                    value_counts, var_name_display = create_interactive_qualitative_table(
-                        plot_data, 
-                        var, 
-                        exclude_missing=exclude_missing,
-                        missing_label=missing_label
-                    )
-
-                    # ✅ Vérifier si le tableau existe avant de l'afficher
-                    if value_counts is not None:
-                        # ✅ Champs pour personnaliser le tableau
-                        table_title = st.text_input("Titre du tableau", f"Distribution de {var_name_display}", key="table_title")
-                        table_source = st.text_input("Source", "", key="table_source")
-                        table_note = st.text_area("Note de lecture", "", key="table_note")
-
-                        # ✅ Affichage unique du tableau avec titre et options
-                        st.subheader(f"📊 {table_title}")
-                        st.dataframe(value_counts, use_container_width=True)
-
-                        # ✅ Ajout du téléchargement en Excel
-                        buffer = BytesIO()
-                        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-                            workbook = writer.book
-                            worksheet = workbook.add_worksheet("Tableau")
-                            writer.sheets["Tableau"] = worksheet
-                            
-                            # ✅ Style pour le titre
-                            title_format = workbook.add_format({"bold": True, "font_size": 14, "align": "center"})
-                            worksheet.merge_range("A1:C1", table_title, title_format)
-
-                            # ✅ Écrire le tableau sous le titre
-                            value_counts.to_excel(writer, sheet_name="Tableau", startrow=2, index=False)
-
-                            # ✅ Auto-ajustement des colonnes
-                            for col_num, value in enumerate(value_counts.columns.values):
-                                worksheet.set_column(col_num, col_num, len(value) + 5)
-
-                            # ✅ Ajout de la source et de la note en bas
-                            last_row = len(value_counts) + 4
-                            if table_source:
-                                worksheet.write(last_row, 0, f"Source : {table_source}")
-                            if table_note:
-                                worksheet.write(last_row + 1, 0, f"Note : {table_note}")
-
-                            writer.close()
-
-                        st.download_button(
-                            label="📥 Télécharger le tableau en Excel",
-                            data=buffer.getvalue(),
-                            file_name=f"tableau_{var_name_display}.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                        )
-
-                        # ✅ Générer une belle image du tableau
-                        img_buffer = export_beautiful_table(value_counts, table_title, table_source, table_note)
-
-                        st.download_button(
-                            label="🖼️ Télécharger le tableau en image",
-                            data=img_buffer,
-                            file_name=f"tableau_{var_name_display}.png",
-                            mime="image/png"
-                        )
-
-                    # Configuration de la visualisation
+                    # Appliquer la fonction de regroupement
+                    grouped_data = group_qualitative_modalities(clean_data, var)
+                    
+                    # Créer le tableau d'effectifs pour la visualisation
+                    value_counts = grouped_data.value_counts().reset_index()
+                    value_counts.columns = ['Modalités', 'Effectif']
+                    
+                    # Calculer les pourcentages
+                    total = value_counts['Effectif'].sum()
+                    value_counts['Taux (%)'] = (value_counts['Effectif'] / total * 100).round(1)
+                    
+                    # Le reste de votre code pour la visualisation...
                     st.write("### Configuration de la visualisation")
                     viz_col1, viz_col2 = st.columns([1, 2])
-
+                    
                     with viz_col1:
                         graph_type = st.selectbox(
                             "Type de graphique",
