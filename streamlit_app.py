@@ -363,45 +363,54 @@ import plotly.graph_objects as go
 def plot_dotplot(data, title, x_label, y_label, color_palette, show_values=True, source="", note="", width=850, value_type="Effectif"):
     """
     Crée un graphique dot plot avec une échelle de valeurs pour l'analyse univariée qualitative.
-    
+
     Args:
         data (DataFrame): DataFrame avec les colonnes 'Modalités' et 'Effectif'
         title (str): Titre du graphique
-        x_label (str): Étiquette de l'axe X (modalités)
-        y_label (str): Étiquette de l'axe Y (valeurs)
+        x_label (str): Étiquette de l'axe X (valeurs)
+        y_label (str): Étiquette de l'axe Y (modalités)
         color_palette (list): Liste de couleurs
         show_values (bool): Afficher les valeurs sur le graphique
         source (str): Source des données
         note (str): Note explicative
         width (int): Largeur du graphique
         value_type (str): "Effectif" ou "Taux (%)" pour adapter l'affichage
-        
+
     Returns:
         go.Figure: Figure Plotly
     """
+    import textwrap
+
     # ✅ Sélection de la bonne colonne (Effectif ou Taux)
     y_column = "Taux (%)" if value_type == "Taux (%)" else "Effectif"
-    
-    # ✅ Vérifier que la colonne Taux (%) existe si nécessaire
+
+    # ✅ Vérifier que la colonne "Taux (%)" existe si nécessaire
     if value_type == "Taux (%)" and "Taux (%)" not in data.columns:
         total = data["Effectif"].sum()
         data["Taux (%)"] = (data["Effectif"] / total * 100).round(1)
 
     # ✅ Trier les données pour un affichage clair
     data = data.sort_values(y_column, ascending=True).reset_index(drop=True)
-    
+
+    # ✅ Appliquer un retour à la ligne automatique sur les modalités longues
+    wrapped_labels = [
+        "<br>".join(textwrap.wrap(str(label), width=20)) if isinstance(label, str) and len(label) > 20 else str(label)
+        for label in data['Modalités']
+    ]
+
     # ✅ Déterminer le maximum et créer une échelle
     max_val = data[y_column].max()
-    step_size = max(1, round(max_val / 5))  
+    step_size = max(1, round(max_val / 5))
     scale_values = list(range(0, int(max_val) + step_size, step_size))
-    
-    # ✅ Hauteur adaptative pour éviter l'écrasement des modalités
-    height = max(500, len(data) * 50 + 200)
+
+    # ✅ Ajustement automatique de la hauteur
+    num_bars = len(data)
+    base_height = 100 + (num_bars * 60)
 
     # ✅ Création du graphique
     fig = go.Figure()
 
-    # ✅ Ajouter l'échelle de valeurs
+    # ✅ Ajouter l'échelle de valeurs (lignes verticales)
     for val in scale_values:
         fig.add_shape(
             type="line",
@@ -438,10 +447,10 @@ def plot_dotplot(data, title, x_label, y_label, color_palette, show_values=True,
         text=data['Modalités']
     ))
 
-    # ✅ Ajouter les valeurs avec un décalage dynamique
+    # ✅ Ajouter les valeurs avec un **décalage dynamique**
     if show_values:
         fig.add_trace(go.Scatter(
-            x=data[y_column] + max_val * 0.02 + data[y_column] * 0.03,  # ✅ Ajustement dynamique du décalage
+            x=data[y_column] + max_val * 0.05,  # ✅ Décalage pour éviter le chevauchement
             y=list(range(len(data))),
             mode='text',
             text=data[y_column].apply(lambda x: f"{x:.1f}%" if value_type == "Taux (%)" else f"{int(x)}"),
@@ -451,32 +460,32 @@ def plot_dotplot(data, title, x_label, y_label, color_palette, show_values=True,
             hoverinfo='skip'
         ))
 
-    # ✅ Annotations pour la source et la note
+    # ✅ Ajout dynamique de la Source et de la Note
+    annotation_y = -0.4 - (0.02 * num_bars)  # ✅ Ajustement dynamique basé sur le nombre de modalités
+
     annotations = []
-    
     if source:
         annotations.append(dict(
             text=f" Source : {source}",
             x=0,
-            y=-0.15,
+            y=annotation_y,
             xref='paper',
             yref='paper',
             showarrow=False,
-            font=dict(size=11, color='gray'),
+            font=dict(family="Marianne, sans-serif", size=12, color="gray"),
             align='left',
             xanchor='left'
         ))
-    
+
     if note:
-        note_y_pos = -0.20 if source else -0.15
         annotations.append(dict(
             text=f" Note : {note}",
             x=0,
-            y=note_y_pos,
+            y=annotation_y - 0.05,  # ✅ Espacement correct entre source et note
             xref='paper',
             yref='paper',
             showarrow=False,
-            font=dict(size=11, color='gray'),
+            font=dict(family="Marianne, sans-serif", size=12, color="gray"),
             align='left',
             xanchor='left'
         ))
@@ -495,25 +504,25 @@ def plot_dotplot(data, title, x_label, y_label, color_palette, show_values=True,
             zeroline=True,
             zerolinewidth=1,
             zerolinecolor='gray',
-            range=[-max_val*0.05, max_val*1.2]  # ✅ Ajustement pour le décalage
+            range=[-max_val * 0.05, max_val * 1.2]  # ✅ Ajustement pour le décalage
         ),
         yaxis=dict(
-            title="",
+            title=x_label,
             tickmode='array',
             tickvals=list(range(len(data))),
-            ticktext=data['Modalités'],
+            ticktext=wrapped_labels,
             zeroline=False,
             showgrid=False,
             autorange="reversed"  # ✅ La modalité la plus grande en haut
         ),
         showlegend=False,
         plot_bgcolor='white',
-        margin=dict(l=200, r=80, t=100, b=100),  
+        margin=dict(l=250, r=100, t=100, b=150),  # ✅ Ajustement dynamique des marges
         width=width,
-        height=height,
+        height=base_height,
         annotations=annotations
     )
-    
+
     return fig
 
 def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", color_palette=None, source="", note="", is_export=False):
