@@ -711,7 +711,7 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
     padding = max_value * 0.15  # Ajout d’un espace pour éviter les chevauchements
     
     # ✅ Ajustement dynamique des annotations (Source et Note)
-    annotation_y = -0.4 - (0.02 * max_label_lines)  
+    annotation_y = -0.5 - (0.02 * max_label_lines)  
 
     annotations = []
     if source:
