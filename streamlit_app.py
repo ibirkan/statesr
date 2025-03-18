@@ -1846,82 +1846,156 @@ def analyze_qualitative_bivariate(df, var_x, var_y, exclude_missing=True):
     
     return (combined_table, response_stats) if exclude_missing else combined_table
 
-import pandas as pd
-import streamlit as st
-
-def create_interactive_qualitative_table(df, var, exclude_missing=True, missing_label="Non réponse"):
-    """
-    Génère un tableau interactif des valeurs d'une variable qualitative avec gestion des regroupements et des valeurs manquantes.
+def create_interactive_qualitative_table(data_series, var_name, exclude_missing=False, missing_label="Non réponse"):
+    """Génère un tableau interactif avec options de regroupement, renommage et export."""
     
-    Args:
-        df (DataFrame): DataFrame contenant les données.
-        var (str): Nom de la variable qualitative à analyser.
-        exclude_missing (bool): Exclure les valeurs manquantes ou non-réponses.
-        missing_label (str): Libellé à utiliser pour les valeurs manquantes.
+    try:
+        # Initialisation des valeurs manquantes
+        missing_values = [None, np.nan, '', 'nan', 'NaN', 'NA', 'nr', 'NR', 'Non réponse', 'Non-réponse']
+        
+        # Initialisation du state si nécessaire
+        if 'original_data' not in st.session_state:
+            st.session_state.original_data = data_series.copy()
+            st.session_state.groupings = []
+            st.session_state.current_data = data_series.copy()
+            st.session_state.table_source = ""
+            st.session_state.table_note = ""
+            st.session_state.var_name_display = ""
+            st.session_state.table_title = "" 
+            st.session_state.modalities_order = {}
+            st.session_state.sync_options = True
 
-    Returns:
-        tuple: (DataFrame des effectifs, Nom formaté de la variable)
-    """
-    if df is None or var not in df.columns:
-        st.error("🚨 Erreur : Données invalides ou variable inexistante.")
+        # Traitement des données avec gestion des non-réponses
+        processed_series = st.session_state.original_data.copy()
+        
+        # Remplacement des valeurs manquantes par le missing_label
+        processed_series = processed_series.replace(missing_values, missing_label)
+        
+        # Si on exclut les non-réponses, on les retire avant tout traitement
+        if exclude_missing:
+            processed_series = processed_series[processed_series != missing_label]
+
+        # Appliquer les regroupements existants
+        for group in st.session_state.groupings:
+            processed_series = processed_series.replace(
+                group['modalites'],
+                group['nouveau_nom']
+            )
+
+        st.session_state.current_data = processed_series.copy()
+
+        # Création du DataFrame initial
+        value_counts = processed_series.value_counts().reset_index()
+        value_counts.columns = ['Modalité', 'Effectif']
+
+        # **Correction : Numérotation en partant de 1**
+        value_counts.index += 1
+
+        # Calcul des pourcentages
+        total_effectif = value_counts['Effectif'].sum()
+        value_counts['Taux (%)'] = (value_counts['Effectif'] / total_effectif * 100).round(2)
+        
+        # Ajout de la colonne Nouvelle modalité pour renommage
+        value_counts['Nouvelle modalité'] = value_counts['Modalité'].copy()
+
+        # **Ajout du titre, source et note directement sous le tableau**
+        table_title = st.text_input("Titre du tableau", f"Distribution de {var_name}", key="table_title")
+        table_source = st.text_input("Source", "", key="table_source")
+        table_note = st.text_area("Note de lecture", "", key="table_note")
+
+        st.session_state.table_title = table_title
+        st.session_state.table_source = table_source
+        st.session_state.table_note = table_note
+
+        # **Affichage du tableau avec titre**
+        if table_title:
+            st.markdown(f"### {table_title}")
+
+        st.dataframe(value_counts, use_container_width=True)
+
+        # **Affichage de la source et la note**
+        if table_source or table_note:
+            st.markdown('<div style="max-width: 800px; margin: 5px auto;">', unsafe_allow_html=True)
+            if table_source:
+                st.caption(f"📌 Source : {table_source}")
+            if table_note:
+                st.caption(f"📌 Note : {table_note}")
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        # **Ajout du téléchargement Excel**
+        buffer = BytesIO()
+        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+            value_counts.to_excel(writer, sheet_name="Tableau", index=False)
+            writer.close()
+
+        st.download_button(
+            label="📥 Télécharger le tableau en Excel",
+            data=buffer.getvalue(),
+            file_name=f"tableau_{var_name}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+        # **Ajout du téléchargement en image**
+        if st.button("📸 Exporter en image"):
+            img_buffer = export_table_as_image(value_counts, table_title, table_source, table_note)
+            st.download_button(
+                label="🖼️ Télécharger le tableau en image",
+                data=img_buffer,
+                file_name=f"tableau_{var_name}.png",
+                mime="image/png"
+            )
+
+        return value_counts, var_name
+
+    except Exception as e:
+        st.error(f"Erreur lors de la création du tableau : {str(e)}")
         return None, None
 
-    # ✅ Nettoyage des valeurs manquantes
-    missing_values = [None, np.nan, '', 'nan', 'NaN', 'NA', 'nr', 'NR', 'Non réponse', 'Non-réponse']
-    data_series = df[var].astype(str)
+
+def export_table_as_image(value_counts, title, source, note):
+    """ Exporte un tableau en image (PNG) avec titre, source et note. """
     
-    if not exclude_missing:
-        data_series = data_series.replace(missing_values, missing_label)
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.axis("off")
 
-    # ✅ Application des regroupements existants si stockés
-    if 'groupings' not in st.session_state:
-        st.session_state.groupings = []
+    # Ajout du titre
+    plt.title(title, fontsize=16, fontweight="bold", pad=20)
+
+    # Conversion du DataFrame en texte pour affichage
+    cell_text = []
+    for i, row in value_counts.iterrows():
+        cell_text.append([
+            str(row['Modalité']),
+            f"{row['Effectif']:,}",
+            f"{row['Taux (%)']:.1f}%"
+        ])
+
+    # Création du tableau matplotlib
+    table = ax.table(
+        cellText=cell_text,
+        colLabels=['Modalité', 'Effectif', 'Taux (%)'],
+        loc='center',
+        cellLoc='center'
+    )
+
+    # Ajustements de style
+    table.auto_set_font_size(False)
+    table.set_fontsize(12)
+    table.scale(1.2, 1.2)
+
+    # Ajout de la source et de la note en bas
+    text_y = -0.15 - (0.02 * len(value_counts))
+    if source:
+        plt.figtext(0.1, text_y, f"📌 Source : {source}", fontsize=10, ha="left", style="italic")
+    if note:
+        plt.figtext(0.1, text_y - 0.04, f"📌 Note : {note}", fontsize=10, ha="left", style="italic")
+
+    # Sauvegarde de l’image en mémoire
+    buffer = BytesIO()
+    plt.savefig(buffer, format="png", bbox_inches="tight", dpi=300)
+    buffer.seek(0)
     
-    for group in st.session_state.groupings:
-        data_series = data_series.replace(group['modalites'], group['nouveau_nom'])
-
-    # ✅ Calcul des effectifs et pourcentages
-    value_counts = data_series.value_counts().reset_index()
-    value_counts.columns = ["Modalités", "Effectif"]
-    total_valid = value_counts["Effectif"].sum()
-    value_counts["Taux (%)"] = (value_counts["Effectif"] / total_valid * 100).round(1).astype(str) + "%"
-
-    # ✅ Stockage pour modifications ultérieures
-    st.session_state.current_data = data_series.copy()
-
-    # ✅ Interface utilisateur pour modifier les modalités
-    with st.expander("🔧 Options avancées du tableau"):
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.write("### 🎯 Regroupement des modalités")
-            selected_modalities = st.multiselect("Sélectionner les modalités à regrouper", options=value_counts["Modalités"].tolist())
-
-            if selected_modalities:
-                new_group_name = st.text_input("Nom du nouveau groupe", value=f"Groupe {', '.join(selected_modalities)}")
-                if st.button("Créer le regroupement"):
-                    st.session_state.groupings.append({
-                        "modalites": selected_modalities,
-                        "nouveau_nom": new_group_name
-                    })
-                    st.success(f"✅ Regroupement créé : {new_group_name}")
-
-        with col2:
-            st.write("### ✏️ Renommage des modalités")
-            rename_map = {}
-            for mod in value_counts["Modalités"]:
-                new_name = st.text_input(f"Renommer '{mod}'", value=mod, key=f"rename_{mod}")
-                if new_name != mod:
-                    rename_map[mod] = new_name
-
-            if rename_map:
-                for old, new in rename_map.items():
-                    data_series.replace(old, new, inplace=True)
-                st.success("✅ Renommage appliqué")
-
-    # ✅ Retour des données mises à jour
-    var_name_display = f"{var} ({len(value_counts)} modalités après regroupement)"
-    return value_counts, var_name_display
+    return buffer
 
 def analyze_mixed_bivariate(df, qual_var, quant_var):
     """
@@ -2096,49 +2170,6 @@ def analyze_quantitative_bivariate(df, var_x, var_y, groupby_col=None, agg_metho
     })
     
     return results_df, response_rate_x, response_rate_y, descriptive_stats, data
-
-def export_beautiful_table(value_counts, title, source, note):
-    """ Génère une image d'un tableau avec un style clair et esthétique. """
-    
-    fig, ax = plt.subplots(figsize=(10, 6))  # ✅ Taille optimisée pour la lisibilité
-    ax.axis("tight")
-    ax.axis("off")
-
-    # ✅ Création du tableau avec des colonnes bien ajustées
-    table_data = [value_counts.columns.tolist()] + value_counts.values.tolist()
-    table = ax.table(cellText=table_data, colLoc="center", cellLoc="center", loc="center", colLabels=None)
-
-    # ✅ Mise en forme
-    table.auto_set_font_size(False)
-    table.set_fontsize(12)
-    table.scale(1.2, 1.2)  # ✅ Ajustement de la taille
-
-    # ✅ Mise en valeur de l’en-tête (gras + centré)
-    for j in range(len(value_counts.columns)):
-        table[0, j].set_text_props(weight="bold", ha="center")
-
-    # ✅ Alignement des colonnes :
-    for i in range(1, len(value_counts) + 1):
-        table[i, 0].set_text_props(ha="left")  # ✅ Modalités à gauche
-        table[i, 1].set_text_props(ha="center")  # ✅ Effectifs centrés
-        table[i, 2].set_text_props(ha="center")  # ✅ Pourcentage centré
-
-    # ✅ Ajout du titre bien visible
-    plt.title(title, fontsize=16, fontweight="bold", pad=20)
-
-    # ✅ Positionner la source et la note juste en dessous du tableau
-    text_y = -0.15 - (0.02 * len(value_counts))  # ✅ Ajustement automatique selon la taille du tableau
-    if source:
-        plt.figtext(0.1, text_y, f" Source : {source}", fontsize=10, ha="left", style="italic")
-    if note:
-        plt.figtext(0.1, text_y - 0.04, f" Note : {note}", fontsize=10, ha="left", style="italic")
-
-    # ✅ Sauvegarde de l’image en mémoire
-    buffer = BytesIO()
-    plt.savefig(buffer, format="png", bbox_inches="tight", dpi=300)
-    buffer.seek(0)
-    
-    return buffer
 
 def create_enhanced_variable_selector(df, title="Sélectionnez une variable"):
     """
@@ -3216,7 +3247,7 @@ def main():
                         )
 
                         # ✅ Générer une belle image du tableau
-                        img_buffer = export_beautiful_table(value_counts, table_title, table_source, table_note)
+                        img_buffer = export_table_as_image(value_counts, table_title, table_source, table_note)
 
                         st.download_button(
                             label="🖼️ Télécharger le tableau en image",
