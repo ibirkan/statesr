@@ -461,7 +461,7 @@ def plot_dotplot(data, title, x_label, y_label, color_palette, show_values=True,
         ))
 
     # ✅ Ajout dynamique de la Source et de la Note
-    annotation_y = -0.4 - (0.02 * num_bars)  # ✅ Ajustement dynamique basé sur le nombre de modalités
+    annotation_y = -0.2 - (0.02 * num_bars)  # ✅ Ajustement dynamique basé sur le nombre de modalités
 
     annotations = []
     if source:
@@ -481,7 +481,7 @@ def plot_dotplot(data, title, x_label, y_label, color_palette, show_values=True,
         annotations.append(dict(
             text=f" Note : {note}",
             x=0,
-            y=annotation_y - 0.05,  # ✅ Espacement correct entre source et note
+            y=annotation_y - 0.08,  # ✅ Espacement correct entre source et note
             xref='paper',
             yref='paper',
             showarrow=False,
