@@ -816,7 +816,7 @@ def plot_qualitative_treemap(data, title, color_palette, source="", note=""):
     if source or note:
         if source:
             annotations.append(dict(
-                text=f"📌 Source : {source}",
+                text=f" Source : {source}",
                 x=0,
                 y=-0.08,
                 xref='paper',
@@ -828,9 +828,9 @@ def plot_qualitative_treemap(data, title, color_palette, source="", note=""):
             ))
         
         if note:
-            note_y_pos = -0.08 - 0.05 if source else -0.08
+            note_y_pos = -0.08 - 0.04 if source else -0.08
             annotations.append(dict(
-                text=f"📝 Note : {note}",
+                text=f" Note : {note}",
                 x=0,
                 y=note_y_pos,
                 xref='paper',
