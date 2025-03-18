@@ -618,7 +618,7 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
         annotations.append(dict(
             text=f" Note : {note}",
             x=0,
-            y=annotation_y - 0.05,  # ✅ Espacement correct entre source et note
+            y=annotation_y - 0.10,  # ✅ Espacement correct entre source et note
             xref='paper',
             yref='paper',
             showarrow=False,
