@@ -551,41 +551,23 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
     # ✅ Colonne à afficher
     y_column = "Taux (%)" if value_type == "Taux (%)" else "Effectif"
 
-    # ✅ Préparation des labels avec retour à la ligne
+    # ✅ Appliquer un retour à la ligne automatique sur les modalités longues
     wrapped_labels = [
         "<br>".join(textwrap.wrap(str(label), width=20)) if isinstance(label, str) and len(label) > 20 else str(label)
         for label in data['Modalités']
     ]
 
+    # ✅ Nombre de modalités et ajustement de la hauteur
+    num_bars = len(data)
+    base_height = 100 + (num_bars * 60)
+
+    # ✅ Ajustement dynamique des marges
+    bottom_margin = 120 + (30 * (bool(source) + bool(note)))  # ✅ Ajustement en fonction de source/note
+    left_margin = 300 if max(len(label) for label in wrapped_labels) > 20 else 250  # ✅ Ajustement selon la longueur des labels
+
     # ✅ Création du graphique
     fig = go.Figure()
 
-    # ✅ Configuration de la taille et des marges
-    num_bars = len(data)
-    base_height = 100 + (num_bars * 60)
-    bottom_margin = 100 + (30 * (bool(source) + bool(note)))  # ✅ Ajustement dynamique de la marge
-
-    fig.update_layout(
-        autosize=False,
-        width=900,
-        height=base_height,
-        margin=dict(
-            l=250,  # Large marge gauche pour éviter la troncature des labels
-            r=100,
-            t=100,
-            b=bottom_margin if not is_export else 180  # ✅ Ajustement dynamique de la marge basse
-        ),
-        title=dict(
-            text=title,
-            font=dict(family="Marianne, sans-serif", size=18),
-            x=0.5,
-            xanchor='center'
-        ),
-        plot_bgcolor='white',
-        paper_bgcolor='white'
-    )
-
-    # ✅ Ajout des barres
     fig.add_trace(go.Bar(
         y=wrapped_labels,
         x=data[y_column],
@@ -599,16 +581,9 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
     ))
 
     # ✅ Configuration des axes
-    fig.update_yaxes(
-        title=x_label,
-        autorange="reversed",
-        tickfont=dict(family="Marianne, sans-serif", size=14)
-    )
-
-    # ✅ Ajouter un peu d'espace à droite pour les valeurs
     max_value = data[y_column].max()
-    padding = max_value * 0.15
-
+    padding = max_value * 0.15  # Ajout d’un padding pour éviter le chevauchement
+    
     fig.update_xaxes(
         title=value_type,
         range=[0, max_value + padding],
@@ -616,26 +591,62 @@ def plot_modern_horizontal_bars(data, title, x_label, value_type="Effectif", col
         gridcolor='lightgray'
     )
 
-    # ✅ Ajustement dynamique des annotations (Source et Note)
-    annotation_y = -0.5 - (0.02 * max_label_lines)  
+    fig.update_yaxes(
+        title=x_label,
+        autorange="reversed",
+        tickfont=dict(family="Marianne, sans-serif", size=14)
+    )
+
+    # ✅ Ajout dynamique de la Source et de la Note
+    annotation_y = -0.4 - (0.02 * num_bars)  # ✅ Ajustement dynamique basé sur le nombre de modalités
 
     annotations = []
     if source:
         annotations.append(dict(
-            xref="paper", yref="paper", 
-            x=0, y=annotation_y, 
-            text=f" Source : {source}", 
-            showarrow=False, font=dict(size=12, color="gray")
-        ))
-    if note:
-        annotations.append(dict(
-            xref="paper", yref="paper", 
-            x=0, y=annotation_y - 0.05, 
-            text=f" Note : {note}", 
-            showarrow=False, font=dict(size=12, color="gray")
+            text=f" Source : {source}",
+            x=0,
+            y=annotation_y,
+            xref='paper',
+            yref='paper',
+            showarrow=False,
+            font=dict(family="Marianne, sans-serif", size=12, color="gray"),
+            align='left',
+            xanchor='left'
         ))
 
-    fig.update_layout(annotations=annotations)
+    if note:
+        annotations.append(dict(
+            text=f" Note : {note}",
+            x=0,
+            y=annotation_y - 0.05,  # ✅ Espacement correct entre source et note
+            xref='paper',
+            yref='paper',
+            showarrow=False,
+            font=dict(family="Marianne, sans-serif", size=12, color="gray"),
+            align='left',
+            xanchor='left'
+        ))
+
+    fig.update_layout(
+        annotations=annotations,
+        autosize=False,
+        width=900,
+        height=base_height,
+        margin=dict(
+            l=left_margin,  # ✅ Ajustement dynamique selon la taille des modalités
+            r=100,
+            t=100,
+            b=bottom_margin if not is_export else 180  # ✅ Ajustement dynamique de la marge basse
+        ),
+        title=dict(
+            text=title,
+            font=dict(family="Marianne, sans-serif", size=18),
+            x=0.5,
+            xanchor='center'
+        ),
+        plot_bgcolor='white',
+        paper_bgcolor='white'
+    )
 
     # ✅ Marquer pour l'export
     fig._is_horizontal_bar = True
