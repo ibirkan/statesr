@@ -1851,7 +1851,7 @@ import streamlit as st
 
 def create_interactive_qualitative_table(df, var, exclude_missing=True, missing_label="Non réponse"):
     """
-    Génère un tableau interactif des valeurs d'une variable qualitative.
+    Génère un tableau interactif des valeurs d'une variable qualitative avec gestion des regroupements et des valeurs manquantes.
     
     Args:
         df (DataFrame): DataFrame contenant les données.
@@ -1862,52 +1862,65 @@ def create_interactive_qualitative_table(df, var, exclude_missing=True, missing_
     Returns:
         tuple: (DataFrame des effectifs, Nom formaté de la variable)
     """
-    # ✅ Vérifier que df est valide et corriger s'il est une Series
-    if df is None:
-        st.error("🚨 Erreur : Le DataFrame est `None`. Vérifiez le chargement des données.")
+    if df is None or var not in df.columns:
+        st.error("🚨 Erreur : Données invalides ou variable inexistante.")
         return None, None
 
-    if isinstance(df, pd.Series):
-        st.warning("⚠️ Le DataFrame a été converti depuis une `Series`.")
-        df = df.to_frame()  # ✅ Convertir en DataFrame
-
-    if not isinstance(df, pd.DataFrame):
-        st.error(f"🚨 Erreur : Le type de `df` n'est pas un DataFrame. Type actuel : {type(df)}")
-        return None, None
-
-    # ✅ Vérifier que df contient bien des colonnes
-    if df.empty or df.columns.empty:
-        st.warning("⚠️ Le DataFrame est vide ou ne contient aucune colonne.")
-        return None, None
-
-    # ✅ Vérifier que la variable sélectionnée est valide
-    if var is None:
-        st.error("⚠️ Aucune variable sélectionnée pour l'analyse qualitative.")
-        return None, None
-
-    if var not in df.columns:
-        st.error(f"⚠️ La variable '{var}' n'existe pas dans le DataFrame.")
-        return None, None
-
-    # ✅ Nettoyage et comptage des valeurs
-    data_series = df[var].astype(str)  # S'assurer que c'est une série de chaînes
+    # ✅ Nettoyage des valeurs manquantes
+    missing_values = [None, np.nan, '', 'nan', 'NaN', 'NA', 'nr', 'NR', 'Non réponse', 'Non-réponse']
+    data_series = df[var].astype(str)
+    
     if not exclude_missing:
-        data_series = data_series.fillna(missing_label)
+        data_series = data_series.replace(missing_values, missing_label)
 
-    # Comptage des valeurs uniques
+    # ✅ Application des regroupements existants si stockés
+    if 'groupings' not in st.session_state:
+        st.session_state.groupings = []
+    
+    for group in st.session_state.groupings:
+        data_series = data_series.replace(group['modalites'], group['nouveau_nom'])
+
+    # ✅ Calcul des effectifs et pourcentages
     value_counts = data_series.value_counts().reset_index()
     value_counts.columns = ["Modalités", "Effectif"]
-
-    # Ajout d'une colonne pour les pourcentages
     total_valid = value_counts["Effectif"].sum()
-    value_counts["Pourcentage"] = (value_counts["Effectif"] / total_valid * 100).round(1).astype(str) + "%"
+    value_counts["Taux (%)"] = (value_counts["Effectif"] / total_valid * 100).round(1).astype(str) + "%"
 
-    # ✅ Modifier l'indexation pour commencer à 1 au lieu de 0
-    value_counts.index = value_counts.index + 1
+    # ✅ Stockage pour modifications ultérieures
+    st.session_state.current_data = data_series.copy()
 
-    # Formatage du nom affiché
-    var_name_display = f"{var} ({len(value_counts)} modalités)"
+    # ✅ Interface utilisateur pour modifier les modalités
+    with st.expander("🔧 Options avancées du tableau"):
+        col1, col2 = st.columns(2)
 
+        with col1:
+            st.write("### 🎯 Regroupement des modalités")
+            selected_modalities = st.multiselect("Sélectionner les modalités à regrouper", options=value_counts["Modalités"].tolist())
+
+            if selected_modalities:
+                new_group_name = st.text_input("Nom du nouveau groupe", value=f"Groupe {', '.join(selected_modalities)}")
+                if st.button("Créer le regroupement"):
+                    st.session_state.groupings.append({
+                        "modalites": selected_modalities,
+                        "nouveau_nom": new_group_name
+                    })
+                    st.success(f"✅ Regroupement créé : {new_group_name}")
+
+        with col2:
+            st.write("### ✏️ Renommage des modalités")
+            rename_map = {}
+            for mod in value_counts["Modalités"]:
+                new_name = st.text_input(f"Renommer '{mod}'", value=mod, key=f"rename_{mod}")
+                if new_name != mod:
+                    rename_map[mod] = new_name
+
+            if rename_map:
+                for old, new in rename_map.items():
+                    data_series.replace(old, new, inplace=True)
+                st.success("✅ Renommage appliqué")
+
+    # ✅ Retour des données mises à jour
+    var_name_display = f"{var} ({len(value_counts)} modalités après regroupement)"
     return value_counts, var_name_display
 
 def analyze_mixed_bivariate(df, qual_var, quant_var):
@@ -3139,17 +3152,19 @@ def main():
                             value="Non réponse",
                             key="missing_label_input"
                         )
-                    
+
                     # ✅ Appliquer le filtrage des non-réponses
+                    filtered_data[var] = filtered_data[var].astype(str).str.strip()  # ✅ Nettoyage des valeurs
                     if exclude_missing:
-                        plot_data = plot_data.dropna()  # ✅ Supprime les valeurs NaN
-                        plot_data = plot_data.astype(str).str.strip()  # ✅ Supprime les espaces autour des valeurs
-                        plot_data = plot_data[plot_data != ""]  # ✅ Supprime les cases vides
-                        plot_data = plot_data[plot_data != missing_label]  # ✅ Supprime "Non réponse"
-                    
-                    # Création du tableau interactif avec les données
+                        filtered_data = filtered_data[
+                            (filtered_data[var].notna()) &  # ✅ Supprime les NaN
+                            (filtered_data[var] != "") &  # ✅ Supprime les cases vides
+                            (filtered_data[var] != missing_label)  # ✅ Supprime les réponses définies comme "Non réponse"
+                        ]
+
+                    # ✅ Génération du tableau interactif (AVEC regroupements et renommages)
                     value_counts, var_name_display = create_interactive_qualitative_table(
-                        plot_data, 
+                        filtered_data,  # ✅ Utiliser les données filtrées
                         var, 
                         exclude_missing=exclude_missing,
                         missing_label=missing_label
@@ -3209,6 +3224,9 @@ def main():
                             file_name=f"tableau_{var_name_display}.png",
                             mime="image/png"
                         )
+
+                        # ✅ Appliquer les données transformées aux graphiques
+                        data_to_plot = value_counts.copy()
 
                     # Configuration de la visualisation
                     st.write("### Configuration de la visualisation")
