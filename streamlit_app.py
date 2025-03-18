@@ -932,7 +932,7 @@ def plot_radar(data, title, color_palette, source="", note="", value_type="Effec
             ))
         
         if note:
-            note_y_pos = -0.15 - 0.02 if source else -0.15
+            note_y_pos = -0.15 - 0.03 if source else -0.15
             annotations.append(dict(
                 text=f" Note : {note}",
                 x=0,
