@@ -1846,272 +1846,100 @@ def analyze_qualitative_bivariate(df, var_x, var_y, exclude_missing=True):
     
     return (combined_table, response_stats) if exclude_missing else combined_table
 
-def create_interactive_qualitative_table(data_series, var_name, exclude_missing=False, missing_label="Non réponse"):
+def simple_qualitative_analysis(data_series, var_name):
     """
-    Génère un tableau interactif avec options de regroupement, renommage et export.
-    Corrigé pour gérer les données multidimensionnelles et la gestion du session_state.
+    Fonction simple pour analyser et regrouper des modalités qualitatives.
     
     Args:
-        data_series: Données de la variable (Series ou DataFrame)
+        data_series: Variable à analyser (Series ou DataFrame)
         var_name: Nom de la variable
-        exclude_missing: Booléen indiquant si les valeurs manquantes doivent être exclues
-        missing_label: Nom à donner aux valeurs manquantes
-        
-    Returns:
-        tuple: DataFrame des effectifs, Nom formaté de la variable
-    """
     
-    try:
-        # Vérifier et corriger le type de data_series
-        if isinstance(data_series, pd.DataFrame):
-            # Si data_series est un DataFrame, prendre la première colonne
-            st.warning(f"Avertissement: '{var_name}' a été fourni comme un DataFrame, utilisation de la première colonne uniquement.")
-            data_series = data_series.iloc[:, 0]
+    Returns:
+        pd.DataFrame: Tableau des fréquences
+    """
+    import pandas as pd
+    import numpy as np
+    import streamlit as st
+    
+    # 1. Convertir en série si nécessaire
+    if isinstance(data_series, pd.DataFrame):
+        data_series = data_series.iloc[:, 0]
+    
+    # 2. Initialiser le stockage des regroupements
+    if 'qualitative_groups' not in st.session_state:
+        st.session_state.qualitative_groups = {}
+    
+    # Créer une clé spécifique pour cette variable
+    var_key = f"groups_{var_name}"
+    if var_key not in st.session_state.qualitative_groups:
+        st.session_state.qualitative_groups[var_key] = []
+    
+    # 3. Obtenir une copie propre des données
+    clean_data = data_series.copy()
+    
+    # Remplacer les valeurs manquantes
+    clean_data = clean_data.fillna("Non réponse")
+    
+    # 4. Interface simple pour le regroupement
+    with st.expander(f"Regrouper les modalités de '{var_name}'"):
+        # Liste des modalités disponibles
+        available_modalities = sorted(clean_data.unique())
         
-        # Assurons-nous que c'est bien une série pandas
-        if not isinstance(data_series, pd.Series):
-            # Conversion en série pandas
-            st.warning(f"Avertissement: '{var_name}' n'est pas une série pandas. Conversion automatique.")
-            data_series = pd.Series(data_series, name=var_name)
+        # Sélection des modalités à regrouper
+        selected_modalities = st.multiselect(
+            "Sélectionner les modalités à regrouper:",
+            options=available_modalities,
+            key=f"select_{var_key}"
+        )
         
-        # Initialisation des valeurs manquantes
-        missing_values = [None, np.nan, '', 'nan', 'NaN', 'NA', 'nr', 'NR', 'Non réponse', 'Non-réponse']
-        
-        # Initialisation du state si nécessaire - stockage des données uniquement
-        session_key = f"data_{var_name}"  # Clé unique basée sur le nom de la variable
-        
-        # Initialiser le state pour cette variable spécifique
-        if session_key not in st.session_state:
-            st.session_state[session_key] = {
-                'original_data': data_series.copy(),
-                'groupings': [],
-                'current_data': data_series.copy()
-            }
-
-        # Traitement des données avec gestion des non-réponses
-        processed_series = st.session_state[session_key]['original_data'].copy()
-        
-        # Remplacement des valeurs manquantes par le missing_label
-        processed_series = processed_series.replace(missing_values, missing_label)
-        
-        # Si on exclut les non-réponses, on les retire avant tout traitement
-        if exclude_missing:
-            processed_series = processed_series[processed_series != missing_label]
-            
-        # Configuration des options de regroupement
-        with st.expander("Options de regroupement"):
-            # Définir les modalités disponibles
-            available_modalities = processed_series.unique().tolist()
-            
-            st.write("#### Créer un nouveau regroupement")
-            selected_modalities = st.multiselect(
-                "Sélectionner les modalités à regrouper:",
-                options=available_modalities,
-                key=f"select_mod_{session_key}"
+        # Définir le nom du nouveau groupe
+        if selected_modalities:
+            new_group_name = st.text_input(
+                "Nom du nouveau groupe:",
+                value="Nouveau groupe",
+                key=f"name_{var_key}"
             )
             
-            if selected_modalities:
-                new_group_name = st.text_input(
-                    "Nom du nouveau groupe",
-                    value=f"Groupe: {', '.join(selected_modalities[:2])}" + 
-                          (f" et {len(selected_modalities)-2} autres" if len(selected_modalities) > 2 else ""),
-                    key=f"group_name_{session_key}"
-                )
-                
-                if st.button("✅ Appliquer le regroupement", key=f"apply_group_{session_key}"):
-                    st.session_state[session_key]['groupings'].append({
-                        'modalites': selected_modalities,
-                        'nouveau_nom': new_group_name
-                    })
-                    # Réappliquer depuis zéro
-                    st.experimental_rerun()
-            
-            # Afficher les regroupements existants
-            if st.session_state[session_key]['groupings']:
-                st.write("#### Regroupements actuels")
-                for idx, group in enumerate(st.session_state[session_key]['groupings']):
-                    col1, col2 = st.columns([4, 1])
-                    with col1:
-                        st.info(f"**{group['nouveau_nom']}**: {', '.join(group['modalites'])}")
-                    with col2:
-                        if st.button("🗑️", key=f"delete_group_{session_key}_{idx}"):
-                            st.session_state[session_key]['groupings'].pop(idx)
-                            st.experimental_rerun()
-                
-                if st.button("🔄 Réinitialiser tous les regroupements", key=f"reset_all_{session_key}"):
-                    st.session_state[session_key]['groupings'] = []
-                    st.experimental_rerun()
-
-        # Appliquer les regroupements existants
-        for group in st.session_state[session_key]['groupings']:
-            processed_series = processed_series.replace(
-                group['modalites'],
-                group['nouveau_nom']
-            )
-
-        st.session_state[session_key]['current_data'] = processed_series.copy()
-
-        # Création du DataFrame initial
-        value_counts = processed_series.value_counts().reset_index()
-        value_counts.columns = ['Modalité', 'Effectif']
-
-        # Numérotation en partant de 1
-        value_counts.index += 1
-
-        # Calcul des pourcentages
-        total_effectif = value_counts['Effectif'].sum()
-        value_counts['Taux (%)'] = (value_counts['Effectif'] / total_effectif * 100).round(2)
+            # Appliquer le regroupement
+            if st.button("Appliquer le regroupement", key=f"apply_{var_key}"):
+                st.session_state.qualitative_groups[var_key].append({
+                    "modalites": selected_modalities,
+                    "nom": new_group_name
+                })
+                st.success(f"Groupe '{new_group_name}' créé avec {len(selected_modalities)} modalités")
+                st.experimental_rerun()
         
-        # Renommage de la colonne des modalités pour correspondre au var_name
-        display_name = var_name
-        
-        # Utiliser des clés uniques pour les widgets et ne pas manipuler directement le session_state
-        table_title = st.text_input("Titre du tableau", f"Distribution de {display_name}", key=f"title_{session_key}")
-        table_source = st.text_input("Source", "", key=f"source_{session_key}")
-        table_note = st.text_area("Note de lecture", "", key=f"note_{session_key}")
-
-        # Création du DataFrame final pour affichage
-        final_df = value_counts.copy()
-        final_df.columns = [display_name, 'Effectif', 'Taux (%)']
-        
-        # Affichage du tableau avec titre
-        if table_title:
-            st.markdown(f"### {table_title}")
-
-        # Style pour le tableau
-        styled_df = final_df.style\
-            .format({
-                'Effectif': '{:,.0f}',
-                'Taux (%)': '{:.1f}%'
-            })\
-            .set_properties(**{
-                'font-family': 'Marianne, sans-serif',
-                'font-size': '14px',
-                'padding': '8px'
-            })\
-            .set_table_styles([
-                {'selector': 'th',
-                 'props': [
-                     ('background-color', '#f0f2f6'),
-                     ('color', '#262730'),
-                     ('font-weight', 'bold'),
-                     ('text-align', 'center'),
-                     ('padding', '10px'),
-                     ('font-size', '14px')
-                 ]},
-                {'selector': 'td:nth-child(1)',
-                 'props': [
-                     ('text-align', 'left'),
-                     ('padding-left', '15px')
-                 ]},
-                {'selector': 'tbody tr:nth-child(even)',
-                 'props': [('background-color', '#f9f9f9')]},
-                {'selector': 'tbody tr:nth-child(odd)',
-                 'props': [('background-color', 'white')]}
-            ])
-
-        st.dataframe(styled_df, hide_index=True, use_container_width=True)
-
-        # Affichage de la source et la note
-        if table_source or table_note:
-            st.markdown('<div style="max-width: 800px; margin: 5px auto;">', unsafe_allow_html=True)
-            if table_source:
-                st.caption(f"📌 Source : {table_source}")
-            if table_note:
-                st.caption(f"📌 Note : {table_note}")
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        # Options d'export
-        with st.expander("Options d'export"):
-            col1, col2 = st.columns(2)
+        # Afficher les groupes existants
+        if st.session_state.qualitative_groups[var_key]:
+            st.write("#### Groupes actuels:")
+            for i, group in enumerate(st.session_state.qualitative_groups[var_key]):
+                col1, col2 = st.columns([4, 1])
+                with col1:
+                    st.info(f"**{group['nom']}**: {', '.join(group['modalites'])}")
+                with col2:
+                    if st.button("Supprimer", key=f"del_{var_key}_{i}"):
+                        st.session_state.qualitative_groups[var_key].pop(i)
+                        st.experimental_rerun()
             
-            with col1:
-                # Ajout du téléchargement Excel
-                buffer = BytesIO()
-                with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-                    final_df.to_excel(writer, sheet_name="Tableau", index=False)
-                    writer.close()
-
-                st.download_button(
-                    label="📥 Télécharger le tableau en Excel",
-                    data=buffer.getvalue(),
-                    file_name=f"tableau_{var_name.replace(' ', '_')}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    key=f"excel_{session_key}"
-                )
-            
-            with col2:
-                # Ajout du téléchargement en image
-                if st.button("📸 Exporter en image", key=f"image_export_{session_key}"):
-                    fig, ax = plt.subplots(figsize=(12, len(final_df) + 3))
-                    ax.axis('off')
-                    
-                    # Configuration du style du tableau
-                    table = ax.table(
-                        cellText=final_df.values,
-                        colLabels=final_df.columns,
-                        loc='center',
-                        cellLoc='center',
-                        bbox=[0, 0.1, 1, 0.9]
-                    )
-                    
-                    # Style du tableau
-                    table.auto_set_font_size(False)
-                    table.set_fontsize(12)
-                    
-                    # Style des en-têtes
-                    for j, cell in enumerate(table._cells[(0, j)] for j in range(len(final_df.columns))):
-                        cell.set_facecolor('#f0f2f6')
-                        cell.set_text_props(weight='bold')
-                    
-                    # Style des lignes alternées
-                    for i in range(1, len(final_df) + 1):
-                        for j in range(len(final_df.columns)):
-                            if i % 2 == 0:
-                                table._cells[(i, j)].set_facecolor('#f9f9f9')
-                    
-                    # Titre et notes de bas de page
-                    if table_title:
-                        plt.title(table_title, fontsize=14, fontweight='bold', pad=20)
-                    
-                    footer_text = []
-                    if table_source:
-                        footer_text.append(f"Source : {table_source}")
-                    if table_note:
-                        footer_text.append(f"Note : {table_note}")
-                    
-                    if footer_text:
-                        plt.figtext(0.1, 0.02, '\n'.join(footer_text), fontsize=10)
-                    
-                    # Sauvegarde en mémoire
-                    img_buffer = BytesIO()
-                    plt.savefig(
-                        img_buffer, 
-                        format='png', 
-                        bbox_inches='tight', 
-                        dpi=300,
-                        facecolor='white',
-                        edgecolor='none'
-                    )
-                    img_buffer.seek(0)
-                    plt.close()
-                    
-                    # Bouton de téléchargement
-                    st.download_button(
-                        label="🖼️ Télécharger le tableau en image",
-                        data=img_buffer,
-                        file_name=f"tableau_{var_name.replace(' ', '_')}.png",
-                        mime="image/png",
-                        key=f"img_download_{session_key}"
-                    )
-
-        return final_df, display_name
-
-    except Exception as e:
-        st.error(f"Erreur lors de la création du tableau : {str(e)}")
-        import traceback
-        st.error(traceback.format_exc())  # Affiche la trace complète pour débogage
-        return None, None
+            # Option pour réinitialiser tous les groupes
+            if st.button("Réinitialiser tous les groupes", key=f"reset_{var_key}"):
+                st.session_state.qualitative_groups[var_key] = []
+                st.experimental_rerun()
+    
+    # 5. Appliquer les regroupements
+    grouped_data = clean_data.copy()
+    for group in st.session_state.qualitative_groups[var_key]:
+        grouped_data = grouped_data.replace(group["modalites"], group["nom"])
+    
+    # 6. Calculer la distribution
+    counts = grouped_data.value_counts().reset_index()
+    counts.columns = ["Modalités", "Effectif"]
+    
+    # Calculer les pourcentages
+    total = counts["Effectif"].sum()
+    counts["Pourcentage"] = (counts["Effectif"] / total * 100).round(1)
+    
+    return counts
 
 def export_table_as_image(value_counts, title, source, note):
     """ Exporte un tableau en image (PNG) avec titre, source et note. """
@@ -3354,71 +3182,83 @@ def main():
                             (filtered_data[var] != missing_label)  # ✅ Supprime les réponses définies comme "Non réponse"
                         ]
 
-                    # ✅ Génération du tableau interactif (AVEC regroupements et renommages)
-                    value_counts, var_name_display = create_interactive_qualitative_table(
-                        filtered_data,  # ✅ Utiliser les données filtrées
-                        var, 
-                        exclude_missing=exclude_missing,
-                        missing_label=missing_label
+                    # ✅ Utiliser la nouvelle fonction simple pour le regroupement et l'analyse
+                    value_counts = simple_qualitative_analysis(filtered_data[var], var)
+                    
+                    # ✅ Affichage du tableau
+                    table_title = st.text_input("Titre du tableau", f"Distribution de {var}", key="table_title_simple")
+                    table_source = st.text_input("Source", "", key="table_source_simple")
+                    table_note = st.text_area("Note de lecture", "", key="table_note_simple")
+                    
+                    # ✅ Affichage du tableau avec titre
+                    st.subheader(f"📊 {table_title}")
+                    st.dataframe(value_counts, use_container_width=True)
+                    
+                    # ✅ Affichage de la source et la note
+                    if table_source:
+                        st.caption(f"Source : {table_source}")
+                    if table_note:
+                        st.caption(f"Note : {table_note}")
+                    
+                    # ✅ Export Excel simplifié
+                    buffer = BytesIO()
+                    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+                        value_counts.to_excel(writer, sheet_name="Tableau", index=False)
+                        writer.close()
+                    
+                    st.download_button(
+                        label="📥 Télécharger le tableau en Excel",
+                        data=buffer.getvalue(),
+                        file_name=f"tableau_{var.replace(' ', '_')}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key="excel_download_simple"
                     )
-
-                    # ✅ Vérifier si le tableau existe avant de l'afficher
-                    if value_counts is not None:
-                        # ✅ Champs pour personnaliser le tableau
-                        table_title = st.text_input("Titre du tableau", f"Distribution de {var_name_display}", key="table_title")
-                        table_source = st.text_input("Source", "", key="table_source")
-                        table_note = st.text_area("Note de lecture", "", key="table_note")
-
-                        # ✅ Affichage unique du tableau avec titre et options
-                        st.subheader(f"📊 {table_title}")
-                        st.dataframe(value_counts, use_container_width=True)
-
-                        # ✅ Ajout du téléchargement en Excel
-                        buffer = BytesIO()
-                        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-                            workbook = writer.book
-                            worksheet = workbook.add_worksheet("Tableau")
-                            writer.sheets["Tableau"] = worksheet
-                            
-                            # ✅ Style pour le titre
-                            title_format = workbook.add_format({"bold": True, "font_size": 14, "align": "center"})
-                            worksheet.merge_range("A1:C1", table_title, title_format)
-
-                            # ✅ Écrire le tableau sous le titre
-                            value_counts.to_excel(writer, sheet_name="Tableau", startrow=2, index=False)
-
-                            # ✅ Auto-ajustement des colonnes
-                            for col_num, value in enumerate(value_counts.columns.values):
-                                worksheet.set_column(col_num, col_num, len(value) + 5)
-
-                            # ✅ Ajout de la source et de la note en bas
-                            last_row = len(value_counts) + 4
-                            if table_source:
-                                worksheet.write(last_row, 0, f"Source : {table_source}")
-                            if table_note:
-                                worksheet.write(last_row + 1, 0, f"Note : {table_note}")
-
-                            writer.close()
-
-                        st.download_button(
-                            label="📥 Télécharger le tableau en Excel",
-                            data=buffer.getvalue(),
-                            file_name=f"tableau_{var_name_display}.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    
+                    # ✅ Ajout d'une fonction d'export en image simplifiée
+                    if st.button("🖼️ Créer une image du tableau", key="create_image_simple"):
+                        # Fonction d'export simplifiée intégrée directement
+                        fig, ax = plt.subplots(figsize=(10, len(value_counts) + 2))
+                        ax.axis('off')
+                        
+                        # Préparation des données à afficher
+                        cell_text = []
+                        for _, row in value_counts.iterrows():
+                            cell_text.append([str(row[col]) for col in value_counts.columns])
+                        
+                        # Création du tableau
+                        table = ax.table(
+                            cellText=cell_text,
+                            colLabels=value_counts.columns,
+                            loc='center',
+                            cellLoc='center'
                         )
-
-                        # ✅ Générer une belle image du tableau
-                        img_buffer = export_table_as_image(value_counts, table_title, table_source, table_note)
-
+                        
+                        # Stylisation du tableau
+                        table.auto_set_font_size(False)
+                        table.set_fontsize(12)
+                        table.scale(1, 1.5)
+                        
+                        # Titre et notes
+                        if table_title:
+                            plt.title(table_title, fontsize=14, fontweight='bold')
+                        
+                        # Sauvegarder l'image
+                        img_buffer = BytesIO()
+                        plt.savefig(img_buffer, format='png', bbox_inches='tight', dpi=300)
+                        plt.close()
+                        img_buffer.seek(0)
+                        
+                        # Bouton de téléchargement
                         st.download_button(
-                            label="🖼️ Télécharger le tableau en image",
+                            label="🖼️ Télécharger l'image",
                             data=img_buffer,
-                            file_name=f"tableau_{var_name_display}.png",
-                            mime="image/png"
+                            file_name=f"tableau_{var.replace(' ', '_')}.png",
+                            mime="image/png",
+                            key="image_download_simple"
                         )
-
-                        # ✅ Appliquer les données transformées aux graphiques
-                        data_to_plot = value_counts.copy()
+                    
+                    # ✅ Préparation des données pour la visualisation
+                    data_to_plot = value_counts.copy()
 
                     # Configuration de la visualisation
                     st.write("### Configuration de la visualisation")
@@ -3444,8 +3284,8 @@ def main():
                         with adv_col1:
                             viz_title = st.text_input(
                                 "Titre du graphique", 
-                                value=st.session_state.table_title if 'table_title' in st.session_state else f"Distribution de {var}", 
-                                key="viz_title"
+                                value=table_title,  # ✅ Utilisation directe de la variable
+                                key="viz_title_simple"
                             )
 
                             # ✅ Définition de y_axis par défaut pour éviter l'erreur
@@ -3454,47 +3294,53 @@ def main():
                             if graph_type not in ["Treemap", "Radar"]:
                                 x_axis = st.text_input(
                                     "Titre de l'axe Y", 
-                                    value=st.session_state.var_name_display if 'var_name_display' in st.session_state else var_name_display, 
-                                    key="x_axis_qual"
+                                    value=var,  # ✅ Utilisation directe du nom de variable
+                                    key="x_axis_qual_simple"
                                 )
                                 y_axis = st.text_input(
                                     "Titre de l'axe X", 
                                     "Valeur", 
-                                    key="y_axis_qual"
+                                    key="y_axis_qual_simple"
                                 )
                             
-                            show_values = st.checkbox("Afficher les valeurs", True, key="show_values_qual")
+                            show_values = st.checkbox("Afficher les valeurs", True, key="show_values_qual_simple")
 
                         with adv_col2:
                             viz_source = st.text_input(
                                 "Source", 
-                                value=st.session_state.table_source if 'table_source' in st.session_state else "", 
-                                key="viz_source"
+                                value=table_source,  # ✅ Utilisation directe de la variable
+                                key="viz_source_simple"
                             )
                             viz_note = st.text_input(
                                 "Note de lecture", 
-                                value=st.session_state.table_note if 'table_note' in st.session_state else "", 
-                                key="viz_note"
+                                value=table_note,  # ✅ Utilisation directe de la variable
+                                key="viz_note_simple"
                             )
-                            value_type = st.radio("Type de valeur à afficher", ["Effectif", "Taux (%)"], key="value_type_qual")
-                            width = st.slider("Largeur du graphique", min_value=600, max_value=1200, value=800, step=50, key="graph_width")
+                            value_type = st.radio("Type de valeur à afficher", ["Effectif", "Taux (%)"], key="value_type_qual_simple")
+                            width = st.slider("Largeur du graphique", min_value=600, max_value=1200, value=800, step=50, key="graph_width_simple")
 
                     # Génération du graphique
-                    if st.button("Générer la visualisation", key="generate_qual_viz"):
+                    if st.button("Générer la visualisation", key="generate_qual_viz_simple"):
                         try:
                             # Préparation des données pour le graphique
-                            data_to_plot = value_counts.copy()
-
+                            # Renommer les colonnes pour correspondre à ce qu'attendent vos fonctions de graphique
+                            data_for_viz = data_to_plot.copy()
+                            
+                            # S'assurer que les noms des colonnes correspondent à ce qu'attendent vos fonctions
+                            if "Modalités" in data_for_viz.columns and "Modalité" not in data_for_viz.columns:
+                                data_for_viz = data_for_viz.rename(columns={"Modalités": "Modalité"})
+                            
                             # ✅ Calcul des taux si l'utilisateur sélectionne "Taux (%)"
                             if value_type == "Taux (%)":
-                                total = data_to_plot["Effectif"].sum()
-                                data_to_plot["Taux (%)"] = (data_to_plot["Effectif"] / total * 100).round(1)
+                                if "Taux (%)" not in data_for_viz.columns:
+                                    total = data_for_viz["Effectif"].sum()
+                                    data_for_viz["Taux (%)"] = (data_for_viz["Effectif"] / total * 100).round(1)
                                 y_axis = "Taux (%)" if y_axis == "Valeur" or y_axis is None else y_axis
 
                             # Création du graphique selon le type choisi
                             if graph_type == "Bar plot":
                                 fig = plot_qualitative_bar(
-                                    data_to_plot, 
+                                    data_for_viz, 
                                     viz_title, 
                                     x_axis, 
                                     y_axis,
@@ -3502,15 +3348,15 @@ def main():
                                     show_values,
                                     source=viz_source, 
                                     note=viz_note,
-                                    value_type=value_type  # ✅ Correction ajoutée ici
+                                    value_type=value_type
                                 )
 
                             elif graph_type == "Horizontal Bar":
                                 fig = plot_modern_horizontal_bars(
-                                    data=data_to_plot,
+                                    data=data_for_viz,
                                     title=viz_title,
                                     x_label=x_axis,
-                                    value_type=value_type,  # Ceci est transmis correctement
+                                    value_type=value_type,
                                     color_palette=COLOR_PALETTES[color_scheme],
                                     source=viz_source,
                                     note=viz_note
@@ -3518,7 +3364,7 @@ def main():
 
                             elif graph_type == "Dot Plot":
                                 fig = plot_dotplot(
-                                    data_to_plot, 
+                                    data_for_viz, 
                                     viz_title, 
                                     x_axis, 
                                     y_axis,
@@ -3527,12 +3373,12 @@ def main():
                                     source=viz_source, 
                                     note=viz_note, 
                                     width=width,
-                                    value_type=value_type  # ✅ Correction ajoutée ici
+                                    value_type=value_type
                                 )
 
                             elif graph_type == "Lollipop plot":
                                 fig = plot_qualitative_lollipop(
-                                    data_to_plot, 
+                                    data_for_viz, 
                                     viz_title, 
                                     x_axis, 
                                     y_axis,
@@ -3540,12 +3386,12 @@ def main():
                                     show_values,
                                     source=viz_source, 
                                     note=viz_note,
-                                    value_type=value_type  # ✅ Correction ajoutée ici
+                                    value_type=value_type
                                 )
 
                             elif graph_type == "Treemap":
                                 fig = plot_qualitative_treemap(
-                                    data_to_plot, 
+                                    data_for_viz, 
                                     viz_title,
                                     COLOR_PALETTES[color_scheme],
                                     source=viz_source, 
@@ -3554,12 +3400,12 @@ def main():
 
                             elif graph_type == "Radar":
                                 fig = plot_radar(
-                                    data_to_plot, 
+                                    data_for_viz, 
                                     viz_title,
                                     COLOR_PALETTES[color_scheme],
                                     source=viz_source, 
                                     note=viz_note,
-                                    value_type=value_type  # ✅ Correction ajoutée ici
+                                    value_type=value_type
                                 )
 
                             # Affichage du graphique
@@ -3572,13 +3418,15 @@ def main():
                                 var_name=var, 
                                 source=viz_source, 
                                 note=viz_note, 
-                                data_to_plot=data_to_plot,
+                                data_to_plot=data_for_viz,
                                 is_plotly=True,
                                 graph_type=graph_type.lower()
                             )
 
                         except Exception as e:
                             st.error(f"Erreur lors de la génération du graphique : {str(e)}")
+                            import traceback
+                            st.error(traceback.format_exc())  # Affiche la trace complète pour débogage
 
     elif active_tab == "bivariate":
         # Code pour l'analyse bivariée (similaire à votre code existant)
