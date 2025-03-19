@@ -1942,7 +1942,11 @@ def improved_qualitative_analysis(data_series, var_name):
                         st.session_state[f"select_{var_key}"] = []
                         st.session_state[f"name_{var_key}"] = "Nouveau groupe"
                         st.success(f"Groupe '{new_group_name}' créé avec {len(selected_modalities)} modalités")
-                        st.experimental_rerun()
+                        # Utiliser st.rerun() à la place de st.experimental_rerun()
+                        try:
+                            st.rerun()
+                        except:
+                            st.warning("Veuillez actualiser la page pour voir les changements.")
                 
                 with col2:
                     st.info("Après avoir ajouté ce groupe, la sélection sera effacée pour vous permettre de créer un nouveau groupe.")
@@ -2008,7 +2012,11 @@ def improved_qualitative_analysis(data_series, var_name):
                     with col2:
                         if st.button("🗑️", key=f"del_{var_key}_{i}"):
                             st.session_state.qualitative_groups[var_key].pop(i)
-                            st.experimental_rerun()
+                            # Utiliser st.rerun() à la place de st.experimental_rerun()
+                            try:
+                                st.rerun()
+                            except:
+                                st.warning("Veuillez actualiser la page pour voir les changements.")
             
             # Afficher les renommages
             if st.session_state.qualitative_groups[rename_key]:
@@ -2021,18 +2029,30 @@ def improved_qualitative_analysis(data_series, var_name):
                     with col2:
                         if st.button("🗑️", key=f"del_rename_{var_key}_{i}"):
                             del st.session_state.qualitative_groups[rename_key][old_name]
-                            st.experimental_rerun()
+                            # Utiliser st.rerun() à la place de st.experimental_rerun()
+                            try:
+                                st.rerun()
+                            except:
+                                st.warning("Veuillez actualiser la page pour voir les changements.")
             
             # Option pour réinitialiser toutes les modifications
             col1, col2 = st.columns([1, 1])
             with col1:
                 if st.button("🔄 Réinitialiser tous les groupes", key=f"reset_groups_{var_key}"):
                     st.session_state.qualitative_groups[var_key] = []
-                    st.experimental_rerun()
+                    # Utiliser st.rerun() à la place de st.experimental_rerun()
+                    try:
+                        st.rerun()
+                    except:
+                        st.warning("Veuillez actualiser la page pour voir les changements.")
             with col2:
                 if st.button("🔄 Réinitialiser tous les renommages", key=f"reset_renames_{var_key}"):
                     st.session_state.qualitative_groups[rename_key] = {}
-                    st.experimental_rerun()
+                    # Utiliser st.rerun() à la place de st.experimental_rerun()
+                    try:
+                        st.rerun()
+                    except:
+                        st.warning("Veuillez actualiser la page pour voir les changements.")
     
     # 5. Appliquer les renommages et regroupements
     grouped_data = clean_data.copy()
