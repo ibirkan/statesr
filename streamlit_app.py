@@ -386,6 +386,13 @@ def plot_dotplot(data, title, x_label, y_label, color_palette, show_values=True,
     """
     import textwrap
 
+    # ✅ Préparation et adaptation des données
+    data = data.copy()
+    
+    # ✅ Vérifier et renommer la première colonne si nécessaire
+    if data.columns[0] != 'Modalités':
+        data = data.rename(columns={data.columns[0]: 'Modalités'})
+
     # ✅ Sélection de la bonne colonne (Effectif ou Taux)
     y_column = "Taux (%)" if value_type == "Taux (%)" else "Effectif"
 
@@ -673,6 +680,13 @@ def plot_qualitative_lollipop(data, title, x_label, y_label, color_palette, show
     """
     import textwrap
     
+    # ✅ Préparation et adaptation des données
+    data = data.copy()
+    
+    # ✅ Vérifier et renommer la première colonne si nécessaire
+    if data.columns[0] != 'Modalités':
+        data = data.rename(columns={data.columns[0]: 'Modalités'})
+
     # ✅ Vérifier si on affiche les effectifs ou les taux
     y_column = "Taux (%)" if value_type == "Taux (%)" else "Effectif"
 
