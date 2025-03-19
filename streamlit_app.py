@@ -333,7 +333,7 @@ def plot_qualitative_bar(data, title, x_axis, y_axis, color_palette, show_values
         texttemplate='%{text:.1f}%' if value_type == "Taux (%)" else '%{text:,}',  # ✅ Format correct des pourcentages
         textposition="outside",
         marker_line_width=1.2,
-        width=0.5  # ✅ MODIFICATION PRINCIPALE: Définir une largeur fixe pour toutes les barres
+        width=0.3  # ✅ MODIFICATION PRINCIPALE: Définir une largeur fixe pour toutes les barres
     )
 
     # ✅ Ajustement de l'affichage pour éviter les chevauchements
