@@ -297,6 +297,13 @@ def plot_qualitative_bar(data, title, x_axis, y_axis, color_palette, show_values
     Returns:
         plotly Figure: Graphique Plotly prêt à être affiché dans Streamlit.
     """
+    # ✅ Préparation et adaptation des données
+    data = data.copy()
+    
+    # ✅ Vérifier et renommer la première colonne si nécessaire
+    if data.columns[0] != 'Modalités':
+        data = data.rename(columns={data.columns[0]: 'Modalités'})
+        
     # ✅ Vérifier si l'utilisateur veut afficher les effectifs ou les taux
     y_column = "Taux (%)" if value_type == "Taux (%)" else "Effectif"
 
