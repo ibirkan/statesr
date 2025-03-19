@@ -1849,7 +1849,7 @@ def analyze_qualitative_bivariate(df, var_x, var_y, exclude_missing=True):
 def create_interactive_qualitative_table(data_series, var_name, exclude_missing=False, missing_label="Non réponse"):
     """
     Génère un tableau interactif avec options de regroupement, renommage et export.
-    Corrigé pour gérer les données multidimensionnelles.
+    Corrigé pour gérer les données multidimensionnelles et la gestion du session_state.
     
     Args:
         data_series: Données de la variable (Series ou DataFrame)
@@ -1877,20 +1877,19 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
         # Initialisation des valeurs manquantes
         missing_values = [None, np.nan, '', 'nan', 'NaN', 'NA', 'nr', 'NR', 'Non réponse', 'Non-réponse']
         
-        # Initialisation du state si nécessaire
-        if 'original_data' not in st.session_state:
-            st.session_state.original_data = data_series.copy()
-            st.session_state.groupings = []
-            st.session_state.current_data = data_series.copy()
-            st.session_state.table_source = ""
-            st.session_state.table_note = ""
-            st.session_state.var_name_display = ""
-            st.session_state.table_title = "" 
-            st.session_state.modalities_order = {}
-            st.session_state.sync_options = True
+        # Initialisation du state si nécessaire - stockage des données uniquement
+        session_key = f"data_{var_name}"  # Clé unique basée sur le nom de la variable
+        
+        # Initialiser le state pour cette variable spécifique
+        if session_key not in st.session_state:
+            st.session_state[session_key] = {
+                'original_data': data_series.copy(),
+                'groupings': [],
+                'current_data': data_series.copy()
+            }
 
         # Traitement des données avec gestion des non-réponses
-        processed_series = st.session_state.original_data.copy()
+        processed_series = st.session_state[session_key]['original_data'].copy()
         
         # Remplacement des valeurs manquantes par le missing_label
         processed_series = processed_series.replace(missing_values, missing_label)
@@ -1907,53 +1906,50 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
             st.write("#### Créer un nouveau regroupement")
             selected_modalities = st.multiselect(
                 "Sélectionner les modalités à regrouper:",
-                options=available_modalities
+                options=available_modalities,
+                key=f"select_mod_{session_key}"
             )
             
             if selected_modalities:
                 new_group_name = st.text_input(
                     "Nom du nouveau groupe",
                     value=f"Groupe: {', '.join(selected_modalities[:2])}" + 
-                          (f" et {len(selected_modalities)-2} autres" if len(selected_modalities) > 2 else "")
+                          (f" et {len(selected_modalities)-2} autres" if len(selected_modalities) > 2 else ""),
+                    key=f"group_name_{session_key}"
                 )
                 
-                if st.button("✅ Appliquer le regroupement"):
-                    st.session_state.groupings.append({
+                if st.button("✅ Appliquer le regroupement", key=f"apply_group_{session_key}"):
+                    st.session_state[session_key]['groupings'].append({
                         'modalites': selected_modalities,
                         'nouveau_nom': new_group_name
                     })
                     # Réappliquer depuis zéro
-                    processed_series = st.session_state.original_data.copy()
-                    processed_series = processed_series.replace(missing_values, missing_label)
-                    if exclude_missing:
-                        processed_series = processed_series[processed_series != missing_label]
-                    
                     st.experimental_rerun()
             
             # Afficher les regroupements existants
-            if st.session_state.groupings:
+            if st.session_state[session_key]['groupings']:
                 st.write("#### Regroupements actuels")
-                for idx, group in enumerate(st.session_state.groupings):
+                for idx, group in enumerate(st.session_state[session_key]['groupings']):
                     col1, col2 = st.columns([4, 1])
                     with col1:
                         st.info(f"**{group['nouveau_nom']}**: {', '.join(group['modalites'])}")
                     with col2:
-                        if st.button("🗑️", key=f"delete_group_{idx}"):
-                            st.session_state.groupings.pop(idx)
+                        if st.button("🗑️", key=f"delete_group_{session_key}_{idx}"):
+                            st.session_state[session_key]['groupings'].pop(idx)
                             st.experimental_rerun()
                 
-                if st.button("🔄 Réinitialiser tous les regroupements"):
-                    st.session_state.groupings = []
+                if st.button("🔄 Réinitialiser tous les regroupements", key=f"reset_all_{session_key}"):
+                    st.session_state[session_key]['groupings'] = []
                     st.experimental_rerun()
 
         # Appliquer les regroupements existants
-        for group in st.session_state.groupings:
+        for group in st.session_state[session_key]['groupings']:
             processed_series = processed_series.replace(
                 group['modalites'],
                 group['nouveau_nom']
             )
 
-        st.session_state.current_data = processed_series.copy()
+        st.session_state[session_key]['current_data'] = processed_series.copy()
 
         # Création du DataFrame initial
         value_counts = processed_series.value_counts().reset_index()
@@ -1969,14 +1965,10 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
         # Renommage de la colonne des modalités pour correspondre au var_name
         display_name = var_name
         
-        # Ajout du titre, source et note directement sous le tableau
-        table_title = st.text_input("Titre du tableau", f"Distribution de {display_name}", key="table_title")
-        table_source = st.text_input("Source", "", key="table_source")
-        table_note = st.text_area("Note de lecture", "", key="table_note")
-
-        st.session_state.table_title = table_title
-        st.session_state.table_source = table_source
-        st.session_state.table_note = table_note
+        # Utiliser des clés uniques pour les widgets et ne pas manipuler directement le session_state
+        table_title = st.text_input("Titre du tableau", f"Distribution de {display_name}", key=f"title_{session_key}")
+        table_source = st.text_input("Source", "", key=f"source_{session_key}")
+        table_note = st.text_area("Note de lecture", "", key=f"note_{session_key}")
 
         # Création du DataFrame final pour affichage
         final_df = value_counts.copy()
@@ -2044,12 +2036,13 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                     label="📥 Télécharger le tableau en Excel",
                     data=buffer.getvalue(),
                     file_name=f"tableau_{var_name.replace(' ', '_')}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key=f"excel_{session_key}"
                 )
             
             with col2:
                 # Ajout du téléchargement en image
-                if st.button("📸 Exporter en image"):
+                if st.button("📸 Exporter en image", key=f"image_export_{session_key}"):
                     fig, ax = plt.subplots(figsize=(12, len(final_df) + 3))
                     ax.axis('off')
                     
@@ -2108,7 +2101,8 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                         label="🖼️ Télécharger le tableau en image",
                         data=img_buffer,
                         file_name=f"tableau_{var_name.replace(' ', '_')}.png",
-                        mime="image/png"
+                        mime="image/png",
+                        key=f"img_download_{session_key}"
                     )
 
         return final_df, display_name
