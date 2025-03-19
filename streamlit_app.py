@@ -1849,13 +1849,14 @@ def analyze_qualitative_bivariate(df, var_x, var_y, exclude_missing=True):
 def simple_qualitative_analysis(data_series, var_name):
     """
     Fonction simple pour analyser et regrouper des modalités qualitatives.
+    Version adaptée pour être compatible avec les fonctions graphiques existantes.
     
     Args:
         data_series: Variable à analyser (Series ou DataFrame)
         var_name: Nom de la variable
     
     Returns:
-        pd.DataFrame: Tableau des fréquences
+        pd.DataFrame: Tableau des fréquences compatible avec les fonctions graphiques
     """
     import pandas as pd
     import numpy as np
@@ -1907,7 +1908,7 @@ def simple_qualitative_analysis(data_series, var_name):
                     "nom": new_group_name
                 })
                 st.success(f"Groupe '{new_group_name}' créé avec {len(selected_modalities)} modalités")
-                st.rerun()  # Utiliser st.rerun() au lieu de st.experimental_rerun()
+                st.rerun()  # Version actualisée de st.experimental_rerun()
         
         # Afficher les groupes existants
         if st.session_state.qualitative_groups[var_key]:
@@ -1919,25 +1920,28 @@ def simple_qualitative_analysis(data_series, var_name):
                 with col2:
                     if st.button("Supprimer", key=f"del_{var_key}_{i}"):
                         st.session_state.qualitative_groups[var_key].pop(i)
-                        st.rerun()  # Utiliser st.rerun() au lieu de st.experimental_rerun()
+                        st.rerun()
             
             # Option pour réinitialiser tous les groupes
             if st.button("Réinitialiser tous les groupes", key=f"reset_{var_key}"):
                 st.session_state.qualitative_groups[var_key] = []
-                st.rerun()  # Utiliser st.rerun() au lieu de st.experimental_rerun()
+                st.rerun()
     
     # 5. Appliquer les regroupements
     grouped_data = clean_data.copy()
     for group in st.session_state.qualitative_groups[var_key]:
         grouped_data = grouped_data.replace(group["modalites"], group["nom"])
     
-    # 6. Calculer la distribution
+    # 6. Calculer la distribution - FORMATS ADAPTÉS AUX FONCTIONS GRAPHIQUES
     counts = grouped_data.value_counts().reset_index()
-    counts.columns = ["Modalités", "Effectif"]
     
-    # Calculer les pourcentages
+    # Renommer les colonnes pour correspondre à ce qu'attendent les fonctions graphiques
+    # Vos fonctions graphiques attendent 'Modalité' (sans s) et 'Effectif'
+    counts.columns = ["Modalité", "Effectif"]
+    
+    # Calculer les pourcentages avec le nom attendu par vos fonctions
     total = counts["Effectif"].sum()
-    counts["Pourcentage"] = (counts["Effectif"] / total * 100).round(1)
+    counts["Taux (%)"] = (counts["Effectif"] / total * 100).round(2)
     
     return counts
 
