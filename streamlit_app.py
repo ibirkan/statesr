@@ -1907,7 +1907,7 @@ def simple_qualitative_analysis(data_series, var_name):
                     "nom": new_group_name
                 })
                 st.success(f"Groupe '{new_group_name}' créé avec {len(selected_modalities)} modalités")
-                st.experimental_rerun()
+                st.rerun()  # Utiliser st.rerun() au lieu de st.experimental_rerun()
         
         # Afficher les groupes existants
         if st.session_state.qualitative_groups[var_key]:
@@ -1919,12 +1919,12 @@ def simple_qualitative_analysis(data_series, var_name):
                 with col2:
                     if st.button("Supprimer", key=f"del_{var_key}_{i}"):
                         st.session_state.qualitative_groups[var_key].pop(i)
-                        st.experimental_rerun()
+                        st.rerun()  # Utiliser st.rerun() au lieu de st.experimental_rerun()
             
             # Option pour réinitialiser tous les groupes
             if st.button("Réinitialiser tous les groupes", key=f"reset_{var_key}"):
                 st.session_state.qualitative_groups[var_key] = []
-                st.experimental_rerun()
+                st.rerun()  # Utiliser st.rerun() au lieu de st.experimental_rerun()
     
     # 5. Appliquer les regroupements
     grouped_data = clean_data.copy()
