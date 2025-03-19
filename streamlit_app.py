@@ -1865,17 +1865,17 @@ def analyze_qualitative_bivariate(df, var_x, var_y, exclude_missing=True):
     
     return (combined_table, response_stats) if exclude_missing else combined_table
 
-def simple_qualitative_analysis(data_series, var_name):
+def improved_qualitative_analysis(data_series, var_name):
     """
-    Fonction simple pour analyser et regrouper des modalités qualitatives.
-    Version adaptée pour être compatible avec plot_qualitative_bar.
+    Fonction améliorée pour analyser et regrouper des modalités qualitatives
+    avec une meilleure ergonomie et option de renommage.
     
     Args:
         data_series: Variable à analyser (Series ou DataFrame)
         var_name: Nom de la variable
     
     Returns:
-        pd.DataFrame: Tableau des fréquences compatible avec plot_qualitative_bar
+        pd.DataFrame: Tableau des fréquences
     """
     import pandas as pd
     import numpy as np
@@ -1894,74 +1894,164 @@ def simple_qualitative_analysis(data_series, var_name):
     if var_key not in st.session_state.qualitative_groups:
         st.session_state.qualitative_groups[var_key] = []
     
+    # Clé pour le renommage des modalités
+    rename_key = f"rename_{var_name}"
+    if rename_key not in st.session_state.qualitative_groups:
+        st.session_state.qualitative_groups[rename_key] = {}
+    
     # 3. Obtenir une copie propre des données
     clean_data = data_series.copy()
     
     # Remplacer les valeurs manquantes
     clean_data = clean_data.fillna("Non réponse")
     
-    # 4. Interface simple pour le regroupement
-    with st.expander(f"Regrouper les modalités de '{var_name}'"):
-        # Liste des modalités disponibles
-        available_modalities = sorted(clean_data.unique())
+    # 4. Interface pour la gestion des modalités
+    with st.expander(f"Gérer les modalités de '{var_name}'"):
+        # Créer 2 onglets pour séparer regroupement et renommage
+        tab1, tab2 = st.tabs(["Regrouper des modalités", "Renommer une modalité"])
         
-        # Sélection des modalités à regrouper
-        selected_modalities = st.multiselect(
-            "Sélectionner les modalités à regrouper:",
-            options=available_modalities,
-            key=f"select_{var_key}"
-        )
-        
-        # Définir le nom du nouveau groupe
-        if selected_modalities:
-            new_group_name = st.text_input(
-                "Nom du nouveau groupe:",
-                value="Nouveau groupe",
-                key=f"name_{var_key}"
+        with tab1:
+            st.subheader("Regrouper plusieurs modalités")
+            # Liste des modalités disponibles
+            available_modalities = sorted(clean_data.unique())
+            
+            # Sélection des modalités à regrouper
+            selected_modalities = st.multiselect(
+                "Sélectionner les modalités à regrouper:",
+                options=available_modalities,
+                key=f"select_{var_key}"
             )
             
-            # Appliquer le regroupement
-            if st.button("Appliquer le regroupement", key=f"apply_{var_key}"):
-                st.session_state.qualitative_groups[var_key].append({
-                    "modalites": selected_modalities,
-                    "nom": new_group_name
-                })
-                st.success(f"Groupe '{new_group_name}' créé avec {len(selected_modalities)} modalités")
-                st.rerun()
-        
-        # Afficher les groupes existants
-        if st.session_state.qualitative_groups[var_key]:
-            st.write("#### Groupes actuels:")
-            for i, group in enumerate(st.session_state.qualitative_groups[var_key]):
-                col1, col2 = st.columns([4, 1])
+            # Définir le nom du nouveau groupe
+            if selected_modalities:
+                new_group_name = st.text_input(
+                    "Nom du nouveau groupe:",
+                    value="Nouveau groupe",
+                    key=f"name_{var_key}"
+                )
+                
+                # Appliquer le regroupement
+                col1, col2 = st.columns([1, 3])
                 with col1:
-                    st.info(f"**{group['nom']}**: {', '.join(group['modalites'])}")
+                    if st.button("✅ Ajouter ce groupe", key=f"apply_{var_key}"):
+                        st.session_state.qualitative_groups[var_key].append({
+                            "modalites": selected_modalities,
+                            "nom": new_group_name
+                        })
+                        # Effacer les sélections pour un prochain groupe
+                        st.session_state[f"select_{var_key}"] = []
+                        st.session_state[f"name_{var_key}"] = "Nouveau groupe"
+                        st.success(f"Groupe '{new_group_name}' créé avec {len(selected_modalities)} modalités")
+                        st.experimental_rerun()
+                
                 with col2:
-                    if st.button("Supprimer", key=f"del_{var_key}_{i}"):
-                        st.session_state.qualitative_groups[var_key].pop(i)
-                        st.rerun()
+                    st.info("Après avoir ajouté ce groupe, la sélection sera effacée pour vous permettre de créer un nouveau groupe.")
+        
+        with tab2:
+            st.subheader("Renommer une modalité")
+            # Sélection d'une modalité à renommer
+            # Exclure les modalités déjà dans des groupes pour éviter les conflits
+            grouped_modalities = []
+            for group in st.session_state.qualitative_groups[var_key]:
+                grouped_modalities.extend(group["modalites"])
             
-            # Option pour réinitialiser tous les groupes
-            if st.button("Réinitialiser tous les groupes", key=f"reset_{var_key}"):
-                st.session_state.qualitative_groups[var_key] = []
-                st.rerun()
+            renamable_modalities = [m for m in available_modalities if m not in grouped_modalities]
+            
+            if not renamable_modalities:
+                st.warning("Toutes les modalités sont déjà dans des groupes. Supprimez un groupe si vous souhaitez renommer une modalité.")
+            else:
+                to_rename = st.selectbox(
+                    "Sélectionner une modalité à renommer:",
+                    options=renamable_modalities,
+                    key=f"select_rename_{var_key}"
+                )
+                
+                # Obtenir le nom actuel, ou l'ancien renommage s'il existe
+                current_name = st.session_state.qualitative_groups[rename_key].get(to_rename, to_rename)
+                
+                # Champ de saisie pour le nouveau nom
+                new_name = st.text_input(
+                    "Nouveau nom:",
+                    value=current_name,
+                    key=f"new_name_{var_key}"
+                )
+                
+                # Appliquer le renommage
+                col1, col2 = st.columns([1, 3])
+                with col1:
+                    if st.button("✅ Renommer", key=f"apply_rename_{var_key}"):
+                        st.session_state.qualitative_groups[rename_key][to_rename] = new_name
+                        st.success(f"Modalité '{to_rename}' renommée en '{new_name}'")
+                
+                with col2:
+                    # Afficher un message d'info pour le renommage
+                    if to_rename != new_name:
+                        st.info(f"La modalité '{to_rename}' sera renommée en '{new_name}'")
+            
+        # Afficher les groupes existants
+        if st.session_state.qualitative_groups[var_key] or st.session_state.qualitative_groups[rename_key]:
+            st.markdown("---")
+            st.subheader("Modifications actuelles")
+            
+            # Afficher les groupes
+            if st.session_state.qualitative_groups[var_key]:
+                st.write("**Groupes créés:**")
+                for i, group in enumerate(st.session_state.qualitative_groups[var_key]):
+                    col1, col2 = st.columns([4, 1])
+                    with col1:
+                        modalites_text = ", ".join(group['modalites'])
+                        if len(modalites_text) > 80:
+                            modalites_text = modalites_text[:77] + "..."
+                        st.info(f"**Groupe '{group['nom']}'**: {modalites_text}")
+                        if st.checkbox("Voir toutes les modalités", key=f"view_all_{var_key}_{i}"):
+                            st.write(", ".join(group['modalites']))
+                    with col2:
+                        if st.button("🗑️", key=f"del_{var_key}_{i}"):
+                            st.session_state.qualitative_groups[var_key].pop(i)
+                            st.experimental_rerun()
+            
+            # Afficher les renommages
+            if st.session_state.qualitative_groups[rename_key]:
+                st.write("**Modalités renommées:**")
+                rename_items = list(st.session_state.qualitative_groups[rename_key].items())
+                for i, (old_name, new_name) in enumerate(rename_items):
+                    col1, col2 = st.columns([4, 1])
+                    with col1:
+                        st.info(f"**'{old_name}'** → **'{new_name}'**")
+                    with col2:
+                        if st.button("🗑️", key=f"del_rename_{var_key}_{i}"):
+                            del st.session_state.qualitative_groups[rename_key][old_name]
+                            st.experimental_rerun()
+            
+            # Option pour réinitialiser toutes les modifications
+            col1, col2 = st.columns([1, 1])
+            with col1:
+                if st.button("🔄 Réinitialiser tous les groupes", key=f"reset_groups_{var_key}"):
+                    st.session_state.qualitative_groups[var_key] = []
+                    st.experimental_rerun()
+            with col2:
+                if st.button("🔄 Réinitialiser tous les renommages", key=f"reset_renames_{var_key}"):
+                    st.session_state.qualitative_groups[rename_key] = {}
+                    st.experimental_rerun()
     
-    # 5. Appliquer les regroupements
+    # 5. Appliquer les renommages et regroupements
     grouped_data = clean_data.copy()
+    
+    # Appliquer d'abord les renommages individuels
+    for old_name, new_name in st.session_state.qualitative_groups[rename_key].items():
+        grouped_data = grouped_data.replace(old_name, new_name)
+    
+    # Puis appliquer les regroupements
     for group in st.session_state.qualitative_groups[var_key]:
         grouped_data = grouped_data.replace(group["modalites"], group["nom"])
     
-    # 6. Calculer la distribution - FORMATS ADAPTÉS À plot_qualitative_bar
+    # 6. Calculer la distribution
     counts = grouped_data.value_counts().reset_index()
-    
-    # Renommer les colonnes exactement comme attendu par plot_qualitative_bar:
-    # Note: plot_qualitative_bar attend "Modalités" (avec S) et non "Modalité"
-    counts.rename(columns={counts.columns[0]: "Modalités", counts.columns[1]: "Effectif"}, inplace=True)
-
+    counts.columns = ["Modalités", "Effectif"]
     
     # Calculer les pourcentages
     total = counts["Effectif"].sum()
-    counts["Taux (%)"] = (counts["Effectif"] / total * 100).round(2)
+    counts["Pourcentage"] = (counts["Effectif"] / total * 100).round(1)
     
     return counts
 
@@ -3206,8 +3296,8 @@ def main():
                             (filtered_data[var] != missing_label)  # ✅ Supprime les réponses définies comme "Non réponse"
                         ]
 
-                    # ✅ Utiliser la nouvelle fonction simple pour le regroupement et l'analyse
-                    value_counts = simple_qualitative_analysis(filtered_data[var], var)
+                    # ✅ Utiliser la nouvelle fonction améliorée pour le regroupement et l'analyse
+                    value_counts = improved_qualitative_analysis(filtered_data[var], var)
                     
                     # ✅ Affichage du tableau
                     table_title = st.text_input("Titre du tableau", f"Distribution de {var}", key="table_title_simple")
@@ -3342,7 +3432,7 @@ def main():
                             )
                             value_type = st.radio("Type de valeur à afficher", ["Effectif", "Taux (%)"], key="value_type_qual_simple")
                             width = st.slider("Largeur du graphique", min_value=600, max_value=1200, value=800, step=50, key="graph_width_simple")
-                                                    
+
                     # Génération du graphique
                     if st.button("Générer la visualisation", key="generate_qual_viz_simple"):
                         try:
