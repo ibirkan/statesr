@@ -333,7 +333,7 @@ def plot_qualitative_bar(data, title, x_axis, y_axis, color_palette, show_values
         texttemplate='%{text:.1f}%' if value_type == "Taux (%)" else '%{text:,}',  # ✅ Format correct des pourcentages
         textposition="outside",
         marker_line_width=1.2,
-        width=0.3  # ✅ MODIFICATION PRINCIPALE: Définir une largeur fixe pour toutes les barres
+        width=0.2  # ✅ MODIFICATION PRINCIPALE: Définir une largeur fixe pour toutes les barres
     )
 
     # ✅ Ajustement de l'affichage pour éviter les chevauchements
@@ -342,7 +342,7 @@ def plot_qualitative_bar(data, title, x_axis, y_axis, color_palette, show_values
         yaxis_title=y_axis,
         title_font=dict(size=16, family="Arial", color="black"),
         margin=dict(l=50, r=50, t=60, b=bottom_margin),  # ✅ Ajustement dynamique de la marge basse
-        bargap=0.6,  # ✅ Augmenter l'espace entre les barres pour un meilleur rendu visuel
+        bargap=0.3,  # ✅ Augmenter l'espace entre les barres pour un meilleur rendu visuel
         plot_bgcolor='white'  # ✅ Fond blanc pour plus de clarté
     )
 
