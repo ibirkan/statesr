@@ -3322,7 +3322,7 @@ def main():
                             value_type = st.radio("Type de valeur à afficher", ["Effectif", "Taux (%)"], key="value_type_qual_simple")
                             width = st.slider("Largeur du graphique", min_value=600, max_value=1200, value=800, step=50, key="graph_width_simple")
                                                     
-                            st.write("Colonnes disponibles dans data_for_viz :", data_for_viz.columns)
+                    st.write("Colonnes disponibles dans data_for_viz :", data_for_viz.columns)
 
                     # Génération du graphique
                     if st.button("Générer la visualisation", key="generate_qual_viz_simple"):
