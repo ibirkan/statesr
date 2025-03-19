@@ -1935,7 +1935,8 @@ def simple_qualitative_analysis(data_series, var_name):
     
     # Renommer les colonnes exactement comme attendu par plot_qualitative_bar:
     # Note: plot_qualitative_bar attend "Modalités" (avec S) et non "Modalité"
-    counts.columns = ["Modalités", "Effectif"]
+    counts.rename(columns={counts.columns[0]: "Modalités", counts.columns[1]: "Effectif"}, inplace=True)
+
     
     # Calculer les pourcentages
     total = counts["Effectif"].sum()
