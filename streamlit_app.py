@@ -1847,9 +1847,33 @@ def analyze_qualitative_bivariate(df, var_x, var_y, exclude_missing=True):
     return (combined_table, response_stats) if exclude_missing else combined_table
 
 def create_interactive_qualitative_table(data_series, var_name, exclude_missing=False, missing_label="Non réponse"):
-    """Génère un tableau interactif avec options de regroupement, renommage et export."""
+    """
+    Génère un tableau interactif avec options de regroupement, renommage et export.
+    Corrigé pour gérer les données multidimensionnelles.
+    
+    Args:
+        data_series: Données de la variable (Series ou DataFrame)
+        var_name: Nom de la variable
+        exclude_missing: Booléen indiquant si les valeurs manquantes doivent être exclues
+        missing_label: Nom à donner aux valeurs manquantes
+        
+    Returns:
+        tuple: DataFrame des effectifs, Nom formaté de la variable
+    """
     
     try:
+        # Vérifier et corriger le type de data_series
+        if isinstance(data_series, pd.DataFrame):
+            # Si data_series est un DataFrame, prendre la première colonne
+            st.warning(f"Avertissement: '{var_name}' a été fourni comme un DataFrame, utilisation de la première colonne uniquement.")
+            data_series = data_series.iloc[:, 0]
+        
+        # Assurons-nous que c'est bien une série pandas
+        if not isinstance(data_series, pd.Series):
+            # Conversion en série pandas
+            st.warning(f"Avertissement: '{var_name}' n'est pas une série pandas. Conversion automatique.")
+            data_series = pd.Series(data_series, name=var_name)
+        
         # Initialisation des valeurs manquantes
         missing_values = [None, np.nan, '', 'nan', 'NaN', 'NA', 'nr', 'NR', 'Non réponse', 'Non-réponse']
         
@@ -1874,6 +1898,53 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
         # Si on exclut les non-réponses, on les retire avant tout traitement
         if exclude_missing:
             processed_series = processed_series[processed_series != missing_label]
+            
+        # Configuration des options de regroupement
+        with st.expander("Options de regroupement"):
+            # Définir les modalités disponibles
+            available_modalities = processed_series.unique().tolist()
+            
+            st.write("#### Créer un nouveau regroupement")
+            selected_modalities = st.multiselect(
+                "Sélectionner les modalités à regrouper:",
+                options=available_modalities
+            )
+            
+            if selected_modalities:
+                new_group_name = st.text_input(
+                    "Nom du nouveau groupe",
+                    value=f"Groupe: {', '.join(selected_modalities[:2])}" + 
+                          (f" et {len(selected_modalities)-2} autres" if len(selected_modalities) > 2 else "")
+                )
+                
+                if st.button("✅ Appliquer le regroupement"):
+                    st.session_state.groupings.append({
+                        'modalites': selected_modalities,
+                        'nouveau_nom': new_group_name
+                    })
+                    # Réappliquer depuis zéro
+                    processed_series = st.session_state.original_data.copy()
+                    processed_series = processed_series.replace(missing_values, missing_label)
+                    if exclude_missing:
+                        processed_series = processed_series[processed_series != missing_label]
+                    
+                    st.experimental_rerun()
+            
+            # Afficher les regroupements existants
+            if st.session_state.groupings:
+                st.write("#### Regroupements actuels")
+                for idx, group in enumerate(st.session_state.groupings):
+                    col1, col2 = st.columns([4, 1])
+                    with col1:
+                        st.info(f"**{group['nouveau_nom']}**: {', '.join(group['modalites'])}")
+                    with col2:
+                        if st.button("🗑️", key=f"delete_group_{idx}"):
+                            st.session_state.groupings.pop(idx)
+                            st.experimental_rerun()
+                
+                if st.button("🔄 Réinitialiser tous les regroupements"):
+                    st.session_state.groupings = []
+                    st.experimental_rerun()
 
         # Appliquer les regroupements existants
         for group in st.session_state.groupings:
@@ -1888,18 +1959,18 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
         value_counts = processed_series.value_counts().reset_index()
         value_counts.columns = ['Modalité', 'Effectif']
 
-        # **Correction : Numérotation en partant de 1**
+        # Numérotation en partant de 1
         value_counts.index += 1
 
         # Calcul des pourcentages
         total_effectif = value_counts['Effectif'].sum()
         value_counts['Taux (%)'] = (value_counts['Effectif'] / total_effectif * 100).round(2)
         
-        # Ajout de la colonne Nouvelle modalité pour renommage
-        value_counts['Nouvelle modalité'] = value_counts['Modalité'].copy()
-
-        # **Ajout du titre, source et note directement sous le tableau**
-        table_title = st.text_input("Titre du tableau", f"Distribution de {var_name}", key="table_title")
+        # Renommage de la colonne des modalités pour correspondre au var_name
+        display_name = var_name
+        
+        # Ajout du titre, source et note directement sous le tableau
+        table_title = st.text_input("Titre du tableau", f"Distribution de {display_name}", key="table_title")
         table_source = st.text_input("Source", "", key="table_source")
         table_note = st.text_area("Note de lecture", "", key="table_note")
 
@@ -1907,13 +1978,49 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
         st.session_state.table_source = table_source
         st.session_state.table_note = table_note
 
-        # **Affichage du tableau avec titre**
+        # Création du DataFrame final pour affichage
+        final_df = value_counts.copy()
+        final_df.columns = [display_name, 'Effectif', 'Taux (%)']
+        
+        # Affichage du tableau avec titre
         if table_title:
             st.markdown(f"### {table_title}")
 
-        st.dataframe(value_counts, use_container_width=True)
+        # Style pour le tableau
+        styled_df = final_df.style\
+            .format({
+                'Effectif': '{:,.0f}',
+                'Taux (%)': '{:.1f}%'
+            })\
+            .set_properties(**{
+                'font-family': 'Marianne, sans-serif',
+                'font-size': '14px',
+                'padding': '8px'
+            })\
+            .set_table_styles([
+                {'selector': 'th',
+                 'props': [
+                     ('background-color', '#f0f2f6'),
+                     ('color', '#262730'),
+                     ('font-weight', 'bold'),
+                     ('text-align', 'center'),
+                     ('padding', '10px'),
+                     ('font-size', '14px')
+                 ]},
+                {'selector': 'td:nth-child(1)',
+                 'props': [
+                     ('text-align', 'left'),
+                     ('padding-left', '15px')
+                 ]},
+                {'selector': 'tbody tr:nth-child(even)',
+                 'props': [('background-color', '#f9f9f9')]},
+                {'selector': 'tbody tr:nth-child(odd)',
+                 'props': [('background-color', 'white')]}
+            ])
 
-        # **Affichage de la source et la note**
+        st.dataframe(styled_df, hide_index=True, use_container_width=True)
+
+        # Affichage de la source et la note
         if table_source or table_note:
             st.markdown('<div style="max-width: 800px; margin: 5px auto;">', unsafe_allow_html=True)
             if table_source:
@@ -1922,35 +2029,95 @@ def create_interactive_qualitative_table(data_series, var_name, exclude_missing=
                 st.caption(f"📌 Note : {table_note}")
             st.markdown('</div>', unsafe_allow_html=True)
 
-        # **Ajout du téléchargement Excel**
-        buffer = BytesIO()
-        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-            value_counts.to_excel(writer, sheet_name="Tableau", index=False)
-            writer.close()
+        # Options d'export
+        with st.expander("Options d'export"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Ajout du téléchargement Excel
+                buffer = BytesIO()
+                with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+                    final_df.to_excel(writer, sheet_name="Tableau", index=False)
+                    writer.close()
 
-        st.download_button(
-            label="📥 Télécharger le tableau en Excel",
-            data=buffer.getvalue(),
-            file_name=f"tableau_{var_name}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+                st.download_button(
+                    label="📥 Télécharger le tableau en Excel",
+                    data=buffer.getvalue(),
+                    file_name=f"tableau_{var_name.replace(' ', '_')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+            
+            with col2:
+                # Ajout du téléchargement en image
+                if st.button("📸 Exporter en image"):
+                    fig, ax = plt.subplots(figsize=(12, len(final_df) + 3))
+                    ax.axis('off')
+                    
+                    # Configuration du style du tableau
+                    table = ax.table(
+                        cellText=final_df.values,
+                        colLabels=final_df.columns,
+                        loc='center',
+                        cellLoc='center',
+                        bbox=[0, 0.1, 1, 0.9]
+                    )
+                    
+                    # Style du tableau
+                    table.auto_set_font_size(False)
+                    table.set_fontsize(12)
+                    
+                    # Style des en-têtes
+                    for j, cell in enumerate(table._cells[(0, j)] for j in range(len(final_df.columns))):
+                        cell.set_facecolor('#f0f2f6')
+                        cell.set_text_props(weight='bold')
+                    
+                    # Style des lignes alternées
+                    for i in range(1, len(final_df) + 1):
+                        for j in range(len(final_df.columns)):
+                            if i % 2 == 0:
+                                table._cells[(i, j)].set_facecolor('#f9f9f9')
+                    
+                    # Titre et notes de bas de page
+                    if table_title:
+                        plt.title(table_title, fontsize=14, fontweight='bold', pad=20)
+                    
+                    footer_text = []
+                    if table_source:
+                        footer_text.append(f"Source : {table_source}")
+                    if table_note:
+                        footer_text.append(f"Note : {table_note}")
+                    
+                    if footer_text:
+                        plt.figtext(0.1, 0.02, '\n'.join(footer_text), fontsize=10)
+                    
+                    # Sauvegarde en mémoire
+                    img_buffer = BytesIO()
+                    plt.savefig(
+                        img_buffer, 
+                        format='png', 
+                        bbox_inches='tight', 
+                        dpi=300,
+                        facecolor='white',
+                        edgecolor='none'
+                    )
+                    img_buffer.seek(0)
+                    plt.close()
+                    
+                    # Bouton de téléchargement
+                    st.download_button(
+                        label="🖼️ Télécharger le tableau en image",
+                        data=img_buffer,
+                        file_name=f"tableau_{var_name.replace(' ', '_')}.png",
+                        mime="image/png"
+                    )
 
-        # **Ajout du téléchargement en image**
-        if st.button("📸 Exporter en image"):
-            img_buffer = export_table_as_image(value_counts, table_title, table_source, table_note)
-            st.download_button(
-                label="🖼️ Télécharger le tableau en image",
-                data=img_buffer,
-                file_name=f"tableau_{var_name}.png",
-                mime="image/png"
-            )
-
-        return value_counts, var_name
+        return final_df, display_name
 
     except Exception as e:
         st.error(f"Erreur lors de la création du tableau : {str(e)}")
+        import traceback
+        st.error(traceback.format_exc())  # Affiche la trace complète pour débogage
         return None, None
-
 
 def export_table_as_image(value_counts, title, source, note):
     """ Exporte un tableau en image (PNG) avec titre, source et note. """
