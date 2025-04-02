@@ -3211,12 +3211,7 @@ def main():
                             clean_data = filtered_data.dropna(subset=[var, groupby_col])
                             agg_data = clean_data.groupby(groupby_col).agg({var: agg_method}).reset_index()
                             plot_data = agg_data[var]
-                            
-                    # Options de regroupement pour les variables numériques
-                    st.write("### Options de visualisation")
-                    grouping_method = st.selectbox("Méthode de regroupement", ["Aucune", "Quantile", "Manuelle"])
-                    is_integer_variable = all(float(x).is_integer() for x in plot_data.dropna() if hasattr(x, 'is_integer'))
-                    
+                                               
                     # Configuration de la visualisation pour les variables numériques
                     col1, col2 = st.columns([1, 2])
                     
