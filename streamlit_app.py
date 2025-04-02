@@ -3138,7 +3138,8 @@ def main():
                                 elif quantile_type == "Quintile (5 groupes)":
                                     labels = [f"{i}er quintile" if i == 1 else f"{i}ème quintile" for i in range(1, actual_groups+1)]
                                 else:  # Déciles
-                                    labels = [f"{i}er décile" if i == 1 else f"{i}ème décile" for i in range(1, actual_groups+1)]
+                                        labels = [f"{'01' if i == 1 else f'{i:02d}'}{'er' if i == 1 else 'ème'} décile" for i in range(1, 11)]
+                                        sort_order = list(range(1, 11))  # Ordre numérique: 1,2,3,...,10
                             
                             # Continuer avec le reste du code
                             value_counts = pd.DataFrame({
