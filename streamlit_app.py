@@ -3077,10 +3077,6 @@ def main():
                 st.write(f"### Résumé de la variable {var}")
                 
                 if is_numeric:
-                    # Remplacer cette ligne:
-                    create_quantitative_dashboard(plot_data, var)
-
-                    # Par le code suivant:
                     # Statistiques descriptives
                     stats_df = pd.DataFrame({
                         'Statistique': ['Effectif total', 'Somme', 'Moyenne', 'Médiane', 'Écart-type', 'Minimum', 'Maximum'],
