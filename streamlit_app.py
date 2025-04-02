@@ -3077,9 +3077,123 @@ def main():
                 st.write(f"### Résumé de la variable {var}")
                 
                 if is_numeric:
+                    # Remplacer cette ligne:
                     create_quantitative_dashboard(plot_data, var)
-                else:
-                    create_qualitative_dashboard(plot_data, var)
+
+                    # Par le code suivant:
+                    # Statistiques descriptives
+                    stats_df = pd.DataFrame({
+                        'Statistique': ['Effectif total', 'Somme', 'Moyenne', 'Médiane', 'Écart-type', 'Minimum', 'Maximum'],
+                        'Valeur': [
+                            len(plot_data),
+                            plot_data.sum().round(2),
+                            plot_data.mean().round(2),
+                            plot_data.median().round(2),
+                            plot_data.std().round(2),
+                            plot_data.min(),
+                            plot_data.max()
+                        ]
+                    })
+                    create_interactive_stats_table(stats_df)
+
+                    if 'do_aggregate' in locals() and do_aggregate:
+                        st.info("Note : Les statistiques sont calculées à l'échelle de la variable d'agrégation sélectionnée.")
+
+                    # Options de regroupement
+                    st.write("### Options de regroupement")
+                    grouping_method = st.selectbox("Méthode de regroupement", ["Aucune", "Quantile", "Manuelle"])
+                    is_integer_variable = all(float(x).is_integer() for x in plot_data.dropna() if hasattr(x, 'is_integer'))
+
+                    if grouping_method == "Quantile":
+                        quantile_type = st.selectbox(
+                            "Type de regroupement",
+                            ["Quartile (4 groupes)", "Quintile (5 groupes)", "Décile (10 groupes)"]
+                        )
+                        n_groups = {"Quartile (4 groupes)": 4, "Quintile (5 groupes)": 5, "Décile (10 groupes)": 10}[quantile_type]
+
+                        # Création des labels personnalisés selon le type de quantile
+                        if quantile_type == "Quartile (4 groupes)":
+                            labels = [f"{i}er quartile" if i == 1 else f"{i}ème quartile" for i in range(1, 5)]
+                        elif quantile_type == "Quintile (5 groupes)":
+                            labels = [f"{i}er quintile" if i == 1 else f"{i}ème quintile" for i in range(1, 6)]
+                        else:  # Déciles
+                            labels = [f"{i}er décile" if i == 1 else f"{i}ème décile" for i in range(1, 11)]
+
+                        # Création des groupes avec les labels personnalisés
+                        grouped_data = pd.qcut(plot_data, q=n_groups, labels=labels)
+                        value_counts = pd.DataFrame({
+                            'Groupe': labels,
+                            'Effectif': grouped_data.value_counts().reindex(labels)
+                        })
+
+                        # Calcul des taux avec entiers si approprié
+                        value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100)
+                        if is_integer_variable:
+                            value_counts['Effectif'] = value_counts['Effectif'].astype(int)
+                            value_counts['Taux (%)'] = value_counts['Taux (%)'].apply(
+                                lambda x: int(x) if x.is_integer() else round(x, 1)
+                            )
+
+                        # Statistiques par groupe
+                        group_stats = plot_data.groupby(grouped_data).agg(['sum', 'mean', 'max'])
+                        if is_integer_variable:
+                            group_stats = group_stats.applymap(lambda x: int(x) if float(x).is_integer() else round(x, 2))
+                        else:
+                            group_stats = group_stats.round(2)
+                        group_stats.columns = ['Somme', 'Moyenne', 'Maximum']
+
+                        st.write("### Statistiques par groupe")
+                        st.dataframe(pd.concat([value_counts, group_stats], axis=1))
+
+                    elif grouping_method == "Manuelle":
+                        n_groups = st.number_input("Nombre de groupes", min_value=2, value=3)
+                        breaks = []
+
+                        # Conversion en float pour assurer la cohérence des types
+                        min_val = float(plot_data.min())
+                        max_val = float(plot_data.max())
+
+                        for i in range(n_groups + 1):
+                            if i == 0:
+                                val = min_val
+                            elif i == n_groups:
+                                val = max_val
+                            else:
+                                suggested_val = min_val + (i/n_groups)*(max_val-min_val)
+                                if is_integer_variable:
+                                    val = st.number_input(
+                                        f"Seuil {i}", 
+                                        value=int(suggested_val),
+                                        min_value=int(min_val),
+                                        max_value=int(max_val),
+                                        step=1
+                                    )
+                                else:
+                                    val = st.number_input(
+                                        f"Seuil {i}", 
+                                        value=float(suggested_val),
+                                        min_value=float(min_val),
+                                        max_value=float(max_val),
+                                        step=0.1
+                                    )
+                            breaks.append(val)
+
+                        grouped_data = pd.cut(plot_data, bins=breaks)
+                        value_counts = grouped_data.value_counts().reset_index()
+                        value_counts.columns = ['Groupe', 'Effectif']
+
+                        # Tri et formatage
+                        value_counts = value_counts.sort_values('Groupe', key=lambda x: x.map(lambda y: y.left))
+                        value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100)
+
+                        if is_integer_variable:
+                            value_counts['Effectif'] = value_counts['Effectif'].astype(int)
+                            value_counts['Taux (%)'] = value_counts['Taux (%)'].apply(
+                                lambda x: int(x) if x.is_integer() else round(x, 1)
+                            )
+
+                        st.write("### Répartition des groupes")
+                        st.dataframe(value_counts)
                 
                 # Options d'analyse
                 if is_numeric:
