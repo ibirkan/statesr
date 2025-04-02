@@ -3163,7 +3163,9 @@ def main():
                             group_stats.columns = ['Somme', 'Moyenne', 'Maximum']
                             
                             st.write("### Statistiques par groupe")
-                            st.dataframe(pd.concat([value_counts, group_stats], axis=1))
+                            merged_stats = value_counts.set_index('Groupe')
+                            merged_stats = merged_stats.join(group_stats)
+                            st.dataframe(merged_stats.reset_index())
                             
                         except ValueError as e:
                             # Cas où qcut échoue même avec duplicates='drop'
