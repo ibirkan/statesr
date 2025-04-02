@@ -3070,6 +3070,7 @@ def main():
             plot_data = filtered_data[var].copy()
             
             if plot_data is not None and not plot_data.empty:
+                is_numeric = is_numeric_column(filtered_data, var)
                 # Détection du type de variable
                 if is_numeric:
                     # Essayer de convertir en numérique explicitement
