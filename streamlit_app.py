@@ -3101,6 +3101,7 @@ def main():
                     is_integer_variable = all(float(x).is_integer() for x in plot_data.dropna() if hasattr(x, 'is_integer'))
 
                     if grouping_method == "Quantile":
+                    if grouping_method == "Quantile":
                         quantile_type = st.selectbox(
                             "Type de regroupement",
                             ["Quartile (4 groupes)", "Quintile (5 groupes)", "Décile (10 groupes)"]
@@ -3116,30 +3117,82 @@ def main():
                             labels = [f"{i}er décile" if i == 1 else f"{i}ème décile" for i in range(1, 11)]
 
                         # Création des groupes avec les labels personnalisés
-                        grouped_data = pd.qcut(plot_data, q=n_groups, labels=labels)
-                        value_counts = pd.DataFrame({
-                            'Groupe': labels,
-                            'Effectif': grouped_data.value_counts().reindex(labels)
-                        })
-
-                        # Calcul des taux avec entiers si approprié
-                        value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100)
-                        if is_integer_variable:
-                            value_counts['Effectif'] = value_counts['Effectif'].astype(int)
-                            value_counts['Taux (%)'] = value_counts['Taux (%)'].apply(
-                                lambda x: int(x) if x.is_integer() else round(x, 1)
-                            )
-
-                        # Statistiques par groupe
-                        group_stats = plot_data.groupby(grouped_data).agg(['sum', 'mean', 'max'])
-                        if is_integer_variable:
-                            group_stats = group_stats.applymap(lambda x: int(x) if float(x).is_integer() else round(x, 2))
-                        else:
-                            group_stats = group_stats.round(2)
-                        group_stats.columns = ['Somme', 'Moyenne', 'Maximum']
-
-                        st.write("### Statistiques par groupe")
-                        st.dataframe(pd.concat([value_counts, group_stats], axis=1))
+                        try:
+                            # Vérifier le nombre de valeurs uniques
+                            unique_values = plot_data.nunique()
+                            
+                            if unique_values < n_groups:
+                                st.warning(f"Attention : La variable contient seulement {unique_values} valeurs uniques, ce qui est inférieur aux {n_groups} groupes demandés. Le regroupement peut être imprécis.")
+                                
+                            # Essayer d'utiliser duplicates='drop' qui peut aider dans certains cas
+                            grouped_data = pd.qcut(plot_data, q=n_groups, labels=labels, duplicates='drop')
+                            
+                            # Compter le nombre réel de groupes créés
+                            actual_groups = grouped_data.nunique()
+                            
+                            if actual_groups < n_groups:
+                                st.warning(f"Seulement {actual_groups} groupes distincts ont pu être créés au lieu de {n_groups} en raison de la distribution des données.")
+                                
+                                # Recréer les labels si nécessaire
+                                if quantile_type == "Quartile (4 groupes)":
+                                    labels = [f"{i}er quartile" if i == 1 else f"{i}ème quartile" for i in range(1, actual_groups+1)]
+                                elif quantile_type == "Quintile (5 groupes)":
+                                    labels = [f"{i}er quintile" if i == 1 else f"{i}ème quintile" for i in range(1, actual_groups+1)]
+                                else:  # Déciles
+                                    labels = [f"{i}er décile" if i == 1 else f"{i}ème décile" for i in range(1, actual_groups+1)]
+                            
+                            # Continuer avec le reste du code
+                            value_counts = pd.DataFrame({
+                                'Groupe': grouped_data.value_counts().index,
+                                'Effectif': grouped_data.value_counts().values
+                            })
+                            
+                            # Calcul des taux avec entiers si approprié
+                            value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100)
+                            if is_integer_variable:
+                                value_counts['Effectif'] = value_counts['Effectif'].astype(int)
+                                value_counts['Taux (%)'] = value_counts['Taux (%)'].apply(
+                                    lambda x: int(x) if x.is_integer() else round(x, 1)
+                                )
+                            
+                            # Statistiques par groupe
+                            group_stats = plot_data.groupby(grouped_data).agg(['sum', 'mean', 'max'])
+                            if is_integer_variable:
+                                group_stats = group_stats.applymap(lambda x: int(x) if float(x).is_integer() else round(x, 2))
+                            else:
+                                group_stats = group_stats.round(2)
+                            group_stats.columns = ['Somme', 'Moyenne', 'Maximum']
+                            
+                            st.write("### Statistiques par groupe")
+                            st.dataframe(pd.concat([value_counts, group_stats], axis=1))
+                            
+                        except ValueError as e:
+                            # Cas où qcut échoue même avec duplicates='drop'
+                            st.error(f"Impossible de créer {n_groups} groupes avec cette distribution de données. Essayez une autre méthode de regroupement ou réduisez le nombre de groupes.")
+                            
+                            # Alternative: utiliser pd.cut avec des intervalles égaux comme solution de repli
+                            if st.button("Essayer avec des intervalles égaux à la place"):
+                                try:
+                                    min_val = plot_data.min()
+                                    max_val = plot_data.max()
+                                    interval = (max_val - min_val) / n_groups
+                                    bins = [min_val + i * interval for i in range(n_groups + 1)]
+                                    
+                                    grouped_data_alt = pd.cut(plot_data, bins=bins, labels=labels)
+                                    
+                                    value_counts_alt = pd.DataFrame({
+                                        'Groupe': grouped_data_alt.value_counts().index,
+                                        'Effectif': grouped_data_alt.value_counts().values
+                                    })
+                                    
+                                    value_counts_alt['Taux (%)'] = (value_counts_alt['Effectif'] / len(plot_data) * 100).round(1)
+                                    
+                                    st.success("Regroupement effectué avec des intervalles de largeur égale au lieu de quantiles égaux.")
+                                    st.dataframe(value_counts_alt)
+                                except Exception as e2:
+                                    st.error(f"Échec de la méthode alternative : {str(e2)}")
+                        except Exception as e:
+                            st.error(f"Erreur lors du regroupement : {str(e)}")
 
                     elif grouping_method == "Manuelle":
                         n_groups = st.number_input("Nombre de groupes", min_value=2, value=3)
