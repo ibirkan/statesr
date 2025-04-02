@@ -3101,7 +3101,6 @@ def main():
                     is_integer_variable = all(float(x).is_integer() for x in plot_data.dropna() if hasattr(x, 'is_integer'))
 
                     if grouping_method == "Quantile":
-                    if grouping_method == "Quantile":
                         quantile_type = st.selectbox(
                             "Type de regroupement",
                             ["Quartile (4 groupes)", "Quintile (5 groupes)", "Décile (10 groupes)"]
