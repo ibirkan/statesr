@@ -3070,11 +3070,13 @@ def main():
             plot_data = filtered_data[var].copy()
             
             if plot_data is not None and not plot_data.empty:
-                is_numeric = is_numeric_column(filtered_data, var)
                 # Détection du type de variable
-                if is_numeric:
-                    # Essayer de convertir en numérique explicitement
-                    try:
+                try:
+                    # Vérifier si la variable est numérique
+                    is_numeric = is_numeric_column(filtered_data, var)
+                    
+                    if is_numeric:
+                        # Essayer de convertir en numérique explicitement
                         numeric_plot_data = pd.to_numeric(plot_data, errors='coerce')
                         
                         # Vérifier si nous avons des données valides après conversion
@@ -3095,7 +3097,7 @@ def main():
                             create_interactive_stats_table(stats_df)
                             
                             # Utiliser numeric_plot_data pour le reste de l'analyse
-                            plot_data = numeric_plot_data.dropna()
+                            cleaned_plot_data = numeric_plot_data.dropna()
                             
                             if 'do_aggregate' in locals() and do_aggregate:
                                 st.info("Note : Les statistiques sont calculées à l'échelle de la variable d'agrégation sélectionnée.")
