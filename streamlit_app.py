@@ -3065,260 +3065,281 @@ def main():
         # Sélection de la variable pour l'analyse univariée
         var = create_enhanced_variable_selector(filtered_data, "Sélectionnez la variable pour l'analyse univariée")
         
-        if var is not None:
-            # Préparation des données
-            plot_data = filtered_data[var].copy()
-            
-            if plot_data is not None and not plot_data.empty:
-                # Détection du type de variable
-                try:
-                    # Vérifier si la variable est numérique
-                    is_numeric = is_numeric_column(filtered_data, var)
+# Cette section doit être placée dans la partie active_tab == "univariate"
+if var is not None:
+    # Préparation des données
+    plot_data = filtered_data[var].copy()
+    
+    if plot_data is not None and not plot_data.empty:
+        # Détection du type de variable (déplacée ici pour être définie avant utilisation)
+        is_numeric = is_numeric_column(filtered_data, var)
+        
+        # Affichage du dashboard de résumé approprié
+        st.write(f"### Résumé de la variable {var}")
+        
+        if is_numeric:
+            # Pour les variables numériques
+            # Essayer de convertir en numérique explicitement
+            try:
+                numeric_plot_data = pd.to_numeric(plot_data, errors='coerce')
+                
+                # Vérifier si nous avons des données valides après conversion
+                if numeric_plot_data.notna().any():
+                    # Statistiques descriptives avec les données converties
+                    stats_df = pd.DataFrame({
+                        'Statistique': ['Effectif total', 'Somme', 'Moyenne', 'Médiane', 'Écart-type', 'Minimum', 'Maximum'],
+                        'Valeur': [
+                            len(numeric_plot_data.dropna()),
+                            numeric_plot_data.sum().round(2),
+                            numeric_plot_data.mean().round(2),
+                            numeric_plot_data.median().round(2),
+                            numeric_plot_data.std().round(2),
+                            numeric_plot_data.min(),
+                            numeric_plot_data.max()
+                        ]
+                    })
+                    create_interactive_stats_table(stats_df)
                     
-                    if is_numeric:
-                        # Essayer de convertir en numérique explicitement
-                        numeric_plot_data = pd.to_numeric(plot_data, errors='coerce')
+                    # Utiliser numeric_plot_data pour le reste de l'analyse
+                    plot_data = numeric_plot_data.dropna()
+                    
+                    # Gestion des doublons si nécessaire
+                    has_duplicates = check_duplicates(filtered_data, var)
+                    if has_duplicates:
+                        st.warning("⚠️ Certaines observations sont répétées dans le jeu de données. "
+                                  "Vous pouvez choisir d'agréger les données avant l'analyse.")
+                        do_aggregate = st.checkbox("Agréger les données avant l'analyse")
                         
-                        # Vérifier si nous avons des données valides après conversion
-                        if numeric_plot_data.notna().any():
-                            # Statistiques descriptives avec les données converties
-                            stats_df = pd.DataFrame({
-                                'Statistique': ['Effectif total', 'Somme', 'Moyenne', 'Médiane', 'Écart-type', 'Minimum', 'Maximum'],
-                                'Valeur': [
-                                    len(numeric_plot_data.dropna()),
-                                    numeric_plot_data.sum().round(2),
-                                    numeric_plot_data.mean().round(2),
-                                    numeric_plot_data.median().round(2),
-                                    numeric_plot_data.std().round(2),
-                                    numeric_plot_data.min(),
-                                    numeric_plot_data.max()
-                                ]
-                            })
-                            create_interactive_stats_table(stats_df)
+                        if do_aggregate:
+                            groupby_cols = [col for col in filtered_data.columns if col != var]
+                            groupby_col = st.selectbox("Sélectionner la colonne d'agrégation", groupby_cols)
+                            agg_method = st.radio(
+                                "Méthode d'agrégation", 
+                                ['sum', 'mean', 'median'],
+                                format_func=lambda x: {'sum': 'Somme', 'mean': 'Moyenne', 'median': 'Médiane'}[x]
+                            )
+                            clean_data = filtered_data.dropna(subset=[var, groupby_col])
+                            agg_data = clean_data.groupby(groupby_col).agg({var: agg_method}).reset_index()
+                            plot_data = agg_data[var]
                             
-                            # Utiliser numeric_plot_data pour le reste de l'analyse
-                            cleaned_plot_data = numeric_plot_data.dropna()
+                            st.info("Note : Les statistiques sont calculées à l'échelle de la variable d'agrégation sélectionnée.")
+                    
+                    # Options de regroupement
+                    st.write("### Options de regroupement")
+                    grouping_method = st.selectbox("Méthode de regroupement", ["Aucune", "Quantile", "Manuelle"], key="grouping_method_data")
+                    
+                    # Vérification si les valeurs sont des entiers
+                    is_integer_variable = all(float(x).is_integer() for x in plot_data.dropna() if pd.notna(x))
+                    
+                    if grouping_method == "Quantile":
+                        quantile_type = st.selectbox(
+                            "Type de regroupement",
+                            ["Quartile (4 groupes)", "Quintile (5 groupes)", "Décile (10 groupes)"]
+                        )
+                        n_groups = {"Quartile (4 groupes)": 4, "Quintile (5 groupes)": 5, "Décile (10 groupes)": 10}[quantile_type]
+                        
+                        # Création des labels et de l'ordre de tri
+                        if quantile_type == "Quartile (4 groupes)":
+                            labels = [f"{i}er quartile" if i == 1 else f"{i}ème quartile" for i in range(1, 5)]
+                            sort_order = list(range(1, 5))
+                        elif quantile_type == "Quintile (5 groupes)":
+                            labels = [f"{i}er quintile" if i == 1 else f"{i}ème quintile" for i in range(1, 6)]
+                            sort_order = list(range(1, 6))
+                        else:  # Déciles
+                            # Ajout du zéro de padding pour un tri correct
+                            labels = [f"{'01' if i == 1 else f'{i:02d}'}{'er' if i == 1 else 'ème'} décile" for i in range(1, 11)]
+                            sort_order = list(range(1, 11))
+                        
+                        try:
+                            # Vérifier le nombre de valeurs uniques
+                            unique_values = plot_data.nunique()
                             
-                            if 'do_aggregate' in locals() and do_aggregate:
-                                st.info("Note : Les statistiques sont calculées à l'échelle de la variable d'agrégation sélectionnée.")
-
-                            # Options de regroupement
-                            st.write("### Options de regroupement")
-                            grouping_method = st.selectbox("Méthode de regroupement", ["Aucune", "Quantile", "Manuelle"], key="grouping_method_data")
-
-                            is_integer_variable = all(float(x).is_integer() for x in plot_data.dropna() if pd.notna(x))
-
-                            if grouping_method == "Quantile":
-                                quantile_type = st.selectbox(
-                                    "Type de regroupement",
-                                    ["Quartile (4 groupes)", "Quintile (5 groupes)", "Décile (10 groupes)"]
+                            if unique_values < n_groups:
+                                st.warning(f"Attention : La variable contient seulement {unique_values} valeurs uniques, ce qui est inférieur aux {n_groups} groupes demandés.")
+                            
+                            # Créer les groupes avec gestion des duplicates
+                            grouped_data = pd.qcut(plot_data, q=n_groups, labels=labels, duplicates='drop')
+                            
+                            # Compter les groupes réels
+                            actual_groups = grouped_data.nunique()
+                            if actual_groups < n_groups:
+                                st.warning(f"Seulement {actual_groups} groupes distincts ont pu être créés.")
+                            
+                            # Créer un DataFrame avec l'ordre explicite pour le tri
+                            value_counts = pd.DataFrame()
+                            
+                            # Ajout d'une colonne pour l'ordre de tri
+                            group_order_map = {label: order for label, order in zip(labels, sort_order)}
+                            
+                            # Compter les valeurs par groupe
+                            grouped_counts = grouped_data.value_counts().reset_index()
+                            grouped_counts.columns = ['Groupe', 'Effectif']
+                            
+                            # Ajouter une colonne d'ordre pour le tri
+                            grouped_counts['Ordre'] = grouped_counts['Groupe'].map(lambda x: group_order_map.get(x, 999))
+                            
+                            # Trier par l'ordre numérique (pas alphabétique)
+                            value_counts = grouped_counts.sort_values('Ordre')
+                            
+                            # Calculer les pourcentages
+                            value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(1)
+                            
+                            # Statistiques par groupe
+                            group_stats = plot_data.groupby(grouped_data).agg(['sum', 'mean', 'max'])
+                            
+                            # Formatage si entiers
+                            if is_integer_variable:
+                                group_stats = group_stats.applymap(
+                                    lambda x: int(x) if pd.notna(x) and float(x).is_integer() else round(x, 2) if pd.notna(x) else x
                                 )
-                                n_groups = {"Quartile (4 groupes)": 4, "Quintile (5 groupes)": 5, "Décile (10 groupes)": 10}[quantile_type]
-
-                                # Création des labels avec ordre numérique pour le tri
-                                if quantile_type == "Quartile (4 groupes)":
-                                    labels = [f"{i}ème quartile" if i > 1 else f"{i}er quartile" for i in range(1, 5)]
-                                    sort_order = list(range(1, 5))
-                                elif quantile_type == "Quintile (5 groupes)":
-                                    labels = [f"{i}ème quintile" if i > 1 else f"{i}er quintile" for i in range(1, 6)]
-                                    sort_order = list(range(1, 6))
-                                else:  # Déciles - format avec padding pour correct tri
-                                    labels = [f"{i}ème décile" if i > 1 else f"{i}er décile" for i in range(1, 11)]
-                                    sort_order = list(range(1, 11))
-
-                                # Création des groupes avec les labels personnalisés
-                                try:
-                                    # Vérifier le nombre de valeurs uniques
-                                    unique_values = plot_data.nunique()
-                                    
-                                    if unique_values < n_groups:
-                                        st.warning(f"Attention : La variable contient seulement {unique_values} valeurs uniques, ce qui est inférieur aux {n_groups} groupes demandés. Le regroupement peut être imprécis.")
-                                    
-                                    # Essayer d'utiliser duplicates='drop' qui peut aider dans certains cas
-                                    grouped_data = pd.qcut(plot_data, q=n_groups, labels=labels, duplicates='drop')
-                                    
-                                    # Compter le nombre réel de groupes créés
-                                    actual_groups = grouped_data.nunique()
-                                    
-                                    if actual_groups < n_groups:
-                                        st.warning(f"Seulement {actual_groups} groupes distincts ont pu être créés au lieu de {n_groups} en raison de la distribution des données.")
-                                        
-                                        # Ajuster les labels au nombre réel de groupes si nécessaire
-                                        if quantile_type == "Quartile (4 groupes)":
-                                            labels = [f"{i}ème quartile" if i > 1 else f"{i}er quartile" for i in range(1, actual_groups+1)]
-                                            sort_order = list(range(1, actual_groups+1))
-                                        elif quantile_type == "Quintile (5 groupes)":
-                                            labels = [f"{i}ème quintile" if i > 1 else f"{i}er quintile" for i in range(1, actual_groups+1)]
-                                            sort_order = list(range(1, actual_groups+1))
-                                        else:  # Déciles
-                                            labels = [f"{i}ème décile" if i > 1 else f"{i}er décile" for i in range(1, actual_groups+1)]
-                                            sort_order = list(range(1, actual_groups+1))
-                                    
-                                    # Créer un DataFrame avec les effectifs et l'ordre de tri
-                                    value_counts = pd.DataFrame({
-                                        'Ordre': sort_order[:len(grouped_data.value_counts())],
-                                        'Groupe': grouped_data.value_counts().index,
-                                        'Effectif': grouped_data.value_counts().values
-                                    })
-                                    
-                                    # Trier par ordre numérique, pas alphabétique
-                                    value_counts = value_counts.sort_values('Ordre')
-                                    
-                                    # Calcul correct des taux
-                                    value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(1)
-                                    
-                                    # Formatage des valeurs si nécessaire
-                                    if is_integer_variable:
-                                        value_counts['Effectif'] = value_counts['Effectif'].astype(int)
-                                        value_counts['Taux (%)'] = value_counts['Taux (%)'].apply(
-                                            lambda x: int(x) if x.is_integer() else round(x, 1)
-                                        )
-                                    
-                                    # Statistiques par groupe
-                                    group_stats = plot_data.groupby(grouped_data).agg(['sum', 'mean', 'max'])
-                                    
-                                    # Formatage des statistiques
-                                    if is_integer_variable:
-                                        group_stats = group_stats.applymap(lambda x: int(x) if pd.notna(x) and float(x).is_integer() else round(x, 2) if pd.notna(x) else x)
-                                    else:
-                                        group_stats = group_stats.round(2)
-                                    
-                                    group_stats.columns = ['Somme', 'Moyenne', 'Maximum']
-                                    
-                                    # Créer le tableau final correctement trié
-                                    st.write("### Statistiques par groupe")
-                                    
-                                    # Fusionner les dataframes correctement
-                                    merged_stats = value_counts.set_index('Groupe')
-                                    merged_stats = merged_stats.join(group_stats)
-                                    
-                                    # Trier selon l'ordre numérique avant affichage
-                                    merged_stats = merged_stats.sort_values('Ordre')
-                                    
-                                    # Ne pas afficher la colonne d'ordre
-                                    final_display = merged_stats.drop(columns=['Ordre']).reset_index()
-                                    
-                                    st.dataframe(final_display)
-                                    
-                                except ValueError as e:
-                                    # Cas où qcut échoue même avec duplicates='drop'
-                                    st.error(f"Impossible de créer {n_groups} groupes avec cette distribution de données. Essayez une autre méthode de regroupement ou réduisez le nombre de groupes.")
-                                    
-                                    # Alternative: utiliser pd.cut avec des intervalles égaux comme solution de repli
-                                    if st.button("Essayer avec des intervalles égaux à la place"):
-                                        try:
-                                            min_val = plot_data.min()
-                                            max_val = plot_data.max()
-                                            interval = (max_val - min_val) / n_groups
-                                            bins = [min_val + i * interval for i in range(n_groups + 1)]
-                                            
-                                            grouped_data_alt = pd.cut(plot_data, bins=bins, labels=labels)
-                                            
-                                            value_counts_alt = pd.DataFrame({
-                                                'Ordre': sort_order[:len(grouped_data_alt.value_counts())],
-                                                'Groupe': grouped_data_alt.value_counts().index,
-                                                'Effectif': grouped_data_alt.value_counts().values
-                                            })
-                                            
-                                            # Trier par ordre numérique
-                                            value_counts_alt = value_counts_alt.sort_values('Ordre')
-                                            
-                                            # Calcul des taux
-                                            value_counts_alt['Taux (%)'] = (value_counts_alt['Effectif'] / len(plot_data) * 100).round(1)
-                                            
-                                            # Afficher sans la colonne d'ordre
-                                            final_display_alt = value_counts_alt.drop(columns=['Ordre'])
-                                            
-                                            st.success("Regroupement effectué avec des intervalles de largeur égale au lieu de quantiles égaux.")
-                                            st.dataframe(final_display_alt)
-                                        except Exception as e2:
-                                            st.error(f"Échec de la méthode alternative : {str(e2)}")
-                                except Exception as e:
-                                    st.error(f"Erreur lors du regroupement : {str(e)}")
-
-                            elif grouping_method == "Manuelle":
-                                n_groups = st.number_input("Nombre de groupes", min_value=2, value=3)
-                                breaks = []
-
-                                # Conversion en float pour assurer la cohérence des types
-                                min_val = float(plot_data.min())
-                                max_val = float(plot_data.max())
-
-                                for i in range(n_groups + 1):
-                                    if i == 0:
-                                        val = min_val
-                                    elif i == n_groups:
-                                        val = max_val
-                                    else:
-                                        suggested_val = min_val + (i/n_groups)*(max_val-min_val)
-                                        if is_integer_variable:
-                                            val = st.number_input(
-                                                f"Seuil {i}", 
-                                                value=int(suggested_val),
-                                                min_value=int(min_val),
-                                                max_value=int(max_val),
-                                                step=1,
-                                                key=f"seuil_{i}"
-                                            )
-                                        else:
-                                            val = st.number_input(
-                                                f"Seuil {i}", 
-                                                value=float(suggested_val),
-                                                min_value=float(min_val),
-                                                max_value=float(max_val),
-                                                step=0.1,
-                                                key=f"seuil_{i}"
-                                            )
-                                    breaks.append(val)
-
-                                try:
-                                    # Vérifier que les seuils sont croissants
-                                    if all(breaks[i] <= breaks[i+1] for i in range(len(breaks)-1)):
-                                        grouped_data = pd.cut(plot_data, bins=breaks)
-                                        value_counts = grouped_data.value_counts().reset_index()
-                                        value_counts.columns = ['Groupe', 'Effectif']
-                                        
-                                        # Tri et formatage
-                                        value_counts = value_counts.sort_values('Groupe', key=lambda x: x.map(lambda y: y.left))
-                                        value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(1)
-                                        
-                                        if is_integer_variable:
-                                            value_counts['Effectif'] = value_counts['Effectif'].astype(int)
-                                            value_counts['Taux (%)'] = value_counts['Taux (%)'].apply(
-                                                lambda x: int(x) if x.is_integer() else round(x, 1)
-                                            )
-                                        
-                                        # Statistiques par groupe
-                                        group_stats = plot_data.groupby(grouped_data).agg(['sum', 'mean', 'max'])
-                                        if is_integer_variable:
-                                            group_stats = group_stats.applymap(lambda x: int(x) if pd.notna(x) and float(x).is_integer() else round(x, 2) if pd.notna(x) else x)
-                                        else:
-                                            group_stats = group_stats.round(2)
-                                        group_stats.columns = ['Somme', 'Moyenne', 'Maximum']
-                                        
-                                        st.write("### Statistiques par groupe")
-                                        
-                                        # Fusionner les tables correctement
-                                        merged_stats = value_counts.set_index('Groupe')
-                                        merged_stats = merged_stats.join(group_stats)
-                                        
-                                        st.dataframe(merged_stats.reset_index())
-                                    else:
-                                        st.error("Les seuils doivent être en ordre croissant.")
-                                except Exception as e:
-                                    st.error(f"Erreur lors du regroupement manuel : {str(e)}")
-                        else:
-                            # Cas où la conversion en numérique ne produit pas de données valides
-                            st.error("La variable sélectionnée ne contient pas de données numériques valides après conversion.")
-                            create_qualitative_dashboard(plot_data, var)
-                    except Exception as e:
-                        st.error(f"Erreur lors de l'analyse numérique : {str(e)}")
-                        st.info("Traitement de la variable comme qualitative...")
-                        create_qualitative_dashboard(plot_data, var)
+                            else:
+                                group_stats = group_stats.round(2)
+                            
+                            group_stats.columns = ['Somme', 'Moyenne', 'Maximum']
+                            
+                            # Jointure des DataFrames
+                            st.write("### Statistiques par groupe")
+                            merged_stats = value_counts.set_index('Groupe')
+                            merged_stats = merged_stats.join(group_stats)
+                            
+                            # Affichage sans la colonne Ordre
+                            display_stats = merged_stats.drop(columns=['Ordre'])
+                            st.dataframe(display_stats)
+                            
+                        except ValueError as e:
+                            st.error(f"Impossible de créer les groupes: {e}")
+                            if st.button("Essayer un autre regroupement"):
+                                # Regroupement par intervalle
+                                min_val = plot_data.min()
+                                max_val = plot_data.max()
+                                interval = (max_val - min_val) / n_groups
+                                bins = [min_val + i * interval for i in range(n_groups + 1)]
+                                grouped_data_alt = pd.cut(plot_data, bins=bins, labels=labels)
+                                value_counts_alt = pd.DataFrame({
+                                    'Groupe': grouped_data_alt.value_counts().index,
+                                    'Effectif': grouped_data_alt.value_counts().values
+                                })
+                                value_counts_alt['Taux (%)'] = (value_counts_alt['Effectif'] / len(plot_data) * 100).round(1)
+                                st.dataframe(value_counts_alt)
+                                
+                    elif grouping_method == "Manuelle":
+                        # Code pour le regroupement manuel
+                        n_groups = st.number_input("Nombre de groupes", min_value=2, value=3)
+                        breaks = []
                         
-                # Supprimer le bloc dupliqué - ce bloc était en double dans ton code original
-                # Ne gardons que le code de visualisation à partir d'ici
-
+                        # Déterminer les seuils
+                        min_val = float(plot_data.min())
+                        max_val = float(plot_data.max())
+                        
+                        for i in range(n_groups + 1):
+                            if i == 0:
+                                val = min_val
+                            elif i == n_groups:
+                                val = max_val
+                            else:
+                                suggested_val = min_val + (i/n_groups)*(max_val-min_val)
+                                val = st.number_input(
+                                    f"Seuil {i}", 
+                                    value=int(suggested_val) if is_integer_variable else float(suggested_val),
+                                    min_value=int(min_val) if is_integer_variable else float(min_val),
+                                    max_value=int(max_val) if is_integer_variable else float(max_val),
+                                    step=1 if is_integer_variable else 0.1,
+                                    key=f"seuil_{i}_{var}"  # Clé unique
+                                )
+                            breaks.append(val)
+                        
+                        # Créer les groupes
+                        try:
+                            if all(breaks[i] <= breaks[i+1] for i in range(len(breaks)-1)):
+                                grouped_data = pd.cut(plot_data, bins=breaks)
+                                value_counts = grouped_data.value_counts().reset_index()
+                                value_counts.columns = ['Groupe', 'Effectif']
+                                
+                                # Tri par la borne inférieure de l'intervalle
+                                value_counts = value_counts.sort_values('Groupe', key=lambda x: x.map(lambda y: y.left))
+                                value_counts['Taux (%)'] = (value_counts['Effectif'] / len(plot_data) * 100).round(1)
+                                
+                                # Statistiques par groupe
+                                group_stats = plot_data.groupby(grouped_data).agg(['sum', 'mean', 'max'])
+                                
+                                if is_integer_variable:
+                                    group_stats = group_stats.applymap(
+                                        lambda x: int(x) if pd.notna(x) and float(x).is_integer() else round(x, 2) if pd.notna(x) else x
+                                    )
+                                else:
+                                    group_stats = group_stats.round(2)
+                                    
+                                group_stats.columns = ['Somme', 'Moyenne', 'Maximum']
+                                
+                                st.write("### Statistiques par groupe")
+                                merged_stats = value_counts.set_index('Groupe')
+                                merged_stats = merged_stats.join(group_stats)
+                                
+                                st.dataframe(merged_stats)
+                            else:
+                                st.error("Les seuils doivent être en ordre croissant.")
+                        except Exception as e:
+                            st.error(f"Erreur lors du regroupement: {str(e)}")
+                    
+                    # Options de visualisation pour les variables numériques
+                    st.write("### Options de visualisation")
+                    viz_col1, viz_col2 = st.columns([1, 2])
+                    
+                    with viz_col1:
+                        if grouping_method == "Aucune":
+                            graph_type = st.selectbox("Type de graphique", ["Histogramme", "Density plot"], key="graph_type_viz")
+                        elif grouping_method == "Quantile":
+                            graph_type = st.selectbox("Type de graphique", ["Boîte à moustaches", "Violin plot"], key="graph_type_viz")
+                        else:
+                            graph_type = st.selectbox("Type de graphique", ["Bar plot", "Lollipop plot"], key="graph_type_viz")
+                    
+                    with viz_col2:
+                        color_scheme = st.selectbox("Palette de couleurs", list(COLOR_PALETTES.keys()), key="color_scheme_viz")
+                    
+                    # Options avancées pour la visualisation
+                    with st.expander("Options avancées"):
+                        title = st.text_input("Titre du graphique", f"Distribution de {var}", key="title_viz")
+                        x_axis = st.text_input("Titre de l'axe X", var, key="x_axis_viz")
+                        y_axis = st.text_input("Titre de l'axe Y", "Valeur", key="y_axis_viz")
+                        source = st.text_input("Source des données", "", key="source_viz")
+                        note = st.text_input("Note de lecture", "", key="note_viz")
+                        show_values = st.checkbox("Afficher les valeurs", True, key="show_values_viz")
+                    
+                    # Génération du graphique
+                    if st.button("Générer la visualisation", key="generate_viz"):
+                        try:
+                            if graph_type == "Histogramme":
+                                fig = px.histogram(
+                                    plot_data, 
+                                    title=title, 
+                                    color_discrete_sequence=COLOR_PALETTES[color_scheme]
+                                )
+                                if show_values:
+                                    fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
+                            elif graph_type == "Density plot":
+                                fig = plot_density(
+                                    plot_data, 
+                                    var, 
+                                    title, 
+                                    x_axis, 
+                                    y_axis,
+                                    COLOR_PALETTES[color_scheme]
+                                )
+                            # Ajouter d'autres types de graphiques ici
+                            
+                            st.plotly_chart(fig, use_container_width=True)
+                            
+                            # Export du graphique
+                            export_visualization(fig, 'graph', var_name=var, source=source, note=note, is_plotly=True)
+                        except Exception as e:
+                            st.error(f"Erreur lors de la génération du graphique: {str(e)}")
+                else:
+                    st.error("La variable sélectionnée ne contient pas de données numériques valides.")
+                    create_qualitative_dashboard(plot_data, var)
+            except Exception as e:
+                st.error(f"Erreur lors de l'analyse numérique: {str(e)}")
+                create_qualitative_dashboard(plot_data, var)
+                                   
                 # Options de visualisation (à garder séparé des options de regroupement)
                 if is_numeric:
                     st.write("### Options de visualisation")
